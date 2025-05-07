@@ -9,7 +9,7 @@ export default function HomeScreen() {
         <>
             <Stack.Screen options={{ title: '홈' }} />
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <Text style={{ fontSize: 24, marginBottom: 20 }}>시광교회에 오신것을 환영합니다.</Text>
+                <Text style={{ fontSize: 24, marginBottom: 20 }}>디테일</Text>
                 {/*<Button title="교리문답 보기" onPress={() => router.push('')} />*/}
             </View>
         </>
