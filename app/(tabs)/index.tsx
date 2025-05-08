@@ -9,11 +9,8 @@ import { useRouter } from 'expo-router';
 import { verses } from '@/assets/verses';
 import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/firebase/config';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // 상단 import
-
-import { sendPushNotification } from '@/services/sendPushNotification';
-import {sendNotification} from "@/services/notificationService";
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { sendPushNotification, sendNotification } from '@/services/notificationService';
 
 const youtubeIds = ["hWvJdJ3Da6o", "GT5qxS6ozWU", "E3jJ02NDYCY"];
 
@@ -30,8 +27,7 @@ export default function HomeScreen() {
     const [visibility, setVisibility] = useState<'all' | 'pastor'>('all');
     const [prayers, setPrayers] = useState<any[]>([]);
     const [publicPrayers, setPublicPrayers] = useState<any[]>([]);
-
-    const [user, setUser] = useState<any>(null); // 상태 추가
+    const [user, setUser] = useState<any>(null);
 
     useEffect(() => {
         const loadUser = async () => {
@@ -39,10 +35,9 @@ export default function HomeScreen() {
             if (raw) setUser(JSON.parse(raw));
         };
 
-        const random = Math.floor(Math.random() * verses.length);
-        setVerse(verses[random]);
+        setVerse(verses[Math.floor(Math.random() * verses.length)]);
+        loadUser();
         fetchPrayers();
-        loadUser(); // 유저 정보 불러오기
     }, []);
 
     const fetchPrayers = async () => {
@@ -54,17 +49,10 @@ export default function HomeScreen() {
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
-
-        // 👇 랜덤으로 다시 뽑기
         setVerse(verses[Math.floor(Math.random() * verses.length)]);
         setYoutubeId(youtubeIds[Math.floor(Math.random() * youtubeIds.length)]);
         await fetchPrayers();
-
         setRefreshing(false);
-    }, []);
-
-    useEffect(() => {
-        onRefresh();
     }, []);
 
     const fetchPublicPrayers = async () => {
@@ -90,17 +78,17 @@ export default function HomeScreen() {
                 createdAt: new Date(),
             });
 
-            // ✅ 교역자 공개인 경우에만 알림 전송
+            // ✅ 비공개 기도제목 -> 교역자 알림 전송
             if (visibility === 'pastor') {
                 const q = query(collection(db, 'users'), where('role', '==', '교역자'));
                 const snap = await getDocs(q);
-
                 snap.docs.forEach(async (docSnap) => {
                     const pastor = docSnap.data();
 
                     await sendNotification({
                         to: pastor.email,
-                        text: `${name}님의 기도제목이 등록되었습니다.`,
+                        message: `${name}님의 기도제목이 등록되었습니다.`,
+                        type: 'prayer_private',
                         link: '/pastor?tab=prayers',
                     });
 
@@ -132,10 +120,10 @@ export default function HomeScreen() {
                 ListHeaderComponent={(
                     <View style={styles.scrollContainer}>
                         <View style={styles.headerRow}>
-                        <Text style={styles.header}>🙏 안녕하세요{user?.name ? ` ${user.name}님!` : '!' }</Text>
-                        <TouchableOpacity onPress={() => router.push('/notifications')}>
-                            <Ionicons name="notifications-outline" size={24} color="#333" />
-                        </TouchableOpacity>
+                            <Text style={styles.header}>🙏 안녕하세요{user?.name ? ` ${user.name}님!` : '!'}</Text>
+                            <TouchableOpacity onPress={() => router.push('/notifications')}>
+                                <Ionicons name="notifications-outline" size={24} color="#333" />
+                            </TouchableOpacity>
                         </View>
 
                         <View style={styles.card}>
@@ -175,28 +163,6 @@ export default function HomeScreen() {
                     </View>
                 )}
             />
-
-            <Modal visible={viewModalVisible} animationType="slide">
-                <SafeAreaView style={styles.modalContainer}>
-                    <Text style={styles.modalTitle}>📃 전체 기도제목</Text>
-
-                    <FlatList
-                        data={publicPrayers}
-                        keyExtractor={(item) => item.id}
-                        contentContainerStyle={{ paddingBottom: 20 }}
-                        renderItem={({ item }) => (
-                            <View style={[styles.card, { marginBottom: 12 }]}>
-                                <Text style={styles.sectionTitle}>🙏 {item.title}</Text>
-                                <Text style={{ color: '#6b7280' }}>by {item.name}</Text>
-                            </View>
-                        )}
-                    />
-
-                    <TouchableOpacity onPress={() => setViewModalVisible(false)} style={styles.closeButton}>
-                        <Text style={styles.closeText}>닫기</Text>
-                    </TouchableOpacity>
-                </SafeAreaView>
-            </Modal>
 
             <Modal visible={modalVisible} animationType="slide">
                 <SafeAreaView style={styles.modalContainer}>

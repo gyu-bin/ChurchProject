@@ -1,15 +1,8 @@
+// app/teams/create.tsx
 import React, { useState, useEffect } from 'react';
 import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    StyleSheet,
-    SafeAreaView,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
+    View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView,
+    Alert, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { addDoc, collection, getDocs, query, where } from 'firebase/firestore';
@@ -22,9 +15,9 @@ export default function CreateTeam() {
     const [description, setDescription] = useState('');
     const [leader, setLeader] = useState('');
     const [creatorEmail, setCreatorEmail] = useState('');
-    const router = useRouter();
     const [role, setRole] = useState('');
     const [memberCount, setMemberCount] = useState('');
+    const router = useRouter();
 
     useEffect(() => {
         AsyncStorage.getItem('currentUser').then((raw) => {
@@ -73,7 +66,8 @@ export default function CreateTeam() {
 
                     await sendNotification({
                         to: pastor.email,
-                        text: `${leader}님이 "${name}" 소모임을 생성했습니다.`,
+                        message: `${leader}님이 "${name}" 소모임을 생성했습니다.`,
+                        type: 'team_create',
                         link: '/pastor?tab=teams',
                     });
 

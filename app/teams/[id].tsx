@@ -20,6 +20,7 @@ export default function TeamDetail() {
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<any>(null);
     const router = useRouter();
+    const isCreator = team?.leaderEmail === user?.email;
 
     useEffect(() => {
         const fetch = async () => {
@@ -43,8 +44,6 @@ export default function TeamDetail() {
             return;
         }
 
-        // 🔥 인원 증가 제거: 승인 이후 반영해야 함
-
         // ✅ 알림 전송
         await sendNotification({
             to: team.leaderEmail,
@@ -52,11 +51,10 @@ export default function TeamDetail() {
             type: 'team_join_request',
             link: '/notifications',
             teamId: team.id,
-            teamName: team.name,         // ✅ 추가
-            applicantEmail: user.email,  // ✅ 추가
+            teamName: team.name,         // ✅ 필수
+            applicantEmail: user.email, // ✅ 필수
             applicantName: user.name,
         });
-
         if (team.leaderPushToken) {
             await sendPushNotification({
                 to: team.leaderPushToken,
@@ -94,13 +92,16 @@ export default function TeamDetail() {
             <Text style={styles.description}>{team.description}</Text>
             <Text style={styles.meta}>👥 인원: {team.members ?? 0} / {team.maxMembers ?? '명'}</Text>
 
-            <TouchableOpacity
-                onPress={handleJoin}
-                style={[styles.button, isFull && styles.buttonDisabled]}
-                disabled={isFull}
-            >
-                <Text style={styles.buttonText}>{isFull ? '모집마감' : '가입 신청하기'}</Text>
-            </TouchableOpacity>
+            {!isFull && !isCreator && (
+                <TouchableOpacity
+                    onPress={handleJoin}
+                    style={[styles.button, isFull && styles.buttonDisabled]}
+                    disabled={isFull}
+                >
+                    <Text style={styles.buttonText}>{isFull ? '모집마감' : '가입 신청하기'}</Text>
+                </TouchableOpacity>
+            )}
+
         </SafeAreaView>
     );
 }

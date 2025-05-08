@@ -22,10 +22,14 @@ export default function NotificationsScreen() {
         if (!user) return;
         const q = query(collection(db, 'notifications'), where('to', '==', user.email));
         const snap = await getDocs(q);
-        const list = snap.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-        }));
+        const list = snap.docs.map(doc => {
+            const data = doc.data();
+            // console.log('📥 알림 읽어오기:', data);  // 🔍 확인 포인트
+            return {
+                id: doc.id,
+                ...data,
+            };
+        });
         setNotifications(list);
     };
 
@@ -64,6 +68,7 @@ export default function NotificationsScreen() {
             !selectedNotification?.teamName
         ) {
             Alert.alert('오류', '알림 데이터가 올바르지 않습니다.');
+            console.log(selectedNotification?.teamId,selectedNotification?.applicantEmail,selectedNotification?.teamName )
             return;
         }
 

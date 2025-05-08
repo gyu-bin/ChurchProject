@@ -14,21 +14,33 @@ export async function sendNotification({
                                            link,
                                            teamId,
                                            teamName,
-                                           applicantName,
                                            applicantEmail,
+                                           applicantName,
                                        }: {
     to: string;
     message: string;
-    type: NotificationType;
+    type: 'team_create' | 'team_join_request' | 'prayer_private';
     link?: string;
     teamId?: string;
     teamName?: string;
-    applicantName?: string;
     applicantEmail?: string;
+    applicantName?: string;
 }) {
-    console.log('🔥 sendNotification 호출됨:', { to, type, message, teamId });
-
     try {
+        console.log('📤 알림 전송 시도', { to, message, type, teamId, teamName, applicantEmail, applicantName });
+
+        // 🔒 필수 필드 검증
+        if (!to || !message || !type) {
+            throw new Error('to, message, type은 필수입니다.');
+        }
+
+        if (type === 'team_join_request') {
+            if (!teamId || !teamName || !applicantEmail || !applicantName) {
+                throw new Error('team_join_request 알림에는 teamId, teamName, applicantEmail, applicantName이 필요합니다.');
+            }
+        }
+
+        // ✅ 알림 저장
         await addDoc(collection(db, 'notifications'), {
             to,
             message,
@@ -36,10 +48,11 @@ export async function sendNotification({
             link: link ?? null,
             teamId: teamId ?? null,
             teamName: teamName ?? null,
-            applicantName: applicantName ?? null,
             applicantEmail: applicantEmail ?? null,
+            applicantName: applicantName ?? null,
             createdAt: serverTimestamp(),
         });
+
         console.log('✅ 알림 저장 완료');
     } catch (error) {
         console.error('❌ 알림 저장 실패:', error);
