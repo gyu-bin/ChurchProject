@@ -1,4 +1,3 @@
-// components/PrayerModal.tsx
 import React from 'react';
 import {
     Modal,
@@ -13,6 +12,8 @@ import {
     Keyboard,
     TouchableWithoutFeedback,
 } from 'react-native';
+import { useAppTheme } from '@/context/ThemeContext';
+import { useDesign } from '@/context/DesignSystem';
 
 interface PrayerModalProps {
     visible: boolean;
@@ -39,57 +40,116 @@ export default function PrayerModal({
                                         setContent,
                                         setVisibility,
                                     }: PrayerModalProps) {
+    const { mode } = useAppTheme();
+    const { colors, spacing, font, radius } = useDesign();
+
     return (
         <Modal visible={visible} animationType="slide">
-            <SafeAreaView style={styles.modalContainer}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
                 <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                     <KeyboardAvoidingView
                         style={{ flex: 1 }}
                         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                     >
-                        <View style={styles.innerWrapper}>
-                            <Text style={styles.modalTitle}>🙏 기도제목 나누기</Text>
+                        <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: spacing.lg }}>
+                            <Text
+                                style={{
+                                    fontSize: font.heading,
+                                    fontWeight: 'bold',
+                                    color: colors.text,
+                                    marginBottom: spacing.lg,
+                                }}
+                            >
+                                🙏 기도제목 나누기
+                            </Text>
 
-                            <View style={styles.inputGroup}>
+                            <View style={{ marginBottom: spacing.lg }}>
                                 <TextInput
                                     placeholder="제목을 입력하세요"
-                                    placeholderTextColor="#9ca3af"
+                                    placeholderTextColor={colors.placeholder}
                                     value={title}
                                     onChangeText={setTitle}
-                                    style={styles.input}
+                                    style={{
+                                        fontSize: font.body,
+                                        paddingVertical: spacing.sm,
+                                        paddingHorizontal: spacing.md,
+                                        borderBottomWidth: 1,
+                                        borderColor: colors.border,
+                                        color: colors.text,
+                                    }}
                                 />
                             </View>
 
-                            <View style={styles.inputGroup}>
+                            <View style={{ marginBottom: spacing.lg }}>
                                 <TextInput
                                     placeholder="기도 제목을 입력하세요"
-                                    placeholderTextColor="#9ca3af"
+                                    placeholderTextColor={colors.placeholder}
                                     value={content}
                                     onChangeText={setContent}
                                     multiline
-                                    style={styles.input}
+                                    style={{
+                                        fontSize: font.body,
+                                        paddingVertical: spacing.sm,
+                                        paddingHorizontal: spacing.md,
+                                        borderBottomWidth: 1,
+                                        borderColor: colors.border,
+                                        color: colors.text,
+                                    }}
                                 />
                             </View>
 
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.label}>공개 범위</Text>
-                                <View style={{ flexDirection: 'row', gap: 10 }}>
+                            <View style={{ marginBottom: spacing.lg }}>
+                                <Text
+                                    style={{
+                                        fontSize: font.caption,
+                                        fontWeight: '600',
+                                        color: colors.subtext,
+                                        marginBottom: spacing.sm,
+                                    }}
+                                >
+                                    공개 범위
+                                </Text>
+                                <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                                     <TouchableOpacity
                                         onPress={() => setVisibility('all')}
-                                        style={[styles.tag, visibility === 'all' && styles.tagSelected]}
+                                        style={{
+                                            borderWidth: 1,
+                                            borderColor: visibility === 'all' ? colors.primary : colors.border,
+                                            backgroundColor: visibility === 'all' ? colors.primary : colors.surface,
+                                            borderRadius: 999,
+                                            paddingVertical: spacing.sm,
+                                            paddingHorizontal: spacing.md,
+                                            marginRight: spacing.sm,
+                                        }}
                                     >
                                         <Text
-                                            style={[styles.tagText, visibility === 'all' && styles.tagTextSelected]}
+                                            style={{
+                                                fontSize: font.caption,
+                                                fontWeight: visibility === 'all' ? 'bold' : 'normal',
+                                                color: visibility === 'all' ? '#fff' : colors.text,
+                                            }}
                                         >
                                             전체공개
                                         </Text>
                                     </TouchableOpacity>
+
                                     <TouchableOpacity
                                         onPress={() => setVisibility('pastor')}
-                                        style={[styles.tag, visibility === 'pastor' && styles.tagSelected]}
+                                        style={{
+                                            borderWidth: 1,
+                                            borderColor: visibility === 'pastor' ? colors.primary : colors.border,
+                                            backgroundColor: visibility === 'pastor' ? colors.primary : colors.surface,
+                                            borderRadius: 999,
+                                            paddingVertical: spacing.sm,
+                                            paddingHorizontal: spacing.md,
+                                        }}
                                     >
                                         <Text
-                                            style={[styles.tagText, visibility === 'pastor' && styles.tagTextSelected]}
+                                            style={{
+                                                fontSize: font.caption,
+                                                fontWeight: visibility === 'pastor' ? 'bold' : 'normal',
+                                                color: visibility === 'pastor' ? '#fff' : colors.text,
+                                            }}
                                         >
                                             교역자만
                                         </Text>
@@ -97,12 +157,40 @@ export default function PrayerModal({
                                 </View>
                             </View>
 
-                            <TouchableOpacity onPress={onSubmit} style={styles.submitButton}>
-                                <Text style={styles.submitText}>🙏 제출하기</Text>
+                            <TouchableOpacity
+                                onPress={onSubmit}
+                                style={{
+                                    backgroundColor: colors.primary,
+                                    paddingVertical: spacing.md,
+                                    borderRadius: radius.md,
+                                    alignItems: 'center',
+                                    marginBottom: spacing.md,
+                                }}
+                            >
+                                <Text
+                                    style={{
+                                        color: '#fff',
+                                        fontSize: font.body,
+                                        fontWeight: 'bold',
+                                    }}
+                                >
+                                    🙏 제출하기
+                                </Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                                <Text style={styles.closeText}>닫기</Text>
+                            <TouchableOpacity
+                                onPress={onClose}
+                                style={{
+                                    alignItems: 'center',
+                                    paddingVertical: spacing.sm,
+                                    backgroundColor: colors.border,
+                                    borderRadius: radius.md,
+                                    height: 30,
+                                }}
+                            >
+                                <Text style={{ color: colors.text, fontSize: font.caption, fontWeight: '500' }}>
+                                    닫기
+                                </Text>
                             </TouchableOpacity>
                         </View>
                     </KeyboardAvoidingView>
@@ -111,85 +199,3 @@ export default function PrayerModal({
         </Modal>
     );
 }
-
-const styles = StyleSheet.create({
-    modalContainer: {
-        flex: 1,
-        backgroundColor: '#fff',
-        justifyContent: 'center',
-    },
-    innerWrapper: {
-        flex: 1,
-        justifyContent: 'center',
-        paddingHorizontal: 24,
-    },
-    modalTitle: {
-        fontSize: 28,
-        fontWeight: '700',
-        color: '#111827',
-        marginBottom: 32,
-        textAlign: 'left',
-    },
-    inputGroup: {
-        marginBottom: 28,
-    },
-    input: {
-        fontSize: 18,
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        borderBottomWidth: 1,
-        borderColor: '#e5e7eb',
-        color: '#111827',
-    },
-    label: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#4b5563',
-        marginBottom: 8,
-    },
-    tag: {
-        borderWidth: 1,
-        borderColor: '#d1d5db',
-        borderRadius: 999,
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        marginRight: 8,
-        backgroundColor: '#fff',
-    },
-    tagSelected: {
-        backgroundColor: '#2563eb',
-        borderColor: '#2563eb',
-    },
-    tagText: {
-        fontSize: 14,
-        color: '#374151',
-    },
-    tagTextSelected: {
-        color: '#fff',
-        fontWeight: 'bold',
-    },
-    submitButton: {
-        backgroundColor: '#3182f6',
-        paddingVertical: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-        marginTop: 8,
-    },
-    submitText: {
-        color: '#fff',
-        fontSize: 17,
-        fontWeight: '600',
-    },
-    closeButton: {
-        alignItems: 'center',
-        marginTop: 32,
-        backgroundColor: '#f3f4f6',
-        borderRadius: 12,
-        paddingVertical: 12,
-    },
-    closeText: {
-        color: '#374151',
-        fontSize: 15,
-        fontWeight: '500',
-    },
-});

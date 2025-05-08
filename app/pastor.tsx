@@ -1,83 +1,63 @@
-// app/pastor.tsx
+// ✅ 두 페이지 모두 공통 디자인 시스템 적용
+// ✅ 다크모드 대응 (useAppTheme + useDesign 적용)
+
+// 📁 app/pastor.tsx 전체 수정본
 import React, { useEffect, useState } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    SafeAreaView,
-    FlatList,
-    TouchableOpacity,
-    Dimensions,Alert
+    View, Text, SafeAreaView, FlatList, TouchableOpacity, Dimensions, Alert
 } from 'react-native';
 import {
-    collection,
-    getDocs,
-    query,
-    where,
-    updateDoc,
-    doc,orderBy,getDoc
+    collection, getDocs, query, orderBy, updateDoc, doc, getDoc, where
 } from 'firebase/firestore';
 import { db } from '@/firebase/config';
-import { Ionicons } from '@expo/vector-icons';
 import { TabView, SceneMap, TabBar } from 'react-native-tab-view';
 import { useLocalSearchParams } from 'expo-router';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
+import { useAppTheme } from '@/context/ThemeContext';
+import { useDesign } from '@/context/DesignSystem';
 
 const initialLayout = { width: Dimensions.get('window').width };
 
 export default function PastorPage() {
     const { tab } = useLocalSearchParams();
-    const [index, setIndex] = useState(0);
+    const [index, setIndex] = useState(tab === 'teams' ? 1 : 0);
     const [routes] = useState([
         { key: 'prayers', title: '기도제목' },
         { key: 'teams', title: '소모임 승인' },
     ]);
 
-    useEffect(() => {
-        if (tab === 'teams') {
-            setIndex(1);
-        }
-    }, [tab]);
-
     const [prayers, setPrayers] = useState<any[]>([]);
     const [pendingTeams, setPendingTeams] = useState<any[]>([]);
 
+    const { colors, spacing, font, radius } = useDesign();
+
     const fetchData = async () => {
-        const prayerQuery = query(
-            collection(db, 'prayer_requests'),
-            // where('visibility', '==', 'pastor'),
-            orderBy('createdAt', 'desc') // 🔽 최신순
+        const prayerSnap = await getDocs(
+            query(collection(db, 'prayer_requests'), orderBy('createdAt', 'desc'))
         );
-
-
-        const prayerSnap = await getDocs(prayerQuery);
         setPrayers(prayerSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
-        const teamQuery = query(
-            collection(db, 'teams'),
-            // where('approved', '==', false),
-            orderBy('createdAt', 'desc') // 🔽 최신순
+        const teamSnap = await getDocs(
+            query(collection(db, 'teams'), orderBy('createdAt', 'desc'))
         );
-        const teamSnap = await getDocs(teamQuery);
         setPendingTeams(teamSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     };
 
+    useEffect(() => {
+        fetchData();
+    }, [tab]);
+
     const approveTeam = async (id: string) => {
         try {
-            // 1. 팀 문서 가져오기
             const teamRef = doc(db, 'teams', id);
             const teamSnap = await getDoc(teamRef);
             if (!teamSnap.exists()) {
                 Alert.alert('오류', '해당 모임을 찾을 수 없습니다.');
                 return;
             }
-
             const teamData = teamSnap.data();
-
-            // 2. 승인 처리
             await updateDoc(teamRef, { approved: true });
 
-            // 3. 알림 전송
             await sendNotification({
                 to: teamData.leaderEmail,
                 message: `"${teamData.name}" 소모임이 승인되었습니다.`,
@@ -85,11 +65,12 @@ export default function PastorPage() {
                 link: '/teams',
             });
 
-            // 4. 푸시 토큰 조회 후 전송
-            const q = query(collection(db, 'expoTokens'), where('email', '==', teamData.leaderEmail));
-            const snap = await getDocs(q);
-            if (!snap.empty) {
-                const token = snap.docs[0].data().token;
+            const tokenSnap = await getDocs(query(
+                collection(db, 'expoTokens'),
+                where('email', '==', teamData.leaderEmail)
+            ));
+            if (!tokenSnap.empty) {
+                const token = tokenSnap.docs[0].data().token;
                 await sendPushNotification({
                     to: token,
                     title: '✅ 소모임 승인 완료',
@@ -98,31 +79,24 @@ export default function PastorPage() {
             }
 
             Alert.alert('승인 완료', '소모임이 승인되었습니다.');
-            setPendingTeams((prev) => prev.filter(team => team.id !== id));
+            setPendingTeams(prev => prev.filter(team => team.id !== id));
         } catch (e) {
             console.error(e);
             Alert.alert('오류', '승인에 실패했습니다.');
         }
     };
 
-    useEffect(() => {
-        if (tab === 'teams') setIndex(1);
-        else setIndex(0);
-
-        fetchData();
-    }, [tab]);
-
     const PrayersRoute = () => (
         <FlatList
             data={prayers}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={{ padding: 20 }}
+            contentContainerStyle={{ padding: spacing.lg }}
             renderItem={({ item }) => (
-                <View style={styles.card}>
-                    <Text style={styles.sectionTitle}>{item.title}</Text>
-                    <Text style={styles.meta}>🙋 {item.name}</Text>
-                    <Text style={styles.content}>{item.content}</Text>
-                    <Text style={styles.meta}>📢 공개: {item.visibility === 'pastor' ? '교역자만' : '전체'}</Text>
+                <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md }}>
+                    <Text style={{ fontSize: font.body, fontWeight: 'bold', color: colors.text }}>{item.title}</Text>
+                    <Text style={{ fontSize: font.caption, color: colors.subtext }}>🙋 {item.name}</Text>
+                    <Text style={{ fontSize: font.body, color: colors.text, marginVertical: spacing.sm }}>{item.content}</Text>
+                    <Text style={{ fontSize: font.caption, color: colors.subtext }}>📢 공개: {item.visibility === 'pastor' ? '교역자만' : '전체'}</Text>
                 </View>
             )}
         />
@@ -132,13 +106,16 @@ export default function PastorPage() {
         <FlatList
             data={pendingTeams}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={{ padding: 20 }}
+            contentContainerStyle={{ padding: spacing.lg }}
             renderItem={({ item }) => (
-                <View style={styles.card}>
-                    <Text style={styles.sectionTitle}>{item.name}</Text>
-                    <Text style={styles.meta}>👤 모임장: {item.leader}</Text>
-                    <Text style={styles.content}>{item.description}</Text>
-                    <TouchableOpacity style={styles.approveButton} onPress={() => approveTeam(item.id)}>
+                <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md }}>
+                    <Text style={{ fontSize: font.body, fontWeight: 'bold', color: colors.text }}>{item.name}</Text>
+                    <Text style={{ fontSize: font.caption, color: colors.subtext }}>👤 모임장: {item.leader}</Text>
+                    <Text style={{ fontSize: font.body, color: colors.text, marginVertical: spacing.sm }}>{item.description}</Text>
+                    <TouchableOpacity
+                        onPress={() => approveTeam(item.id)}
+                        style={{ backgroundColor: colors.primary, padding: spacing.sm, borderRadius: radius.sm, alignItems: 'center' }}
+                    >
                         <Text style={{ color: '#fff', fontWeight: 'bold' }}>승인하기</Text>
                     </TouchableOpacity>
                 </View>
@@ -147,7 +124,7 @@ export default function PastorPage() {
     );
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff'  }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
             <TabView
                 navigationState={{ index, routes }}
                 renderScene={SceneMap({ prayers: PrayersRoute, teams: TeamsRoute })}
@@ -156,36 +133,13 @@ export default function PastorPage() {
                 renderTabBar={props => (
                     <TabBar
                         {...props}
-                        indicatorStyle={{ backgroundColor: '#2563eb' }}
-                        style={{ backgroundColor: '#fff' }}
-                        activeColor="#2563eb"
-                        inactiveColor="#6b7280"
+                        indicatorStyle={{ backgroundColor: colors.primary }}
+                        style={{ backgroundColor: colors.surface }}
+                        activeColor={colors.primary}
+                        inactiveColor={colors.subtext}
                     />
                 )}
             />
         </SafeAreaView>
     );
 }
-
-const styles = StyleSheet.create({
-    card: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 16,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 6,
-        elevation: 2,
-    },
-    sectionTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 6 },
-    meta: { fontSize: 14, color: '#6b7280' },
-    content: { fontSize: 15, marginVertical: 6 },
-    approveButton: {
-        marginTop: 12,
-        backgroundColor: '#2563eb',
-        paddingVertical: 10,
-        borderRadius: 6,
-        alignItems: 'center',
-    },
-});

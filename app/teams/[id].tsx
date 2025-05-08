@@ -1,22 +1,15 @@
-// ✅ TeamDetail 전체 UI 개선: 썸네일, 카테고리, 모임 시간, 위치, 참여자 일부, 일정, 설명 등 추가
-
 import React, { useEffect, useState } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    SafeAreaView,
-    TouchableOpacity,
-    Alert,
-    Image,
-    ActivityIndicator,
-    ScrollView,
+    View, Text, SafeAreaView, TouchableOpacity, Alert, Image,
+    ActivityIndicator, ScrollView
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import { getCurrentUser } from '@/services/authService';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
+import { useDesign } from '@/context/DesignSystem';
+import { useAppTheme } from '@/context/ThemeContext';
 
 export default function TeamDetail() {
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -24,6 +17,10 @@ export default function TeamDetail() {
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<any>(null);
     const router = useRouter();
+
+    const { colors, font, spacing, radius } = useDesign();
+    const { mode } = useAppTheme();
+
     const isCreator = team?.leaderEmail === user?.email;
 
     useEffect(() => {
@@ -70,16 +67,16 @@ export default function TeamDetail() {
 
     if (loading) {
         return (
-            <SafeAreaView style={styles.center}>
-                <ActivityIndicator size="large" />
+            <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+                <ActivityIndicator size="large" color={colors.primary} />
             </SafeAreaView>
         );
     }
 
     if (!team) {
         return (
-            <SafeAreaView style={styles.center}>
-                <Text>모임을 찾을 수 없습니다.</Text>
+            <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+                <Text style={{ color: colors.text }}>모임을 찾을 수 없습니다.</Text>
             </SafeAreaView>
         );
     }
@@ -87,134 +84,71 @@ export default function TeamDetail() {
     const isFull = team.members >= team.capacity;
 
     return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scroll}>
-                {/* 썸네일 */}
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+            <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }}>
                 {team.thumbnail && (
-                    <Image source={{ uri: team.thumbnail }} style={styles.thumbnail} />
+                    <Image
+                        source={{ uri: team.thumbnail }}
+                        style={{
+                            width: '100%',
+                            height: 180,
+                            borderRadius: radius.lg,
+                            backgroundColor: colors.border
+                        }}
+                    />
                 )}
 
-                {/* 상단 정보 카드 */}
-                <View style={styles.card}>
-                    <Text style={styles.title}>{team.name}</Text>
-                    <Text style={styles.sub}>by {team.leader}</Text>
+                <View style={{
+                    backgroundColor: colors.surface,
+                    borderRadius: radius.lg,
+                    padding: spacing.lg,
+                    shadowColor: '#000',
+                    shadowOpacity: 0.05,
+                    shadowRadius: 6,
+                    elevation: 3
+                }}>
+                    <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.text }}>{team.name}</Text>
+                    <Text style={{ fontSize: font.caption, color: colors.subtext, marginBottom: spacing.sm }}>by {team.leader}</Text>
 
-                    <View style={styles.infoRow}>
-                        <Text style={styles.infoItem}>📍 {team.location || '온라인'}</Text>
-                        <Text style={styles.infoItem}>📅 {team.schedule || '협의 후 결정'}</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.sm }}>
+                        <Text style={{ fontSize: font.caption, color: colors.text }}>📍 {team.location || '온라인'}</Text>
+                        <Text style={{ fontSize: font.caption, color: colors.text }}>📅 {team.schedule || '협의 후 결정'}</Text>
                     </View>
-                    <Text style={styles.meta}>
+                    <Text style={{ fontSize: font.caption, color: colors.subtext }}>
                         👥 {team.members ?? 0} / {team.maxMembers ?? '명'}
                     </Text>
                 </View>
 
-                {/* 설명 */}
-                <View style={styles.card}>
-                    <Text style={styles.sectionTitle}>모임 소개</Text>
-                    <Text style={styles.description}>{team.description}</Text>
+                <View style={{ backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg }}>
+                    <Text style={{ fontSize: font.body, fontWeight: '600', color: colors.text, marginBottom: spacing.sm }}>모임 소개</Text>
+                    <Text style={{ fontSize: font.body, color: colors.text, lineHeight: 22 }}>{team.description}</Text>
                 </View>
 
-                {/* 참여자 */}
                 {team.sampleMembers?.length > 0 && (
-                    <View style={styles.card}>
-                        <Text style={styles.sectionTitle}>🙋 참여자 일부</Text>
-                        <Text style={styles.participants}>{team.sampleMembers.join(', ')}</Text>
+                    <View style={{ backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg }}>
+                        <Text style={{ fontSize: font.body, fontWeight: '600', color: colors.text, marginBottom: spacing.sm }}>🙋 참여자 일부</Text>
+                        <Text style={{ fontSize: font.caption, color: colors.primary }}>{team.sampleMembers.join(', ')}</Text>
                     </View>
                 )}
 
-                {/* 버튼 */}
                 {!isFull && !isCreator && (
                     <TouchableOpacity
                         onPress={handleJoin}
-                        style={[styles.button, isFull && styles.buttonDisabled]}
                         disabled={isFull}
+                        style={{
+                            backgroundColor: isFull ? colors.border : colors.primary,
+                            paddingVertical: spacing.md,
+                            borderRadius: radius.md,
+                            alignItems: 'center',
+                            marginTop: spacing.sm
+                        }}
                     >
-                        <Text style={styles.buttonText}>{isFull ? '모집마감' : '가입 신청하기'}</Text>
+                        <Text style={{ color: '#fff', fontSize: font.body, fontWeight: '600' }}>
+                            {isFull ? '모집마감' : '가입 신청하기'}
+                        </Text>
                     </TouchableOpacity>
                 )}
             </ScrollView>
         </SafeAreaView>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#f8f9fb',
-    },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    scroll: {
-        padding: 24,
-        gap: 20,
-    },
-    thumbnail: {
-        width: '100%',
-        height: 180,
-        borderRadius: 14,
-        backgroundColor: '#dbeafe',
-    },
-    card: {
-        backgroundColor: '#ffffff',
-        borderRadius: 14,
-        padding: 20,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 6,
-        elevation: 3,
-    },
-    title: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        color: '#1e3a8a',
-        marginBottom: 4,
-    },
-    sub: {
-        fontSize: 14,
-        color: '#64748b',
-        marginBottom: 12,
-    },
-    infoRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 6,
-    },
-    infoItem: {
-        fontSize: 14,
-        color: '#475569',
-    },
-    meta: {
-        fontSize: 14,
-        color: '#475569',
-        marginTop: 6,
-    },
-    sectionTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#1e3a8a',
-        marginBottom: 8,
-    },
-    description: {
-        fontSize: 15,
-        color: '#334155',
-        lineHeight: 22,
-    },
-    participants: {
-        fontSize: 14,
-        color: '#1e40af',
-    },
-    button: {
-        backgroundColor: '#2563eb',
-        borderRadius: 12,
-        paddingVertical: 16,
-        alignItems: 'center',
-        marginTop: 16,
-    },
-    buttonDisabled: {
-        backgroundColor: '#9ca3af',
-    },
-    buttonText: {
-        color: '#fff',
-        fontWeight: '600',
-        fontSize: 16,
-    },
-});

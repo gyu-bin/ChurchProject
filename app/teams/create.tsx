@@ -1,14 +1,16 @@
-// app/teams/create.tsx
 import React, { useState, useEffect } from 'react';
 import {
-    View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView,
-    Alert, KeyboardAvoidingView, Platform, ScrollView,
+    View, Text, TextInput, TouchableOpacity,
+    SafeAreaView, Alert, KeyboardAvoidingView,
+    Platform, ScrollView
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { addDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
+import { useDesign } from '@/context/DesignSystem';
+import { useAppTheme } from '@/context/ThemeContext';
 
 export default function CreateTeam() {
     const [name, setName] = useState('');
@@ -18,6 +20,9 @@ export default function CreateTeam() {
     const [role, setRole] = useState('');
     const [memberCount, setMemberCount] = useState('');
     const router = useRouter();
+
+    const { colors, spacing, radius, font } = useDesign();
+    const { mode } = useAppTheme();
 
     useEffect(() => {
         AsyncStorage.getItem('currentUser').then((raw) => {
@@ -90,30 +95,58 @@ export default function CreateTeam() {
     };
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             >
-                <ScrollView contentContainerStyle={styles.container}>
-                    <Text style={styles.title}>📝 소모임 생성</Text>
+                <ScrollView contentContainerStyle={{ padding: spacing.lg, flexGrow: 1 }}>
+                    <Text style={{
+                        fontSize: font.heading,
+                        fontWeight: 'bold',
+                        marginBottom: spacing.lg,
+                        textAlign: 'center',
+                        color: colors.text
+                    }}>
+                        📝 소모임 생성
+                    </Text>
 
                     <TextInput
                         placeholder="모임명 (예: 러닝크루)"
-                        placeholderTextColor="#aaa"
+                        placeholderTextColor={colors.placeholder}
                         value={name}
                         onChangeText={setName}
-                        style={styles.input}
+                        style={{
+                            backgroundColor: colors.surface,
+                            padding: spacing.md,
+                            borderRadius: radius.md,
+                            borderWidth: 1,
+                            borderColor: colors.border,
+                            marginBottom: spacing.md,
+                            color: colors.text,
+                            fontSize: font.body,
+                        }}
                     />
 
                     <TextInput
                         placeholder="모임 소개 (선택 사항)"
-                        placeholderTextColor="#aaa"
+                        placeholderTextColor={colors.placeholder}
                         value={description}
                         onChangeText={setDescription}
                         multiline
                         numberOfLines={4}
-                        style={[styles.input, styles.textArea]}
+                        style={{
+                            backgroundColor: colors.surface,
+                            padding: spacing.md,
+                            borderRadius: radius.md,
+                            borderWidth: 1,
+                            borderColor: colors.border,
+                            marginBottom: spacing.md,
+                            height: 120,
+                            color: colors.text,
+                            fontSize: font.body,
+                            textAlignVertical: 'top',
+                        }}
                     />
 
                     <TextInput
@@ -121,45 +154,33 @@ export default function CreateTeam() {
                         keyboardType="numeric"
                         value={memberCount}
                         onChangeText={setMemberCount}
-                        style={styles.input}
+                        placeholderTextColor={colors.placeholder}
+                        style={{
+                            backgroundColor: colors.surface,
+                            padding: spacing.md,
+                            borderRadius: radius.md,
+                            borderWidth: 1,
+                            borderColor: colors.border,
+                            marginBottom: spacing.md,
+                            color: colors.text,
+                            fontSize: font.body,
+                        }}
                     />
 
-                    <TouchableOpacity onPress={handleSubmit} style={styles.button}>
-                        <Text style={styles.buttonText}>소모임 생성</Text>
+                    <TouchableOpacity
+                        onPress={handleSubmit}
+                        style={{
+                            backgroundColor: colors.primary,
+                            paddingVertical: spacing.md,
+                            borderRadius: radius.md,
+                            alignItems: 'center',
+                            marginTop: spacing.sm,
+                        }}
+                    >
+                        <Text style={{ color: '#fff', fontSize: font.body, fontWeight: 'bold' }}>소모임 생성</Text>
                     </TouchableOpacity>
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
-
-const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: '#f9fafb' },
-    container: { padding: 24, flexGrow: 1 },
-    title: { fontSize: 24, fontWeight: 'bold', marginBottom: 28, textAlign: 'center' },
-    input: {
-        backgroundColor: '#fff',
-        padding: 14,
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: '#e5e7eb',
-        marginBottom: 16,
-        fontSize: 16,
-    },
-    textArea: {
-        height: 120,
-        textAlignVertical: 'top',
-    },
-    button: {
-        backgroundColor: '#3b82f6',
-        paddingVertical: 16,
-        borderRadius: 10,
-        alignItems: 'center',
-        marginTop: 8,
-    },
-    buttonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-});

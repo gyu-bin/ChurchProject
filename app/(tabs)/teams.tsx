@@ -4,7 +4,6 @@ import {
     Text,
     FlatList,
     TouchableOpacity,
-    StyleSheet,
     SafeAreaView,
     Dimensions,
 } from 'react-native';
@@ -13,12 +12,15 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import { useRouter } from 'expo-router';
 import SkeletonBox from '@/components/Skeleton';
+import { useDesign } from '@/context/DesignSystem';
+import { StyleSheet } from 'react-native';
 
 export default function TeamsScreen() {
     const [teams, setTeams] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isGrid, setIsGrid] = useState(true);
     const router = useRouter();
+    const { colors, font, spacing, radius } = useDesign();
 
     useEffect(() => {
         const q = query(collection(db, 'teams'), where('approved', '==', true));
@@ -41,16 +43,14 @@ export default function TeamsScreen() {
 
         return (
             <TouchableOpacity
-                style={isGrid ? styles.gridItem : styles.listItem}
+                style={isGrid ? [styles.gridItem, { backgroundColor: colors.card, borderColor: colors.border }] : [styles.listItem, { backgroundColor: colors.card, borderColor: colors.border }]}
                 onPress={() => handlePress(item.id)}
                 disabled={isFull}
             >
                 <View style={styles.textContainer}>
-                    <Text style={styles.name}>{item.name}</Text>
-                    <Text style={styles.meta}>👤 모임장: {item.leader}</Text>
-                    <Text style={[styles.meta, isFull && styles.fullText]}>
-                        👥 인원: {members} / {max ?? '명'} {isFull ? '(모집마감)' : ''}
-                    </Text>
+                    <Text style={[styles.name, { color: colors.text }]}>{item.name}</Text>
+                    <Text style={[styles.meta, { color: colors.subtext }]}>👤 모임장: {item.leader}</Text>
+                    <Text style={[styles.meta, isFull && styles.fullText, { color: isFull ? colors.error : colors.subtext }]}>👥 인원: {members} / {max ?? '명'} {isFull ? '(모집마감)' : ''}</Text>
                 </View>
             </TouchableOpacity>
         );
@@ -67,15 +67,15 @@ export default function TeamsScreen() {
     );
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <View style={styles.header}>
-                <Text style={styles.title}>📋 소그룹 목록</Text>
+                <Text style={[styles.title, { color: colors.text }]}>📋 소그룹 목록</Text>
                 <View style={styles.actions}>
                     <TouchableOpacity onPress={() => router.push('/teams/create')}>
-                        <Ionicons name="add-circle-outline" size={26} color="#2563eb" />
+                        <Ionicons name="add-circle-outline" size={26} color={colors.primary} />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setIsGrid(!isGrid)}>
-                        <Ionicons name={isGrid ? 'list-outline' : 'grid-outline'} size={24} color="#475569" />
+                        <Ionicons name={isGrid ? 'list-outline' : 'grid-outline'} size={24} color={colors.subtext} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -100,15 +100,13 @@ export default function TeamsScreen() {
 }
 
 const screenWidth = Dimensions.get('window').width;
-const gridItemWidth = (screenWidth - 60) / 2;
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#eaf2ff', // 부드러운 파스텔 톤
         paddingHorizontal: 16,
         paddingTop: 20,
-        alignItems: 'center', // 중간 정렬
+        alignItems: 'center',
     },
     header: {
         width: '100%',
@@ -120,20 +118,18 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#1e3a8a',
     },
     actions: {
         flexDirection: 'row',
         gap: 16,
     },
     listContent: {
-        alignItems: 'center', // 중간 정렬
+        alignItems: 'center',
         paddingBottom: 60,
         width: '100%',
     },
     gridItem: {
         width: (screenWidth - 60) / 2,
-        backgroundColor: '#fff',
         borderRadius: 16,
         padding: 16,
         margin: 8,
@@ -144,12 +140,10 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 3,
         borderWidth: 1,
-        borderColor: '#d1d5db',
     },
     listItem: {
         width: screenWidth - 40,
         flexDirection: 'row',
-        backgroundColor: '#fff',
         borderRadius: 16,
         padding: 16,
         marginVertical: 8,
@@ -160,7 +154,6 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 3,
         borderWidth: 1,
-        borderColor: '#d1d5db',
     },
     textContainer: {
         flexShrink: 1,
@@ -168,15 +161,12 @@ const styles = StyleSheet.create({
     name: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#1e40af',
         marginBottom: 4,
     },
     meta: {
         fontSize: 14,
-        color: '#475569',
     },
     fullText: {
-        color: '#dc2626',
         fontWeight: 'bold',
     },
 });

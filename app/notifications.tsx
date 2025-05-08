@@ -1,7 +1,6 @@
-// ✅ app/notifications.tsx
 import React, { useEffect, useState } from 'react';
 import {
-    View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, Alert
+    View, Text, FlatList, TouchableOpacity, Modal, Alert, SafeAreaView
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -12,6 +11,8 @@ import { db } from '@/firebase/config';
 import { format } from 'date-fns';
 import { useRouter } from 'expo-router';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
+import { useAppTheme } from '@/context/ThemeContext';
+import { useDesign } from '@/context/DesignSystem';
 
 export default function NotificationsScreen() {
     const [user, setUser] = useState<any>(null);
@@ -19,6 +20,9 @@ export default function NotificationsScreen() {
     const [selectedNotification, setSelectedNotification] = useState<any | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
     const router = useRouter();
+
+    const { colors, spacing, font, radius } = useDesign();
+    const { mode } = useAppTheme();
 
     useEffect(() => {
         const loadUser = async () => {
@@ -34,16 +38,10 @@ export default function NotificationsScreen() {
     useEffect(() => {
         if (!user) return;
 
-        const q = query(
-            collection(db, 'notifications'),
-            where('to', '==', user.email),
-            // 최신순 정렬
-            // orderBy('createdAt', 'desc')
-        );
-
+        const q = query(collection(db, 'notifications'), where('to', '==', user.email));
         const unsubscribe = onSnapshot(q, (snap) => {
             const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setNotifications(list); // 🔥 이 줄이 누락되어 있었음
+            setNotifications(list);
         });
 
         return () => unsubscribe();
@@ -60,9 +58,6 @@ export default function NotificationsScreen() {
     };
 
     const handleApproval = async (approve: boolean) => {
-        console.log('🔥 승인 동작 시작', approve, selectedNotification);
-        console.log(selectedNotification?.teamId,selectedNotification?.applicantEmail);
-
         if (!selectedNotification?.teamId || !selectedNotification?.applicantEmail) {
             Alert.alert('오류', '알림 데이터가 올바르지 않습니다.');
             return;
@@ -76,7 +71,6 @@ export default function NotificationsScreen() {
                     members: increment(1),
                 });
 
-                // 🔔 승인된 신청자에게 알림
                 await sendNotification({
                     to: selectedNotification.applicantEmail,
                     message: `"${selectedNotification.teamName}" 모임에 가입이 승인되었습니다.`,
@@ -84,7 +78,6 @@ export default function NotificationsScreen() {
                     link: '/teams',
                 });
 
-                // 🔔 Push 토큰 조회 후 푸시 전송
                 const tokenSnap = await getDocs(query(
                     collection(db, 'expoTokens'),
                     where('email', '==', selectedNotification.applicantEmail)
@@ -104,7 +97,6 @@ export default function NotificationsScreen() {
             await deleteDoc(doc(db, 'notifications', selectedNotification.id));
             setModalVisible(false);
             setSelectedNotification(null);
-
         } catch (e) {
             console.error('❌ 승인 처리 에러:', e);
             Alert.alert('오류', '처리에 실패했습니다.');
@@ -112,82 +104,83 @@ export default function NotificationsScreen() {
     };
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>📢 알림 ({notifications.length})</Text>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, padding: spacing.lg }}>
+            <Text style={{ fontSize: font.heading, fontWeight: 'bold', marginBottom: spacing.md, color: colors.text }}>
+                📢 알림 ({notifications.length})
+            </Text>
+
             <FlatList
                 data={notifications}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
-                    <TouchableOpacity onPress={() => handleNotificationPress(item)} style={styles.item}>
-                        <Text style={styles.message}>{item.message}</Text>
+                    <TouchableOpacity
+                        onPress={() => handleNotificationPress(item)}
+                        style={{
+                            backgroundColor: colors.surface,
+                            padding: spacing.md,
+                            borderRadius: radius.md,
+                            marginBottom: spacing.sm,
+                            borderWidth: 1,
+                            borderColor: colors.border,
+                        }}
+                    >
+                        <Text style={{ fontSize: font.body, color: colors.text }}>{item.message}</Text>
                         {item.createdAt?.seconds && (
-                            <Text style={styles.date}>
+                            <Text style={{ fontSize: font.caption, color: colors.subtext }}>
                                 {format(new Date(item.createdAt.seconds * 1000), 'yyyy-MM-dd HH:mm')}
                             </Text>
                         )}
                     </TouchableOpacity>
                 )}
-                ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20 }}>알림이 없습니다.</Text>}
+                ListEmptyComponent={<Text style={{ textAlign: 'center', color: colors.subtext }}>알림이 없습니다.</Text>}
             />
 
             <Modal visible={modalVisible} animationType="slide" transparent>
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>가입 승인 요청</Text>
-                        <Text style={{ marginBottom: 12 }}>
+                <View style={{
+                    flex: 1,
+                    backgroundColor: 'rgba(0,0,0,0.4)',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                }}>
+                    <View style={{
+                        width: '85%',
+                        backgroundColor: colors.surface,
+                        padding: spacing.lg,
+                        borderRadius: radius.lg,
+                        elevation: 5,
+                    }}>
+                        <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.text, marginBottom: spacing.md }}>
+                            가입 승인 요청
+                        </Text>
+                        <Text style={{ color: colors.text, marginBottom: spacing.md }}>
                             {selectedNotification?.applicantName}님이 "{selectedNotification?.teamName}" 모임에 가입을 신청했습니다.
                         </Text>
-                        <TouchableOpacity onPress={() => handleApproval(true)} style={styles.modalButton}>
-                            <Text style={styles.modalButtonText}>승인하기</Text>
+                        <TouchableOpacity
+                            onPress={() => handleApproval(true)}
+                            style={{
+                                backgroundColor: colors.primary,
+                                paddingVertical: spacing.md,
+                                borderRadius: radius.md,
+                                alignItems: 'center',
+                                marginBottom: spacing.sm,
+                            }}
+                        >
+                            <Text style={{ color: '#fff', fontWeight: 'bold' }}>승인하기</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={() => handleApproval(false)} style={[styles.modalButton, { backgroundColor: '#ddd' }]}>
-                            <Text style={{ fontWeight: 'bold' }}>거절하기</Text>
+                        <TouchableOpacity
+                            onPress={() => handleApproval(false)}
+                            style={{
+                                backgroundColor: colors.border,
+                                paddingVertical: spacing.md,
+                                borderRadius: radius.md,
+                                alignItems: 'center',
+                            }}
+                        >
+                            <Text style={{ fontWeight: 'bold', color: colors.text }}>거절하기</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
             </Modal>
-        </View>
+        </SafeAreaView>
     );
 }
-
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff', padding: 20 },
-    title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16 },
-    item: {
-        backgroundColor: '#f3f4f6',
-        padding: 16,
-        borderRadius: 10,
-        marginBottom: 12,
-    },
-    message: { fontSize: 16, marginBottom: 4 },
-    date: { fontSize: 12, color: '#888' },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.4)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalContent: {
-        width: '80%',
-        backgroundColor: '#fff',
-        padding: 24,
-        borderRadius: 12,
-        elevation: 5,
-    },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 12,
-    },
-    modalButton: {
-        marginTop: 16,
-        padding: 12,
-        backgroundColor: '#2563eb',
-        borderRadius: 8,
-        alignItems: 'center',
-    },
-    modalButtonText: {
-        color: '#fff',
-        fontWeight: 'bold',
-    },
-});
