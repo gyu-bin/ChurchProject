@@ -12,17 +12,20 @@ import { useRouter } from 'expo-router';
 import { login } from '@/services/authService';
 import { registerPushToken } from '@/services/registerPushToken';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function LoginScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const router = useRouter();
+    const { reload } = useAuth(); // ✅ reload 훅 불러오기
 
     const handleLogin = async () => {
         try {
             const user = await login(email.trim(), password.trim());
             await AsyncStorage.setItem('currentUser', JSON.stringify(user));
             await registerPushToken();
+            await reload(); // ✅ 로그인 직후 상태 갱신
             router.replace('/');
         } catch (error: any) {
             Alert.alert('로그인 실패', error.message);

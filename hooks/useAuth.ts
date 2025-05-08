@@ -22,5 +22,5 @@ export function useAuth() {
         return () => subscription.remove();
     }, []);
 
-    return { user, loading };
+    return { user, loading, reload: loadUser }; // ✅ reload 함수 export 추가
 }

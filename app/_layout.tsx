@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useFonts } from 'expo-font';
 import { View, ActivityIndicator } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import {useIntro} from "@/hooks/useIntro";
 
 Notifications.setNotificationHandler({
     handleNotification: async () => ({

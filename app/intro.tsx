@@ -10,7 +10,7 @@ export default function IntroScreen() {
     useEffect(() => {
         const timer = setTimeout(() => {
             router.replace('/auth/login'); // ✅ 원하는 경로로 전환
-        }, 2000); // 2초 후 이동
+        }, 1000); // 2초 후 이동
 
         return () => clearTimeout(timer);
     }, []);
