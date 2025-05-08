@@ -7,7 +7,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { verses } from '@/assets/verses';
-import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { sendPushNotification, sendNotification } from '@/services/notificationService';
@@ -32,26 +32,38 @@ export default function HomeScreen() {
 
     //알람개수
     useEffect(() => {
-        const loadUser = async () => {
-            const raw = await AsyncStorage.getItem('currentUser');
-            if (raw) {
-                const currentUser = JSON.parse(raw);
-                setUser(currentUser);
+        let unsubscribe: () => void;
 
-                // ✅ 알림 불러오기
-                const q = query(collection(db, 'notifications'), where('to', '==', currentUser.email));
-                const snap = await getDocs(q);
-                const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                setNotifications(list);
+        const loadUserAndSubscribeNotifications = async () => {
+            const raw = await AsyncStorage.getItem('currentUser');
+            if (!raw) return;
+
+            const currentUser = JSON.parse(raw);
+            setUser(currentUser);
+
+            try {
+                const q = query(
+                    collection(db, 'notifications'),
+                    where('to', '==', currentUser.email),
+                    // orderBy('createdAt', 'desc') // 🔥 최신순 정렬 (인덱스 필요할 수 있음)
+                );
+
+                unsubscribe = onSnapshot(q, (snapshot) => {
+                    const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setNotifications(list);
+                });
+            } catch (error) {
+                console.error('❌ 알림 구독 실패:', error);
             }
         };
 
-        const random = Math.floor(Math.random() * verses.length);
-        setVerse(verses[random]);
-        fetchPrayers();
-        loadUser();
-    }, []);
+        loadUserAndSubscribeNotifications();
 
+        // ✅ 구독 해제
+        return () => {
+            if (unsubscribe) unsubscribe();
+        };
+    }, []);
     //사용자
     useEffect(() => {
         const loadUser = async () => {

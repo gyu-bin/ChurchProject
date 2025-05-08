@@ -15,7 +15,7 @@ import {
     query,
     where,
     updateDoc,
-    doc,
+    doc,orderBy
 } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import { Ionicons } from '@expo/vector-icons';
@@ -42,11 +42,21 @@ export default function PastorPage() {
     const [pendingTeams, setPendingTeams] = useState<any[]>([]);
 
     const fetchData = async () => {
-        const prayerQuery = query(collection(db, 'prayer_requests'));
+        const prayerQuery = query(
+            collection(db, 'prayer_requests'),
+            // where('visibility', '==', 'pastor'),
+            orderBy('createdAt', 'desc') // 🔽 최신순
+        );
+
+
         const prayerSnap = await getDocs(prayerQuery);
         setPrayers(prayerSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
-        const teamQuery = query(collection(db, 'teams'), where('approved', '==', false));
+        const teamQuery = query(
+            collection(db, 'teams'),
+            // where('approved', '==', false),
+            orderBy('createdAt', 'desc') // 🔽 최신순
+        );
         const teamSnap = await getDocs(teamQuery);
         setPendingTeams(teamSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     };
