@@ -6,19 +6,23 @@ import {
 import { db } from '@/firebase/config';
 import { doc, setDoc } from 'firebase/firestore';
 import uuid from 'react-native-uuid';
+import { useRouter } from 'expo-router';
 
 const campuses = ['문래', '신촌'];
 const divisions = ['유치부', '초등부', '중고등부', '청년1부', '청년2부', '장년부'];
+const roles = ['성도', '교역자'];
 
 export default function RegisterScreen() {
+    const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
     const [campus, setCampus] = useState('');
     const [division, setDivision] = useState('');
+    const [role, setRole] = useState<'성도' | '교역자'>('성도');
 
     const handleRegister = async () => {
-        if (!email || !password || !name || !campus || !division) {
+        if (!email || !password || !name || !campus || !division || !role) {
             return Alert.alert('입력 오류', '모든 필드를 입력하세요.');
         }
 
@@ -30,18 +34,19 @@ export default function RegisterScreen() {
             name,
             campus,
             division,
-            approved: false,
+            role, // ✅ 성도/교역자 저장
             createdAt: new Date(),
         });
 
-        Alert.alert('가입 완료', '관리자 승인 후 로그인 가능합니다.');
+        Alert.alert('가입 완료', '이제 로그인해 주세요.');
+        router.replace('/auth/login');
     };
 
     return (
         <View style={styles.container}>
             <Text style={styles.title}>회원가입</Text>
-            <TextInput placeholder="이메일" value={email} onChangeText={setEmail} style={styles.input} />
-            <TextInput placeholder="비밀번호" value={password} onChangeText={setPassword} style={styles.input} secureTextEntry />
+            <TextInput placeholder="이메일" value={email} onChangeText={setEmail} style={styles.input} autoCapitalize="none" />
+            <TextInput placeholder="비밀번호" value={password} onChangeText={setPassword} secureTextEntry style={styles.input} />
             <TextInput placeholder="이름" value={name} onChangeText={setName} style={styles.input} />
 
             <Text style={styles.label}>캠퍼스</Text>
@@ -66,6 +71,19 @@ export default function RegisterScreen() {
                         style={[styles.optionButton, division === d && styles.optionButtonSelected]}
                     >
                         <Text style={styles.optionText}>{d}</Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
+
+            <Text style={styles.label}>역할</Text>
+            <View style={styles.buttonGroup}>
+                {roles.map((r) => (
+                    <TouchableOpacity
+                        key={r}
+                        onPress={() => setRole(r as '성도' | '교역자')}
+                        style={[styles.optionButton, role === r && styles.optionButtonSelected]}
+                    >
+                        <Text style={styles.optionText}>{r}</Text>
                     </TouchableOpacity>
                 ))}
             </View>

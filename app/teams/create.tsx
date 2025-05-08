@@ -26,9 +26,14 @@ export default function CreateTeam() {
                 description,
                 members: 1,
                 createdAt: new Date(),
+                approved: false, // ✅ 승인 대기 상태
             });
-            Alert.alert('✅ 소모임이 생성되었습니다!');
-            router.back();
+
+            Alert.alert(
+                '생성 완료',
+                '교역자의 승인이 완료되면 소모임이 등록됩니다.',
+                [{ text: '확인', onPress: () => router.replace('/teams') }] // ✅ 홈으로 이동
+            );
         } catch (error: any) {
             Alert.alert('생성 실패', error.message);
         }

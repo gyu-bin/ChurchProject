@@ -9,7 +9,7 @@ export async function login(email: string, password: string) {
     const user = snapshot.data();
 
     if (user.password !== password) throw new Error('비밀번호가 틀렸습니다.');
-    if (!user.approved) throw new Error('관리자 승인이 필요합니다.');
+    // if (!user.approved) throw new Error('관리자 승인이 필요합니다.');
 
     await AsyncStorage.setItem('currentUser', JSON.stringify(user));
     return user;

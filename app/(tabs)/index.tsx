@@ -8,27 +8,52 @@ import { useRouter } from 'expo-router';
 import { verses } from '@/assets/verses';
 import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/firebase/config';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // 상단 import
 
 export default function HomeScreen() {
     const router = useRouter();
     const [verse, setVerse] = useState(verses?.[0] ?? { verse: '', reference: '' });
     const [refreshing, setRefreshing] = useState(false);
+    const [user, setUser] = useState<any>(null); // 상태 추가
 
-    const youtubeId = "L7iGb882-L8";
+    const youtubeId = "hWvJdJ3Da6o";
     const thumbnailUrl = `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
 
     const [modalVisible, setModalVisible] = useState(false);
+    const [viewModalVisible, setViewModalVisible] = useState(false);
     const [name, setName] = useState('');
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [visibility, setVisibility] = useState<'all' | 'pastor'>('all');
     const [prayers, setPrayers] = useState<any[]>([]);
+    const [publicPrayers, setPublicPrayers] = useState<any[]>([]);
 
     const fetchPrayers = async () => {
         const q = query(collection(db, 'prayer_requests'), where('visibility', '==', 'all'));
         const snapshot = await getDocs(q);
         const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setPrayers(list);
+    };
+
+    //사용자
+    useEffect(() => {
+        const loadUser = async () => {
+            const raw = await AsyncStorage.getItem('currentUser');
+            if (raw) setUser(JSON.parse(raw));
+        };
+
+        const random = Math.floor(Math.random() * verses.length);
+        setVerse(verses[random]);
+        fetchPrayers();
+        loadUser(); // 유저 정보 불러오기
+    }, []);
+
+    const fetchPublicPrayers = async () => {
+        const q = query(collection(db, 'prayer_requests'), where('visibility', '==', 'all'));
+        const snapshot = await getDocs(q);
+        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setPublicPrayers(list);
+        setViewModalVisible(true);
     };
 
     const onRefresh = useCallback(async () => {
@@ -71,7 +96,7 @@ export default function HomeScreen() {
             <FlatList
                 ListHeaderComponent={(
                     <View style={styles.scrollContainer}>
-                        <Text style={styles.header}>🙏 안녕하세요!</Text>
+                        <Text style={styles.header}>🙏 안녕하세요{user?.name ? ` ${user.name}님!` : '!' }</Text>
 
                         <View style={styles.card}>
                             <Text style={styles.sectionTitle}>📖 오늘의 말씀</Text>
@@ -90,6 +115,9 @@ export default function HomeScreen() {
                             <Text style={styles.sectionTitle}>📝 기도제목</Text>
                             <TouchableOpacity style={styles.prayerButton} onPress={() => setModalVisible(true)}>
                                 <Text style={styles.prayerText}>🙏 기도제목 나누기</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.prayerButton, { backgroundColor: '#3b82f6' }]} onPress={fetchPublicPrayers}>
+                                <Text style={styles.prayerText}>📃 기도제목 보기</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -141,6 +169,28 @@ export default function HomeScreen() {
                     </TouchableOpacity>
 
                     <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
+                        <Text style={styles.closeText}>닫기</Text>
+                    </TouchableOpacity>
+                </SafeAreaView>
+            </Modal>
+
+            <Modal visible={viewModalVisible} animationType="slide">
+                <SafeAreaView style={styles.modalContainer}>
+                    <Text style={styles.modalTitle}>📃 전체공개 기도제목</Text>
+
+                    <FlatList
+                        data={publicPrayers}
+                        keyExtractor={(item) => item.id}
+                        renderItem={({ item }) => (
+                            <View style={styles.card}>
+                                <Text style={styles.sectionTitle}>{item.title}</Text>
+                                <Text style={{ color: '#6b7280' }}>by {item.name}</Text>
+                            </View>
+                        )}
+                        ListEmptyComponent={<Text style={{ textAlign: 'center', color: '#999', marginTop: 20 }}>기도제목이 없습니다.</Text>}
+                    />
+
+                    <TouchableOpacity onPress={() => setViewModalVisible(false)} style={styles.closeButton}>
                         <Text style={styles.closeText}>닫기</Text>
                     </TouchableOpacity>
                 </SafeAreaView>
