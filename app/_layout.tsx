@@ -34,16 +34,22 @@ export default function RootLayout() {
         );
     }
 
-    if (!user && pathname !== '/auth/login' && pathname !== '/auth/register') {
-        return <Redirect href="/auth/login" />;
+    // ✅ 1. 앱 처음 시작 시 intro 보여주기
+    if (!user && pathname !== '/intro' && pathname !== '/auth/login' && pathname !== '/auth/register') {
+        return <Redirect href="/intro" />;
     }
 
+    // ✅ 2. 로그인 유저가 /auth 경로 접근 못하도록
+    if (user && pathname.startsWith('/auth')) {
+        return <Redirect href="/" />;
+    }
     return (
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
             <Stack>
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen name="auth/login" options={{ headerShown: false }} />
                 <Stack.Screen name="auth/register" options={{ headerShown: false }} />
+                <Stack.Screen name="intro" options={{ headerShown: false }} />  {/* ✅ 이 줄 */}
             </Stack>
             <StatusBar style="auto" />
         </ThemeProvider>
