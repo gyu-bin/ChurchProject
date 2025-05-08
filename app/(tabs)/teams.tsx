@@ -1,4 +1,3 @@
-// app/(tabs)/teams.tsx
 import React, { useState, useEffect } from 'react';
 import {
     View,
@@ -13,17 +12,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import { useRouter } from 'expo-router';
+import SkeletonBox from '@/components/Skeleton';
 
 export default function TeamsScreen() {
     const [teams, setTeams] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
     const [isGrid, setIsGrid] = useState(true);
     const router = useRouter();
 
     useEffect(() => {
-        const q = query(collection(db, 'teams'), where('approved', '==', true)); // ✅ 승인된 팀만 가져오기
+        const q = query(collection(db, 'teams'), where('approved', '==', true));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const fetched = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
             setTeams(fetched);
+            setLoading(false);
         });
         return unsubscribe;
     }, []);
@@ -32,17 +34,31 @@ export default function TeamsScreen() {
         router.push(`/teams/${id}`);
     };
 
-    const renderItem = ({ item }: { item: any }) => (
-        <TouchableOpacity
-            style={isGrid ? styles.gridItem : styles.listItem}
-            onPress={() => handlePress(item.id)}
-        >
-            <View style={styles.textContainer}>
-                <Text style={styles.name}>{item.name}</Text>
-                <Text style={styles.meta}>👤 모임장: {item.leader}</Text>
-                <Text style={styles.meta}>👥 인원: {item.members ?? 1}명</Text>
+    const renderItem = ({ item }: { item: any }) => {
+        const isFull = item.members >= item.capacity;
+        return (
+            <TouchableOpacity
+                style={isGrid ? styles.gridItem : styles.listItem}
+                onPress={() => handlePress(item.id)}
+                disabled={isFull}
+            >
+                <View style={styles.textContainer}>
+                    <Text style={styles.name}>{item.name}</Text>
+                    <Text style={styles.meta}>👤 모임장: {item.leader}</Text>
+                    <Text style={[styles.meta, isFull && { color: '#ef4444' }]}>👥 {item.members ?? 1} / {item.capacity}명 {isFull ? '(모집마감)' : ''}</Text>
+                </View>
+            </TouchableOpacity>
+        );
+    };
+
+    const renderSkeletons = () => (
+        Array.from({ length: 4 }).map((_, i) => (
+            <View key={i} style={isGrid ? styles.gridItem : styles.listItem}>
+                <SkeletonBox height={18} width="70%" />
+                <SkeletonBox height={16} width="50%" />
+                <SkeletonBox height={16} width="40%" />
             </View>
-        </TouchableOpacity>
+        ))
     );
 
     return (
@@ -59,15 +75,21 @@ export default function TeamsScreen() {
                 </View>
             </View>
 
-            <FlatList
-                data={teams}
-                key={isGrid ? 'g' : 'l'}
-                numColumns={isGrid ? 2 : 1}
-                keyExtractor={(item) => item.id}
-                renderItem={renderItem}
-                contentContainerStyle={styles.listContent}
-                columnWrapperStyle={isGrid && { gap: 16 }}
-            />
+            {loading ? (
+                <View style={{ flexDirection: isGrid ? 'row' : 'column', flexWrap: 'wrap', gap: 16 }}>
+                    {renderSkeletons()}
+                </View>
+            ) : (
+                <FlatList
+                    data={teams}
+                    key={isGrid ? 'g' : 'l'}
+                    numColumns={isGrid ? 2 : 1}
+                    keyExtractor={(item) => item.id}
+                    renderItem={renderItem}
+                    contentContainerStyle={styles.listContent}
+                    columnWrapperStyle={isGrid && { gap: 16 }}
+                />
+            )}
         </SafeAreaView>
     );
 }
