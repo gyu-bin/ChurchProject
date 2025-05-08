@@ -54,7 +54,7 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 20, backgroundColor: '#f9fafb' },
+    container: { flex: 1, paddingTop: 40, padding: 20,backgroundColor: '#f9fafb' },
     title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16 },
     info: { fontSize: 16, marginBottom: 8 },
     logoutButton: {
