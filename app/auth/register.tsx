@@ -1,118 +1,314 @@
-// app/auth/register.tsx
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
-    View, Text, TextInput, TouchableOpacity, StyleSheet, Alert
+    View,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    StyleSheet,
+    Alert,
+    Animated,
+    Dimensions,
+    SafeAreaView,
+    KeyboardAvoidingView,
+    Platform,
 } from 'react-native';
 import { db } from '@/firebase/config';
 import { doc, setDoc } from 'firebase/firestore';
 import uuid from 'react-native-uuid';
 import { useRouter } from 'expo-router';
 
+const SCREEN_WIDTH = Dimensions.get('window').width;
+
 const campuses = ['문래', '신촌'];
 const divisions = ['유치부', '초등부', '중고등부', '청년1부', '청년2부', '장년부'];
 const roles = ['성도', '교역자'];
 
-export default function RegisterScreen() {
+export default function RegisterSlideScreen() {
     const router = useRouter();
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [name, setName] = useState('');
-    const [campus, setCampus] = useState('');
-    const [division, setDivision] = useState('');
-    const [role, setRole] = useState<'성도' | '교역자'>('성도');
+    const slideX = useRef(new Animated.Value(0)).current;
+    const [step, setStep] = useState(0);
+    const inputRefs = useRef<Record<string, TextInput | null>>({});
 
-    const handleRegister = async () => {
-        if (!email || !password || !name || !campus || !division || !role) {
-            return Alert.alert('입력 오류', '모든 필드를 입력하세요.');
+    const steps = ['email', 'password', 'name', 'campus', 'division', 'role'] as const;
+
+    const [form, setForm] = useState({
+        email: '',
+        password: '',
+        name: '',
+        campus: '',
+        division: '',
+        role: '성도',
+    });
+
+    const handleNext = async () => {
+        const currentKey = steps[step];
+        const currentValue = form[currentKey];
+        if (!currentValue.trim()) {
+            return Alert.alert('입력 오류', '내용을 입력하세요.');
         }
 
-        const userId = uuid.v4().toString();
+        if (step === steps.length - 1) {
+            try {
+                const userId = uuid.v4().toString();
+                await setDoc(doc(db, 'users', form.email), {
+                    ...form,
+                    createdAt: new Date(),
+                });
+                Alert.alert('가입 완료', '이제 로그인해 주세요.');
+                // router.replace('/auth/login');
+                setTimeout(() => router.replace('/auth/login'), 300);
+            } catch (e: any) {
+                Alert.alert('회원가입 실패', e.message);
+            }
+            return;
+        }
 
-        await setDoc(doc(db, 'users', email), {
-            email,
-            password,
-            name,
-            campus,
-            division,
-            role, // ✅ 성도/교역자 저장
-            createdAt: new Date(),
+        Animated.timing(slideX, {
+            toValue: -(step + 1) * SCREEN_WIDTH,
+            duration: 300,
+            useNativeDriver: true,
+        }).start(() => {
+            setStep((prev) => prev + 1);
+            const nextKey = steps[step + 1];
+            setTimeout(() => inputRefs.current[nextKey]?.focus(), 100);
         });
+    };
 
-        Alert.alert('가입 완료', '이제 로그인해 주세요.');
-        router.replace('/auth/login');
+    const updateField = (key: string, value: string) => {
+        setForm((prev) => ({ ...prev, [key]: value }));
+    };
+
+
+    const handleBack = () => {
+        if (step === 0) {
+            // 👉 왼쪽 슬라이드 애니메이션
+            Animated.timing(slideX, {
+                toValue: SCREEN_WIDTH, // 오른쪽 → 왼쪽 느낌
+                duration: 250,
+                useNativeDriver: true,
+            }).start(() => {
+                router.replace('/auth/login');
+            });
+            return;
+        }
+
+        const newStep = step - 1;
+
+        Animated.timing(slideX, {
+            toValue: -newStep * SCREEN_WIDTH,
+            duration: 300,
+            useNativeDriver: true,
+        }).start(() => {
+            setStep(newStep);
+            const prevKey = steps[newStep];
+            setTimeout(() => inputRefs.current[prevKey]?.focus(), 100);
+        });
     };
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>회원가입</Text>
-            <TextInput placeholder="이메일" value={email} onChangeText={setEmail} style={styles.input} autoCapitalize="none" />
-            <TextInput placeholder="비밀번호" value={password} onChangeText={setPassword} secureTextEntry style={styles.input} />
-            <TextInput placeholder="이름" value={name} onChangeText={setName} style={styles.input} />
+        <SafeAreaView style={styles.container}>
+            {step >= 0 && (
+                <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+                    <Text style={styles.backText}>←</Text>
+                </TouchableOpacity>
+            )}
 
-            <Text style={styles.label}>캠퍼스</Text>
-            <View style={styles.buttonGroup}>
-                {campuses.map((c) => (
-                    <TouchableOpacity
-                        key={c}
-                        onPress={() => setCampus(c)}
-                        style={[styles.optionButton, campus === c && styles.optionButtonSelected]}
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                style={{ flex: 1 }}
+            >
+                <View style={styles.slider}>
+                    <Animated.View
+                        style={[
+                            styles.slideRow,
+                            { transform: [{ translateX: slideX }] },
+                        ]}
                     >
-                        <Text style={styles.optionText}>{c}</Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
+                        {/* email */}
+                        <View style={styles.slide}>
+                            <TextInput
+                                ref={(ref) => {
+                                    inputRefs.current['email'] = ref;
+                                }}
+                                style={styles.input}
+                                placeholder="이메일"
+                                placeholderTextColor="#666"
+                                value={form.email}
+                                onChangeText={(text) => updateField('email', text)}
+                                autoCapitalize="none"
+                                keyboardType="email-address"
+                            />
+                        </View>
 
-            <Text style={styles.label}>소속</Text>
-            <View style={styles.buttonGroup}>
-                {divisions.map((d) => (
-                    <TouchableOpacity
-                        key={d}
-                        onPress={() => setDivision(d)}
-                        style={[styles.optionButton, division === d && styles.optionButtonSelected]}
-                    >
-                        <Text style={styles.optionText}>{d}</Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
+                        {/* password */}
+                        <View style={styles.slide}>
+                            <TextInput
+                                ref={(ref) => {
+                                    inputRefs.current['password'] = ref;
+                                }}
+                                style={styles.input}
+                                placeholder="비밀번호"
+                                placeholderTextColor="#666"
+                                secureTextEntry
+                                value={form.password}
+                                onChangeText={(text) => updateField('password', text)}
+                            />
+                        </View>
 
-            <Text style={styles.label}>역할</Text>
-            <View style={styles.buttonGroup}>
-                {roles.map((r) => (
-                    <TouchableOpacity
-                        key={r}
-                        onPress={() => setRole(r as '성도' | '교역자')}
-                        style={[styles.optionButton, role === r && styles.optionButtonSelected]}
-                    >
-                        <Text style={styles.optionText}>{r}</Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
+                        {/* name */}
+                        <View style={styles.slide}>
+                            <TextInput
+                                ref={(ref) => {
+                                    inputRefs.current['name'] = ref;
+                                }}
+                                style={styles.input}
+                                placeholder="이름"
+                                placeholderTextColor="#666"
+                                value={form.name}
+                                onChangeText={(text) => updateField('name', text)}
+                            />
+                        </View>
 
-            <TouchableOpacity onPress={handleRegister} style={styles.button}>
-                <Text style={styles.buttonText}>가입하기</Text>
-            </TouchableOpacity>
-        </View>
+                        {/* campus */}
+                        <View style={styles.slide}>
+                            <Text style={styles.label}>캠퍼스를 선택하세요</Text>
+                            <View style={styles.optionGroup}>
+                                {campuses.map((campus) => (
+                                    <TouchableOpacity
+                                        key={campus}
+                                        onPress={() => updateField('campus', campus)}
+                                        style={[
+                                            styles.option,
+                                            form.campus === campus && styles.optionSelected,
+                                        ]}
+                                    >
+                                        <Text style={styles.optionText}>{campus}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* division */}
+                        <View style={styles.slide}>
+                            <Text style={styles.label}>소속을 선택하세요</Text>
+                            <View style={styles.optionGroup}>
+                                {divisions.map((d) => (
+                                    <TouchableOpacity
+                                        key={d}
+                                        onPress={() => updateField('division', d)}
+                                        style={[
+                                            styles.option,
+                                            form.division === d && styles.optionSelected,
+                                        ]}
+                                    >
+                                        <Text style={styles.optionText}>{d}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* role */}
+                        <View style={styles.slide}>
+                            <Text style={styles.label}>역할을 선택하세요</Text>
+                            <View style={styles.optionGroup}>
+                                {roles.map((r) => (
+                                    <TouchableOpacity
+                                        key={r}
+                                        onPress={() => updateField('role', r)}
+                                        style={[
+                                            styles.option,
+                                            form.role === r && styles.optionSelected,
+                                        ]}
+                                    >
+                                        <Text style={styles.optionText}>{r}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+                    </Animated.View>
+                </View>
+
+                <TouchableOpacity onPress={handleNext} style={styles.button}>
+                    <Text style={styles.buttonText}>
+                        {step === steps.length - 1 ? '가입하기' : '다음'}
+                    </Text>
+                </TouchableOpacity>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 20, justifyContent: 'center', backgroundColor: '#fff' },
-    title: { fontSize: 24, fontWeight: 'bold', marginBottom: 24 },
-    input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, marginBottom: 16 },
-    button: { backgroundColor: '#2563eb', padding: 16, borderRadius: 8, alignItems: 'center', marginTop: 20 },
-    buttonText: { color: '#fff', fontWeight: 'bold' },
-    label: { fontSize: 16, fontWeight: '600', marginTop: 12, marginBottom: 6 },
-    buttonGroup: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    optionButton: {
-        borderWidth: 1, borderColor: '#ccc', borderRadius: 20,
-        paddingHorizontal: 14, paddingVertical: 8, marginBottom: 8,
+    container: { flex: 1, backgroundColor: '#fff' },
+    slider: { flex: 1, overflow: 'hidden' },
+    slideRow: {
+        flexDirection: 'row',
+        width: SCREEN_WIDTH * 6,
     },
-    optionButtonSelected: {
+    slide: {
+        width: SCREEN_WIDTH,
+        paddingHorizontal: 24,
+        paddingTop: 40, // 👉 추가
+        justifyContent: 'flex-start', // 👉 변경
+    },
+    input: {
+        borderBottomWidth: 1,
+        borderColor: '#ccc',
+        paddingVertical: 12,
+        fontSize: 18,
+        marginTop: 100,
+        color: '#111',
+    },
+    label: {
+        fontSize: 16,
+        fontWeight: '600',
+        marginBottom: 12,
+    },
+    optionGroup: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    option: {
+        borderWidth: 1,
+        borderColor: '#ccc',
+        borderRadius: 20,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        marginBottom: 8,
+        marginRight: 8,
+    },
+    optionSelected: {
         backgroundColor: '#2563eb',
         borderColor: '#2563eb',
     },
     optionText: {
-        color: '#000',
+        color: '#111',
         fontWeight: '500',
+    },
+    button: {
+        backgroundColor: '#2563eb',
+        padding: 16,
+        borderRadius: 8,
+        alignItems: 'center',
+        margin: 24,
+    },
+    buttonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+    backButton: {
+        position: 'absolute',
+        top: 50,
+        left: 16,
+        zIndex: 10,
+        padding: 8,
+    },
+
+    backText: {
+        fontSize: 28,
+        color: '#2563eb',
+        fontWeight: 'bold',
     },
 });

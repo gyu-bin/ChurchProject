@@ -274,19 +274,12 @@ export default function HomeScreen() {
 // 아래 styles 객체를 기존 index.tsx에 그대로 대체하세요
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#f9fbff', // 전체 배경
-    },
-    scrollContainer: {
-        padding: 20,
-        gap: 24,
-    },
-    header: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#1e293b',
-    },
+    container: { flex: 1, backgroundColor: '#f0f4ff' },
+
+    scrollContainer: { padding: 20, gap: 20 },
+
+    header: { fontSize: 24, fontWeight: 'bold', color: '#3182f6' },
+
     headerRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -294,128 +287,106 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingTop: 16,
     },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#334155',
-        marginBottom: 6,
-    },
-    verse: {
-        fontSize: 16,
-        fontStyle: 'italic',
-        color: '#64748b',
-    },
-    reference: {
-        fontSize: 13,
-        color: '#94a3b8',
-        marginTop: 4,
-    },
+
+    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#1d4ed8', marginBottom: 6 },
+
+    verse: { fontSize: 16, fontStyle: 'italic', color: '#374151' },
+    reference: { fontSize: 14, color: '#6b7280' },
+
     card: {
         backgroundColor: '#ffffff',
         borderRadius: 16,
         padding: 20,
         shadowColor: '#000',
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-        elevation: 3,
-        marginBottom: 16,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#e0e7ff',
     },
+
     thumbnail: {
         width: '100%',
-        height: 200,
+        height: 220,
         borderRadius: 12,
+        marginBottom: 10,
+        backgroundColor: '#e0f2fe',
+    },
+
+    prayerButton: {
+        backgroundColor: '#3b82f6',
+        padding: 14,
+        borderRadius: 10,
+        alignItems: 'center',
         marginTop: 10,
     },
-    prayerButton: {
-        backgroundColor: '#60a5fa',
-        padding: 14,
-        borderRadius: 12,
-        marginTop: 12,
-        alignItems: 'center',
-    },
+
     prayerText: {
-        color: '#ffffff',
-        fontWeight: '600',
-    },
-    modalContainer: {
-        flex: 1,
-        backgroundColor: '#f1f5f9',
-        padding: 24,
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        marginBottom: 20,
-        color: '#1e293b',
-        textAlign: 'center',
-    },
-    inputGroup: {
-        marginBottom: 18,
-    },
-    label: {
-        fontSize: 14,
-        color: '#475569',
-        fontWeight: '600',
-        marginBottom: 6,
-    },
-    input: {
-        backgroundColor: '#f8fafc',
-        borderRadius: 12,
-        padding: 14,
-        fontSize: 15,
-        borderColor: '#e2e8f0',
-        borderWidth: 1,
-    },
-    tag: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: '#cbd5e1',
-        backgroundColor: '#e2e8f0',
-    },
-    tagSelected: {
-        backgroundColor: '#93c5fd',
-        borderColor: '#60a5fa',
-    },
-    tagText: {
-        fontSize: 14,
-        color: '#1e293b',
-    },
-    tagTextSelected: {
         color: '#fff',
-        fontWeight: '700',
+        fontWeight: 'bold',
+        fontSize: 15,
     },
+
+    modalContainer: { flex: 1, padding: 24, backgroundColor: '#f9fbff' },
+    modalTitle: { fontSize: 22, fontWeight: 'bold', color: '#1e3a8a', marginBottom: 20 },
+
+    input: {
+        borderWidth: 1,
+        borderColor: '#c7d2fe',
+        borderRadius: 10,
+        padding: 14,
+        marginBottom: 16,
+        backgroundColor: '#fff',
+        fontSize: 16,
+    },
+
     submitButton: {
-        backgroundColor: '#38bdf8',
+        backgroundColor: '#1d4ed8',
         padding: 16,
-        borderRadius: 12,
+        borderRadius: 10,
         alignItems: 'center',
-        marginTop: 8,
+        marginBottom: 12,
     },
     submitText: {
         color: '#fff',
         fontWeight: 'bold',
         fontSize: 16,
     },
-    closeButton: {
-        marginTop: 16,
-        alignItems: 'center',
+
+    closeButton: { alignItems: 'center', padding: 10 },
+    closeText: { color: '#1e3a8a', fontWeight: 'bold' },
+
+    inputGroup: { marginBottom: 16 },
+    label: { fontSize: 15, fontWeight: '600', marginBottom: 6, color: '#1e3a8a' },
+
+    tag: {
+        borderWidth: 1,
+        borderColor: '#a5b4fc',
+        borderRadius: 20,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        backgroundColor: '#fff',
     },
-    closeText: {
-        color: '#64748b',
-        fontSize: 14,
+    tagSelected: {
+        backgroundColor: '#2563eb',
+        borderColor: '#2563eb',
     },
+    tagText: { fontSize: 14, color: '#1e3a8a' },
+    tagTextSelected: { color: '#fff', fontWeight: 'bold' },
+
     badge: {
         position: 'absolute',
         top: -6,
         right: -6,
-        backgroundColor: '#ef4444',
-        borderRadius: 10,
-        width: 20,
+        backgroundColor: '#2563eb',
+        borderRadius: 12,
+        minWidth: 20,
         height: 20,
         alignItems: 'center',
         justifyContent: 'center',
+        paddingHorizontal: 4,
     },
     badgeText: {
         color: '#fff',

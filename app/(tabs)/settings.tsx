@@ -54,23 +54,59 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, paddingTop: 40, padding: 20,backgroundColor: '#f9fafb' },
-    title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16 },
-    info: { fontSize: 16, marginBottom: 8 },
+    container: {
+        flex: 1,
+        paddingTop: 48,
+        paddingHorizontal: 24,
+        backgroundColor: '#f0f4ff',
+    },
+
+    title: {
+        fontSize: 26,
+        fontWeight: 'bold',
+        marginBottom: 24,
+        color: '#1e3a8a',
+    },
+
+    info: {
+        fontSize: 16,
+        marginBottom: 10,
+        color: '#334155',
+    },
+
     logoutButton: {
-        marginTop: 30,
+        marginTop: 40,
         backgroundColor: '#ef4444',
-        padding: 12,
-        borderRadius: 8,
-        alignItems: 'center'
+        paddingVertical: 14,
+        borderRadius: 10,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOpacity: 0.06,
+        shadowRadius: 4,
+        elevation: 2,
     },
-    logoutText: { color: '#fff', fontWeight: 'bold' },
+
+    logoutText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+
     adminButton: {
-        marginTop: 20,
+        marginTop: 24,
         backgroundColor: '#2563eb',
-        padding: 14,
-        borderRadius: 8,
-        alignItems: 'center'
+        paddingVertical: 14,
+        borderRadius: 10,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOpacity: 0.06,
+        shadowRadius: 4,
+        elevation: 2,
     },
-    adminText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
+
+    adminText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
 });

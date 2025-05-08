@@ -48,7 +48,7 @@ export default function TeamsScreen() {
                 <View style={styles.textContainer}>
                     <Text style={styles.name}>{item.name}</Text>
                     <Text style={styles.meta}>👤 모임장: {item.leader}</Text>
-                    <Text style={[styles.meta, isFull && { color: '#ef4444' }]}>
+                    <Text style={[styles.meta, isFull && styles.fullText]}>
                         👥 인원: {members} / {max ?? '명'} {isFull ? '(모집마감)' : ''}
                     </Text>
                 </View>
@@ -68,14 +68,14 @@ export default function TeamsScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.toggleRow}>
-                <Text style={styles.title}>소그룹 목록</Text>
-                <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={styles.header}>
+                <Text style={styles.title}>📋 소그룹 목록</Text>
+                <View style={styles.actions}>
                     <TouchableOpacity onPress={() => router.push('/teams/create')}>
-                        <Ionicons name="add-circle" size={24} color="#4287f5" />
+                        <Ionicons name="add-circle-outline" size={26} color="#2563eb" />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setIsGrid(!isGrid)}>
-                        <Ionicons name={isGrid ? 'list' : 'grid'} size={24} color="#333" />
+                        <Ionicons name={isGrid ? 'list-outline' : 'grid-outline'} size={24} color="#475569" />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -87,7 +87,7 @@ export default function TeamsScreen() {
             ) : (
                 <FlatList
                     data={teams}
-                    key={isGrid ? 'g' : 'l'}
+                    key={isGrid ? 'grid' : 'list'}
                     numColumns={isGrid ? 2 : 1}
                     keyExtractor={(item) => item.id}
                     renderItem={renderItem}
@@ -103,13 +103,80 @@ const screenWidth = Dimensions.get('window').width;
 const gridItemWidth = (screenWidth - 60) / 2;
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff', paddingHorizontal: 20, paddingTop: 20 },
-    toggleRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
-    title: { fontSize: 20, fontWeight: 'bold' },
-    listContent: { paddingBottom: 24 },
-    gridItem: { width: gridItemWidth, backgroundColor: '#f9f9f9', borderRadius: 12, padding: 12, marginBottom: 16 },
-    listItem: { flexDirection: 'row', backgroundColor: '#f9f9f9', borderRadius: 12, padding: 12, marginBottom: 16, alignItems: 'center', gap: 12 },
-    textContainer: { flexShrink: 1 },
-    name: { fontSize: 16, fontWeight: 'bold' },
-    meta: { fontSize: 14, color: '#666' },
+    container: {
+        flex: 1,
+        backgroundColor: '#eaf2ff', // 부드러운 파스텔 톤
+        paddingHorizontal: 16,
+        paddingTop: 20,
+        alignItems: 'center', // 중간 정렬
+    },
+    header: {
+        width: '100%',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    title: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#1e3a8a',
+    },
+    actions: {
+        flexDirection: 'row',
+        gap: 16,
+    },
+    listContent: {
+        alignItems: 'center', // 중간 정렬
+        paddingBottom: 60,
+        width: '100%',
+    },
+    gridItem: {
+        width: (screenWidth - 60) / 2,
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        padding: 16,
+        margin: 8,
+        alignItems: 'flex-start',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 4,
+        elevation: 3,
+        borderWidth: 1,
+        borderColor: '#d1d5db',
+    },
+    listItem: {
+        width: screenWidth - 40,
+        flexDirection: 'row',
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        padding: 16,
+        marginVertical: 8,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 4,
+        elevation: 3,
+        borderWidth: 1,
+        borderColor: '#d1d5db',
+    },
+    textContainer: {
+        flexShrink: 1,
+    },
+    name: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1e40af',
+        marginBottom: 4,
+    },
+    meta: {
+        fontSize: 14,
+        color: '#475569',
+    },
+    fullText: {
+        color: '#dc2626',
+        fontWeight: 'bold',
+    },
 });

@@ -103,87 +103,108 @@ export default function Catechism() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f9f9f9' },
+    container: {
+        flex: 1,
+        backgroundColor: '#eef4ff', // 파스텔 블루 배경
+    },
+
     selectButton: {
-        backgroundColor: '#f0f0f0',
+        backgroundColor: '#dbeafe',
         paddingVertical: 14,
         paddingHorizontal: 20,
         alignItems: 'center',
         borderBottomWidth: 1,
-        borderBottomColor: '#ddd',
+        borderBottomColor: '#c7d2fe',
     },
+
     selectButtonText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#333',
+        color: '#1e3a8a',
     },
+
     modalContainer: {
         flex: 1,
-        padding: 20,
-        marginLeft: 15,
-        backgroundColor: '#fff',
+        backgroundColor: '#f0f4ff',
+        paddingHorizontal: 20,
+        paddingTop: 24,
     },
+
     modalTitle: {
         fontSize: 20,
         fontWeight: 'bold',
+        color: '#1e3a8a',
         marginBottom: 20,
     },
+
     item: {
-        paddingVertical: 14,
+        paddingVertical: 16,
+        paddingHorizontal: 10,
         borderBottomWidth: 1,
-        borderColor: '#eee',
+        borderBottomColor: '#cbd5e1',
     },
+
     itemText: {
         fontSize: 16,
-        color: '#444',
+        color: '#334155',
     },
+
     close: {
         marginTop: 20,
-        padding: 14,
-        backgroundColor: '#4287f5',
+        backgroundColor: '#2563eb',
+        paddingVertical: 14,
+        borderRadius: 10,
         alignItems: 'center',
-        borderRadius: 8,
     },
+
     closeText: {
         color: '#fff',
         fontWeight: 'bold',
+        fontSize: 16,
     },
+
     content: {
-        padding: 20,
+        padding: 24,
     },
+
     card: {
         backgroundColor: '#fff',
         borderRadius: 12,
         padding: 20,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 6,
+        shadowOpacity: 0.05,
+        shadowOffset: { width: 0, height: 2 },
+        shadowRadius: 8,
         elevation: 3,
     },
+
     question: {
         fontSize: 18,
         fontWeight: 'bold',
+        color: '#1e40af',
         marginBottom: 12,
-        color: '#333',
     },
+
     answer: {
         fontSize: 16,
+        color: '#334155',
         lineHeight: 26,
-        color: '#444',
     },
+
     referenceBox: {
         marginTop: 20,
     },
+
     refTitle: {
         fontSize: 14,
         fontWeight: 'bold',
-        color: '#666',
-        marginBottom: 4,
+        color: '#475569',
+        marginBottom: 6,
     },
+
     refItem: {
         fontSize: 14,
-        color: '#666',
-        marginLeft: 8,
+        color: '#475569',
+        marginLeft: 12,
     },
 });
