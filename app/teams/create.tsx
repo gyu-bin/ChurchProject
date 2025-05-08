@@ -64,6 +64,8 @@ export default function CreateTeam() {
                 snapshot.docs.forEach(async (docSnap) => {
                     const pastor = docSnap.data();
 
+                    if (pastor.email === creatorEmail) return;
+
                     await sendNotification({
                         to: pastor.email,
                         message: `${leader}님이 "${name}" 소모임을 생성했습니다.`,

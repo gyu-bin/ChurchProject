@@ -95,6 +95,7 @@ export default function HomeScreen() {
         const q = query(collection(db, 'prayer_requests'), where('visibility', '==', 'all'));
         const snapshot = await getDocs(q);
         const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        console.log('✅ 공개 기도제목 수:', list.length); // 로그 추가
         setPublicPrayers(list);
         setViewModalVisible(true);
     };
@@ -245,16 +246,47 @@ export default function HomeScreen() {
                     </TouchableOpacity>
                 </SafeAreaView>
             </Modal>
+
+            <Modal visible={viewModalVisible} animationType="slide">
+                <SafeAreaView style={styles.modalContainer}>
+                    <Text style={styles.modalTitle}>📃 전체 기도제목</Text>
+
+                    <FlatList
+                        data={publicPrayers}
+                        keyExtractor={(item) => item.id}
+                        renderItem={({ item }) => (
+                            <View style={[styles.card, { marginBottom: 12 }]}>
+                                <Text style={styles.sectionTitle}>🙏 {item.title}</Text>
+                                <Text style={{ color: '#6b7280' }}>by {item.name}</Text>
+                            </View>
+                        )}
+                    />
+
+                    <TouchableOpacity onPress={() => setViewModalVisible(false)} style={styles.closeButton}>
+                        <Text style={styles.closeText}>닫기</Text>
+                    </TouchableOpacity>
+                </SafeAreaView>
+            </Modal>
         </SafeAreaView>
     );
 }
+// ✅ 전체적인 파스텔톤 UI를 적용한 스타일 개선
+// 아래 styles 객체를 기존 index.tsx에 그대로 대체하세요
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f1f5f9' },
-
-    scrollContainer: { padding: 20, gap: 20 },
-    header: { fontSize: 24, fontWeight: 'bold' },
-    // 추가 스타일
+    container: {
+        flex: 1,
+        backgroundColor: '#f9fbff', // 전체 배경
+    },
+    scrollContainer: {
+        padding: 20,
+        gap: 24,
+    },
+    header: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: '#1e293b',
+    },
     headerRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -262,37 +294,117 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingTop: 16,
     },
-    sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 6 },
-    verse: { fontSize: 16, fontStyle: 'italic' },
-    reference: { fontSize: 14, color: '#555' },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#334155',
+        marginBottom: 6,
+    },
+    verse: {
+        fontSize: 16,
+        fontStyle: 'italic',
+        color: '#64748b',
+    },
+    reference: {
+        fontSize: 13,
+        color: '#94a3b8',
+        marginTop: 4,
+    },
     card: {
-        backgroundColor: '#fff', borderRadius: 10, padding: 16,
-        shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 3, marginBottom: 12
+        backgroundColor: '#ffffff',
+        borderRadius: 16,
+        padding: 20,
+        shadowColor: '#000',
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        elevation: 3,
+        marginBottom: 16,
     },
-    thumbnail: { width: '100%', height: 250, borderRadius: 8, marginBottom: 10 },
+    thumbnail: {
+        width: '100%',
+        height: 200,
+        borderRadius: 12,
+        marginTop: 10,
+    },
     prayerButton: {
-        backgroundColor: '#10b981', padding: 12, borderRadius: 8,
-        marginTop: 12, alignItems: 'center',
-    },
-    prayerText: { color: '#fff', fontWeight: 'bold' },
-    modalContainer: { flex: 1, padding: 24, backgroundColor: '#fff' },
-    modalTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 20 },
-    input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, marginBottom: 16, backgroundColor: '#f9fafb' },
-    submitButton: { backgroundColor: '#2563eb', padding: 16, borderRadius: 8, alignItems: 'center', marginBottom: 12 },
-    submitText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-    closeButton: { alignItems: 'center', padding: 10 },
-    closeText: { color: '#333' },
-    inputGroup: { marginBottom: 16 },
-    label: { fontSize: 14, fontWeight: '600', marginBottom: 6, color: '#374151' },
-    tag: { borderWidth: 1, borderColor: '#ccc', borderRadius: 20, paddingVertical: 6, paddingHorizontal: 12 },
-    tagSelected: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
-    tagText: { fontSize: 14, color: '#111827' },
-    tagTextSelected: { color: '#fff', fontWeight: 'bold' },
-    refreshButton: {
-        backgroundColor: '#e0f2fe',
-        borderRadius: 8,
-        padding: 12,
+        backgroundColor: '#60a5fa',
+        padding: 14,
+        borderRadius: 12,
+        marginTop: 12,
         alignItems: 'center',
+    },
+    prayerText: {
+        color: '#ffffff',
+        fontWeight: '600',
+    },
+    modalContainer: {
+        flex: 1,
+        backgroundColor: '#f1f5f9',
+        padding: 24,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        marginBottom: 20,
+        color: '#1e293b',
+        textAlign: 'center',
+    },
+    inputGroup: {
+        marginBottom: 18,
+    },
+    label: {
+        fontSize: 14,
+        color: '#475569',
+        fontWeight: '600',
+        marginBottom: 6,
+    },
+    input: {
+        backgroundColor: '#f8fafc',
+        borderRadius: 12,
+        padding: 14,
+        fontSize: 15,
+        borderColor: '#e2e8f0',
+        borderWidth: 1,
+    },
+    tag: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#cbd5e1',
+        backgroundColor: '#e2e8f0',
+    },
+    tagSelected: {
+        backgroundColor: '#93c5fd',
+        borderColor: '#60a5fa',
+    },
+    tagText: {
+        fontSize: 14,
+        color: '#1e293b',
+    },
+    tagTextSelected: {
+        color: '#fff',
+        fontWeight: '700',
+    },
+    submitButton: {
+        backgroundColor: '#38bdf8',
+        padding: 16,
+        borderRadius: 12,
+        alignItems: 'center',
+        marginTop: 8,
+    },
+    submitText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+    closeButton: {
+        marginTop: 16,
+        alignItems: 'center',
+    },
+    closeText: {
+        color: '#64748b',
+        fontSize: 14,
     },
     badge: {
         position: 'absolute',

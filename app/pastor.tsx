@@ -15,12 +15,13 @@ import {
     query,
     where,
     updateDoc,
-    doc,orderBy
+    doc,orderBy,getDoc
 } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import { Ionicons } from '@expo/vector-icons';
 import { TabView, SceneMap, TabBar } from 'react-native-tab-view';
 import { useLocalSearchParams } from 'expo-router';
+import { sendNotification, sendPushNotification } from '@/services/notificationService';
 
 const initialLayout = { width: Dimensions.get('window').width };
 
@@ -63,10 +64,43 @@ export default function PastorPage() {
 
     const approveTeam = async (id: string) => {
         try {
-            await updateDoc(doc(db, 'teams', id), { approved: true });
+            // 1. 팀 문서 가져오기
+            const teamRef = doc(db, 'teams', id);
+            const teamSnap = await getDoc(teamRef);
+            if (!teamSnap.exists()) {
+                Alert.alert('오류', '해당 모임을 찾을 수 없습니다.');
+                return;
+            }
+
+            const teamData = teamSnap.data();
+
+            // 2. 승인 처리
+            await updateDoc(teamRef, { approved: true });
+
+            // 3. 알림 전송
+            await sendNotification({
+                to: teamData.leaderEmail,
+                message: `"${teamData.name}" 소모임이 승인되었습니다.`,
+                type: 'team_create_approved',
+                link: '/teams',
+            });
+
+            // 4. 푸시 토큰 조회 후 전송
+            const q = query(collection(db, 'expoTokens'), where('email', '==', teamData.leaderEmail));
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+                const token = snap.docs[0].data().token;
+                await sendPushNotification({
+                    to: token,
+                    title: '✅ 소모임 승인 완료',
+                    body: `"${teamData.name}" 소모임이 승인되었어요.`,
+                });
+            }
+
             Alert.alert('승인 완료', '소모임이 승인되었습니다.');
-            setPendingTeams((prev) => prev.filter(team => team.id !== id)); // 🔹 항목 제거
+            setPendingTeams((prev) => prev.filter(team => team.id !== id));
         } catch (e) {
+            console.error(e);
             Alert.alert('오류', '승인에 실패했습니다.');
         }
     };

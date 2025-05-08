@@ -35,13 +35,19 @@ export default function TeamDetail() {
 
     const handleJoin = async () => {
         if (!team || !user) return;
-
+        console.log('🔔 알림 전송 대상:', team.leaderEmail);
         const currentMembers = team.members ?? 0;
         const capacity = team.capacity ?? 99;
+
+        if (team.membersList?.includes(user.email)) {
+            Alert.alert('참여 불가', '이미 가입된 모임입니다.');
+            return;
+        }
 
         if (currentMembers >= capacity) {
             Alert.alert('인원 초과', '모집이 마감되었습니다.');
             return;
+
         }
 
         // ✅ 알림 전송

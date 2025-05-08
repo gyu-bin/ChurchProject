@@ -11,6 +11,7 @@ import {
 import { db } from '@/firebase/config';
 import { format } from 'date-fns';
 import { useRouter } from 'expo-router';
+import { sendNotification, sendPushNotification } from '@/services/notificationService';
 
 export default function NotificationsScreen() {
     const [user, setUser] = useState<any>(null);
@@ -74,9 +75,30 @@ export default function NotificationsScreen() {
                     membersList: arrayUnion(selectedNotification.applicantEmail),
                     members: increment(1),
                 });
+
+                // 🔔 승인된 신청자에게 알림
+                await sendNotification({
+                    to: selectedNotification.applicantEmail,
+                    message: `"${selectedNotification.teamName}" 모임에 가입이 승인되었습니다.`,
+                    type: 'team_join_approved',
+                    link: '/teams',
+                });
+
+                // 🔔 Push 토큰 조회 후 푸시 전송
+                const tokenSnap = await getDocs(query(
+                    collection(db, 'expoTokens'),
+                    where('email', '==', selectedNotification.applicantEmail)
+                ));
+                if (!tokenSnap.empty) {
+                    const token = tokenSnap.docs[0].data().token;
+                    await sendPushNotification({
+                        to: token,
+                        title: '🙌 가입 승인 완료',
+                        body: `"${selectedNotification.teamName}" 모임에 가입되었어요.`,
+                    });
+                }
+
                 Alert.alert('✅ 승인 완료', `${selectedNotification.applicantName}님이 소모임에 가입되었습니다.`);
-            } else {
-                Alert.alert('❌ 거절 처리됨', `${selectedNotification.applicantName}님의 신청을 거절했습니다.`);
             }
 
             await deleteDoc(doc(db, 'notifications', selectedNotification.id));
