@@ -9,7 +9,7 @@ import { useRouter } from 'expo-router';
 import { verses } from '@/assets/verses';
 import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/firebase/config';
-
+import AsyncStorage from '@react-native-async-storage/async-storage'; // 상단 import
 const youtubeIds = ["hWvJdJ3Da6o", "GT5qxS6ozWU", "E3jJ02NDYCY"];
 
 export default function HomeScreen() {
@@ -25,6 +25,20 @@ export default function HomeScreen() {
     const [visibility, setVisibility] = useState<'all' | 'pastor'>('all');
     const [prayers, setPrayers] = useState<any[]>([]);
     const [publicPrayers, setPublicPrayers] = useState<any[]>([]);
+
+    const [user, setUser] = useState<any>(null); // 상태 추가
+
+    useEffect(() => {
+        const loadUser = async () => {
+            const raw = await AsyncStorage.getItem('currentUser');
+            if (raw) setUser(JSON.parse(raw));
+        };
+
+        const random = Math.floor(Math.random() * verses.length);
+        setVerse(verses[random]);
+        fetchPrayers();
+        loadUser(); // 유저 정보 불러오기
+    }, []);
 
     const fetchPrayers = async () => {
         const q = query(collection(db, 'prayer_requests'), where('visibility', '==', 'all'));
@@ -83,7 +97,12 @@ export default function HomeScreen() {
             <FlatList
                 ListHeaderComponent={(
                     <View style={styles.scrollContainer}>
-                        <Text style={styles.header}>🙏 안녕하세요!</Text>
+                        <View style={styles.headerRow}>
+                        <Text style={styles.header}>🙏 안녕하세요{user?.name ? ` ${user.name}님!` : '!' }</Text>
+                        <TouchableOpacity onPress={() => router.push('/notifications')}>
+                            <Ionicons name="notifications-outline" size={24} color="#333" />
+                        </TouchableOpacity>
+                        </View>
 
                         <View style={styles.card}>
                             <Text style={styles.sectionTitle}>📖 오늘의 말씀</Text>
@@ -191,8 +210,17 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f1f5f9' },
+
     scrollContainer: { padding: 20, gap: 20 },
     header: { fontSize: 24, fontWeight: 'bold' },
+    // 추가 스타일
+    headerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingTop: 16,
+    },
     sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 6 },
     verse: { fontSize: 16, fontStyle: 'italic' },
     reference: { fontSize: 14, color: '#555' },

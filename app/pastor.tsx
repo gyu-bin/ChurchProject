@@ -9,14 +9,23 @@ import {
     TouchableOpacity,
     Dimensions,
 } from 'react-native';
-import { collection, getDocs, query, where, updateDoc, doc } from 'firebase/firestore';
+import {
+    collection,
+    getDocs,
+    query,
+    where,
+    updateDoc,
+    doc,
+} from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import { Ionicons } from '@expo/vector-icons';
 import { TabView, SceneMap, TabBar } from 'react-native-tab-view';
+import { useLocalSearchParams } from 'expo-router';
 
 const initialLayout = { width: Dimensions.get('window').width };
 
 export default function PastorPage() {
+    const { tab } = useLocalSearchParams();
     const [index, setIndex] = useState(0);
     const [routes] = useState([
         { key: 'prayers', title: '기도제목' },
@@ -42,8 +51,11 @@ export default function PastorPage() {
     };
 
     useEffect(() => {
+        if (tab === 'teams') setIndex(1);
+        else setIndex(0);
+
         fetchData();
-    }, []);
+    }, [tab]);
 
     const PrayersRoute = () => (
         <FlatList

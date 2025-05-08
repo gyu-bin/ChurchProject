@@ -1,23 +1,42 @@
-// app/teams/create.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-    View, Text, TextInput, TouchableOpacity, StyleSheet,
-    SafeAreaView, Alert, KeyboardAvoidingView, Platform, ScrollView
+    View,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    StyleSheet,
+    SafeAreaView,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { addDoc, collection } from 'firebase/firestore';
+import { addDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/firebase/config';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { sendNotification } from '@/services/notificationService';
 
 export default function CreateTeam() {
     const [name, setName] = useState('');
-    const [leader, setLeader] = useState('');
     const [description, setDescription] = useState('');
-    const [capacity, setCapacity] = useState('');
+    const [leader, setLeader] = useState('');
+    const [creatorEmail, setCreatorEmail] = useState('');
     const router = useRouter();
 
+    useEffect(() => {
+        AsyncStorage.getItem('currentUser').then((raw) => {
+            if (raw) {
+                const user = JSON.parse(raw);
+                setLeader(user.name);
+                setCreatorEmail(user.email);
+            }
+        });
+    }, []);
+
     const handleSubmit = async () => {
-        if (!name || !leader || !capacity) {
-            Alert.alert('입력 오류', '모임명, 모임장, 인원수를 모두 입력해주세요.');
+        if (!name) {
+            Alert.alert('입력 오류', '모임명을 입력해주세요.');
             return;
         }
 
@@ -25,18 +44,27 @@ export default function CreateTeam() {
             await addDoc(collection(db, 'teams'), {
                 name,
                 leader,
+                leaderEmail: creatorEmail,
                 description,
                 members: 1,
-                capacity: parseInt(capacity),
                 createdAt: new Date(),
                 approved: false,
             });
 
-            Alert.alert(
-                '생성 완료',
-                '교역자의 승인이 완료되면 소모임이 등록됩니다.',
-                [{ text: '확인', onPress: () => router.replace('/teams') }]
-            );
+            const q = query(collection(db, 'users'), where('role', '==', '교역자'));
+            const snapshot = await getDocs(q);
+            snapshot.docs.forEach(async (docSnap) => {
+                const pastor = docSnap.data();
+                await sendNotification({
+                    to: pastor.email,
+                    text: `${leader}님이 "${name}" 소모임을 생성했습니다. 승인하시겠습니까?`,
+                    link: '/pastor?tab=teams', // ✅ 이동 링크
+                });
+            });
+
+            Alert.alert('생성 완료', '교역자의 승인이 완료되면 소모임이 등록됩니다.', [
+                { text: '확인', onPress: () => router.replace('/teams') },
+            ]);
         } catch (error: any) {
             Alert.alert('생성 실패', error.message);
         }
@@ -58,13 +86,7 @@ export default function CreateTeam() {
                         onChangeText={setName}
                         style={styles.input}
                     />
-                    <TextInput
-                        placeholder="모임장 이름 (예: 홍길동)"
-                        placeholderTextColor="#aaa"
-                        value={leader}
-                        onChangeText={setLeader}
-                        style={styles.input}
-                    />
+
                     <TextInput
                         placeholder="모임 소개 (선택 사항)"
                         placeholderTextColor="#aaa"
@@ -73,14 +95,6 @@ export default function CreateTeam() {
                         multiline
                         numberOfLines={4}
                         style={[styles.input, styles.textArea]}
-                    />
-                    <TextInput
-                        placeholder="모집 인원수 (예: 5)"
-                        placeholderTextColor="#aaa"
-                        value={capacity}
-                        onChangeText={setCapacity}
-                        keyboardType="numeric"
-                        style={styles.input}
                     />
 
                     <TouchableOpacity onPress={handleSubmit} style={styles.button}>
