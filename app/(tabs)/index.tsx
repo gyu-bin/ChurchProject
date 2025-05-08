@@ -28,7 +28,31 @@ export default function HomeScreen() {
     const [prayers, setPrayers] = useState<any[]>([]);
     const [publicPrayers, setPublicPrayers] = useState<any[]>([]);
     const [user, setUser] = useState<any>(null);
+    const [notifications, setNotifications] = useState<any[]>([]);
 
+    //알람개수
+    useEffect(() => {
+        const loadUser = async () => {
+            const raw = await AsyncStorage.getItem('currentUser');
+            if (raw) {
+                const currentUser = JSON.parse(raw);
+                setUser(currentUser);
+
+                // ✅ 알림 불러오기
+                const q = query(collection(db, 'notifications'), where('to', '==', currentUser.email));
+                const snap = await getDocs(q);
+                const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setNotifications(list);
+            }
+        };
+
+        const random = Math.floor(Math.random() * verses.length);
+        setVerse(verses[random]);
+        fetchPrayers();
+        loadUser();
+    }, []);
+
+    //사용자
     useEffect(() => {
         const loadUser = async () => {
             const raw = await AsyncStorage.getItem('currentUser');
@@ -121,8 +145,13 @@ export default function HomeScreen() {
                     <View style={styles.scrollContainer}>
                         <View style={styles.headerRow}>
                             <Text style={styles.header}>🙏 안녕하세요{user?.name ? ` ${user.name}님!` : '!'}</Text>
-                            <TouchableOpacity onPress={() => router.push('/notifications')}>
+                            <TouchableOpacity onPress={() => router.push('/notifications')} style={{ position: 'relative' }}>
                                 <Ionicons name="notifications-outline" size={24} color="#333" />
+                                {notifications.length > 0 && (
+                                    <View style={styles.badge}>
+                                        <Text style={styles.badgeText}>{notifications.length}</Text>
+                                    </View>
+                                )}
                             </TouchableOpacity>
                         </View>
 
@@ -252,5 +281,21 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         padding: 12,
         alignItems: 'center',
-    }
+    },
+    badge: {
+        position: 'absolute',
+        top: -6,
+        right: -6,
+        backgroundColor: '#ef4444',
+        borderRadius: 10,
+        width: 20,
+        height: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    badgeText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: 'bold',
+    },
 });

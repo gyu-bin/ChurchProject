@@ -5,6 +5,17 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAuth } from '@/hooks/useAuth';
 import { useFonts } from 'expo-font';
 import { View, ActivityIndicator } from 'react-native';
+import * as Notifications from 'expo-notifications';
+
+Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,  // ✅ 새로 추가
+        shouldShowList: true     // ✅ 새로 추가
+    }),
+});
 
 export default function RootLayout() {
     const colorScheme = useColorScheme();

@@ -1,35 +1,52 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import { db } from '@/firebase/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { doc, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/firebase/config';
 
 export async function registerPushToken() {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
+    try {
+        console.log('🔧 [registerPushToken] 시작');
 
-    if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-    }
+        if (!Device.isDevice) {
+            console.warn('❌ 실제 디바이스에서만 작동합니다.');
+            return;
+        }
 
-    if (finalStatus !== 'granted') {
-        console.log('푸시 알림 권한 거부됨');
-        return;
-    }
+        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        let finalStatus = existingStatus;
 
-    const tokenData = await Notifications.getExpoPushTokenAsync();
-    const token = tokenData.data;
-    console.log('✅ Expo Push Token:', token);
+        if (existingStatus !== 'granted') {
+            const { status } = await Notifications.requestPermissionsAsync();
+            finalStatus = status;
+        }
 
-    const raw = await AsyncStorage.getItem('currentUser');
-    if (raw) {
+        if (finalStatus !== 'granted') {
+            console.warn('❌ 알림 권한이 거부되었습니다.');
+            return;
+        }
+
+        const tokenData = await Notifications.getExpoPushTokenAsync();
+        const token = tokenData.data;
+        console.log('✅ Expo Push Token:', token);
+
+        const raw = await AsyncStorage.getItem('currentUser');
+        if (!raw) {
+            console.warn('❌ currentUser 없음');
+            return;
+        }
+
         const user = JSON.parse(raw);
-        const userRef = doc(db, 'users', user.email);
-        await updateDoc(userRef, { expoPushToken: token });
+        console.log('📌 사용자 이메일:', user.email);
+
+        await addDoc(collection(db, 'expoTokens'), {
+            email: user.email,
+            token,
+            createdAt: serverTimestamp(),
+        });
+
+        console.log('✅ 토큰 Firebase에 저장 완료');
+    } catch (err) {
+        console.error('❌ registerPushToken 에러:', err);
     }
 }
-
-
-//교역자는 승인없어도 모임 만들수있게 해주고, 지금 모임 개설할때 인원 적는거 없어졌어. 그리고 교역자가 모임 승인하기 누르면 '승인되었습니다'뜨면서
-//그 항목은 사라지게 해줘.
