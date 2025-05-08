@@ -2,17 +2,19 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
     View, Text, StyleSheet, SafeAreaView, FlatList, RefreshControl,
-    TouchableOpacity, TextInput, Modal, Alert, Linking, Image
+    TouchableOpacity, TextInput, Modal, Alert, Linking, Image,KeyboardAvoidingView,Platform,
+    Keyboard, TouchableWithoutFeedback
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { verses } from '@/assets/verses';
-import { collection, addDoc, getDocs, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, onSnapshot,orderBy } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { sendPushNotification, sendNotification } from '@/services/notificationService';
-
+import PrayerModal from '../prayerModal'
 const youtubeIds = ["hWvJdJ3Da6o", "GT5qxS6ozWU", "E3jJ02NDYCY"];
+import { StatusBar } from 'expo-status-bar';
 
 export default function HomeScreen() {
     const router = useRouter();
@@ -77,7 +79,11 @@ export default function HomeScreen() {
     }, []);
 
     const fetchPrayers = async () => {
-        const q = query(collection(db, 'prayer_requests'), where('visibility', '==', 'all'));
+        const q = query(
+            collection(db, 'prayer_requests'),
+            where('visibility', '==', 'all'),
+            orderBy('createdAt', 'desc') // ✅ 최근순 정렬
+        );
         const snapshot = await getDocs(q);
         const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setPrayers(list);
@@ -101,14 +107,13 @@ export default function HomeScreen() {
     };
 
     const submitPrayer = async () => {
-        if (!name || !title || !content) {
+        if (!title || !content) {
             Alert.alert('모든 항목을 작성해주세요');
             return;
         }
 
         try {
             await addDoc(collection(db, 'prayer_requests'), {
-                name,
                 title,
                 content,
                 visibility,
@@ -153,6 +158,7 @@ export default function HomeScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
+            <StatusBar style="dark" />
             <FlatList
                 ListHeaderComponent={(
                     <View style={styles.scrollContainer}>
@@ -199,65 +205,36 @@ export default function HomeScreen() {
                 keyExtractor={(item) => item.id}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 renderItem={({ item }) => (
-                    <View style={styles.card}>
-                        <Text style={styles.sectionTitle}>🙏 {item.title}</Text>
-                        <Text style={{ color: '#6b7280' }}>by {item.name}</Text>
-                    </View>
+                    <View style={styles.card} />
                 )}
             />
 
-            <Modal visible={modalVisible} animationType="slide">
-                <SafeAreaView style={styles.modalContainer}>
-                    <Text style={styles.modalTitle}>🙏 기도제목 나누기</Text>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>이름</Text>
-                        <TextInput placeholder="이름을 입력하세요" value={name} onChangeText={setName} style={styles.input} />
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>제목</Text>
-                        <TextInput placeholder="제목을 입력하세요" value={title} onChangeText={setTitle} style={styles.input} />
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>기도 내용</Text>
-                        <TextInput placeholder="기도 제목을 입력하세요" value={content} onChangeText={setContent} multiline style={[styles.input, { height: 100, textAlignVertical: 'top' }]} />
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>공개 범위</Text>
-                        <View style={{ flexDirection: 'row', gap: 10 }}>
-                            <TouchableOpacity onPress={() => setVisibility('all')} style={[styles.tag, visibility === 'all' && styles.tagSelected]}>
-                                <Text style={[styles.tagText, visibility === 'all' && styles.tagTextSelected]}>전체공개</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => setVisibility('pastor')} style={[styles.tag, visibility === 'pastor' && styles.tagSelected]}>
-                                <Text style={[styles.tagText, visibility === 'pastor' && styles.tagTextSelected]}>교역자만</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-
-                    <TouchableOpacity onPress={submitPrayer} style={styles.submitButton}>
-                        <Text style={styles.submitText}>🙏 제출하기</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
-                        <Text style={styles.closeText}>닫기</Text>
-                    </TouchableOpacity>
-                </SafeAreaView>
-            </Modal>
+            <PrayerModal
+                visible={modalVisible}
+                onClose={() => setModalVisible(false)}
+                onSubmit={submitPrayer}
+                name={user?.name}
+                title={title}
+                content={content}
+                visibility={visibility}
+                setTitle={setTitle}
+                setContent={setContent}
+                setVisibility={setVisibility}
+            />
 
             <Modal visible={viewModalVisible} animationType="slide">
                 <SafeAreaView style={styles.modalContainer}>
                     <Text style={styles.modalTitle}>📃 전체 기도제목</Text>
 
                     <FlatList
-                        data={publicPrayers}
+                        data={publicPrayers.sort((a, b) => b.createdAt?.toDate?.() - a.createdAt?.toDate?.())} // ✅ 최신순 정렬
                         keyExtractor={(item) => item.id}
+                        contentContainerStyle={{ paddingBottom: 40 }}
                         renderItem={({ item }) => (
                             <View style={[styles.card, { marginBottom: 12 }]}>
                                 <Text style={styles.sectionTitle}>🙏 {item.title}</Text>
-                                <Text style={{ color: '#6b7280' }}>by {item.name}</Text>
+                                <Text style={styles.content}>{item.content}</Text>
+                                <Text style={styles.name}>- {item.name}</Text>
                             </View>
                         )}
                     />
@@ -270,16 +247,11 @@ export default function HomeScreen() {
         </SafeAreaView>
     );
 }
-// ✅ 전체적인 파스텔톤 UI를 적용한 스타일 개선
-// 아래 styles 객체를 기존 index.tsx에 그대로 대체하세요
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f0f4ff' },
-
     scrollContainer: { padding: 20, gap: 20 },
-
     header: { fontSize: 24, fontWeight: 'bold', color: '#3182f6' },
-
     headerRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -287,9 +259,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingTop: 16,
     },
-
     sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#1d4ed8', marginBottom: 6 },
-
     verse: { fontSize: 16, fontStyle: 'italic', color: '#374151' },
     reference: { fontSize: 14, color: '#6b7280' },
 
@@ -328,55 +298,7 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         fontSize: 15,
     },
-
-    modalContainer: { flex: 1, padding: 24, backgroundColor: '#f9fbff' },
-    modalTitle: { fontSize: 22, fontWeight: 'bold', color: '#1e3a8a', marginBottom: 20 },
-
-    input: {
-        borderWidth: 1,
-        borderColor: '#c7d2fe',
-        borderRadius: 10,
-        padding: 14,
-        marginBottom: 16,
-        backgroundColor: '#fff',
-        fontSize: 16,
-    },
-
-    submitButton: {
-        backgroundColor: '#1d4ed8',
-        padding: 16,
-        borderRadius: 10,
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    submitText: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 16,
-    },
-
-    closeButton: { alignItems: 'center', padding: 10 },
-    closeText: { color: '#1e3a8a', fontWeight: 'bold' },
-
-    inputGroup: { marginBottom: 16 },
-    label: { fontSize: 15, fontWeight: '600', marginBottom: 6, color: '#1e3a8a' },
-
-    tag: {
-        borderWidth: 1,
-        borderColor: '#a5b4fc',
-        borderRadius: 20,
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        backgroundColor: '#fff',
-    },
-    tagSelected: {
-        backgroundColor: '#2563eb',
-        borderColor: '#2563eb',
-    },
-    tagText: { fontSize: 14, color: '#1e3a8a' },
-    tagTextSelected: { color: '#fff', fontWeight: 'bold' },
-
-    badge: {
+        badge: {
         position: 'absolute',
         top: -6,
         right: -6,
@@ -393,4 +315,88 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: 'bold',
     },
+    //모달
+    modalContainer: {
+        flex: 1,
+        backgroundColor: '#fff',
+        justifyContent: 'center',
+        paddingHorizontal: 24,
+    },
+    modalTitle: {
+        fontSize: 28,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 40,
+        textAlign: 'left',
+    },
+    formGroup: {
+        marginBottom: 32,
+    },
+    underlineInput: {
+        fontSize: 18,
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        borderColor: '#e5e7eb',
+        color: '#111827',
+    },
+    visibilityGroup: {
+        flexDirection: 'row',
+        gap: 10,
+        marginBottom: 32,
+    },
+    tag: {
+        borderWidth: 1,
+        borderColor: '#d1d5db',
+        borderRadius: 999,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        backgroundColor: '#fff',
+    },
+    tagSelected: {
+        backgroundColor: '#2563eb',
+        borderColor: '#2563eb',
+    },
+    tagText: {
+        fontSize: 14,
+        color: '#374151',
+    },
+    tagTextSelected: {
+        color: '#fff',
+        fontWeight: 'bold',
+    },
+    submitButton: {
+        backgroundColor: '#3182f6',
+        paddingVertical: 16,
+        borderRadius: 12,
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    submitText: {
+        color: '#fff',
+        fontSize: 17,
+        fontWeight: '600',
+    },
+    closeButton: {
+        alignItems: 'center',
+        paddingVertical: 12,
+        backgroundColor: '#f3f4f6',
+        borderRadius: 12,
+    },
+    closeText: {
+        color: '#374151',
+        fontSize: 15,
+        fontWeight: '500',
+    },
+    content: {
+        fontSize: 20,
+        color: '#374151',
+        marginTop: 6,
+    },
+    name: {
+        fontSize: 13,
+        color: '#6b7280',
+        marginTop: 4,
+        textAlign: 'right',
+    },
 });
+
