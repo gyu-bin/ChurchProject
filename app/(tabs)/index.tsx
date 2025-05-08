@@ -10,6 +10,11 @@ import { verses } from '@/assets/verses';
 import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import AsyncStorage from '@react-native-async-storage/async-storage'; // 상단 import
+
+import { sendPushNotification } from '@/services/sendPushNotification';
+import {sendNotification} from "@/services/notificationService";
+
+
 const youtubeIds = ["hWvJdJ3Da6o", "GT5qxS6ozWU", "E3jJ02NDYCY"];
 
 export default function HomeScreen() {
@@ -78,9 +83,38 @@ export default function HomeScreen() {
 
         try {
             await addDoc(collection(db, 'prayer_requests'), {
-                name, title, content, visibility, createdAt: new Date(),
+                name,
+                title,
+                content,
+                visibility,
+                createdAt: new Date(),
             });
-            Alert.alert('기도제목이 제출되었습니다');
+
+            // ✅ 교역자 공개인 경우에만 알림 전송
+            if (visibility === 'pastor') {
+                const q = query(collection(db, 'users'), where('role', '==', '교역자'));
+                const snap = await getDocs(q);
+
+                snap.docs.forEach(async (docSnap) => {
+                    const pastor = docSnap.data();
+
+                    await sendNotification({
+                        to: pastor.email,
+                        text: `${name}님의 기도제목이 등록되었습니다.`,
+                        link: '/pastor?tab=prayers',
+                    });
+
+                    if (pastor.expoPushToken) {
+                        await sendPushNotification({
+                            to: pastor.expoPushToken,
+                            title: '🙏 새로운 기도제목',
+                            body: `${name}님의 기도제목`,
+                        });
+                    }
+                });
+            }
+
+            Alert.alert('제출 완료', '기도제목이 제출되었습니다.');
             setModalVisible(false);
             setName('');
             setTitle('');

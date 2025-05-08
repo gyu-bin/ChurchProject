@@ -35,7 +35,10 @@ export default function TeamsScreen() {
     };
 
     const renderItem = ({ item }: { item: any }) => {
-        const isFull = item.members >= item.capacity;
+        const members = item.members ?? 0;
+        const max = item.maxMembers ?? null;
+        const isFull = typeof max === 'number' && members >= max;
+
         return (
             <TouchableOpacity
                 style={isGrid ? styles.gridItem : styles.listItem}
@@ -45,7 +48,9 @@ export default function TeamsScreen() {
                 <View style={styles.textContainer}>
                     <Text style={styles.name}>{item.name}</Text>
                     <Text style={styles.meta}>👤 모임장: {item.leader}</Text>
-                    <Text style={[styles.meta, isFull && { color: '#ef4444' }]}>👥 {item.members ?? 1} / {item.capacity}명 {isFull ? '(모집마감)' : ''}</Text>
+                    <Text style={[styles.meta, isFull && { color: '#ef4444' }]}>
+                        👥 인원: {members} / {max ?? '명'} {isFull ? '(모집마감)' : ''}
+                    </Text>
                 </View>
             </TouchableOpacity>
         );

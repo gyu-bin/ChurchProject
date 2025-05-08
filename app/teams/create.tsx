@@ -15,7 +15,7 @@ import { useRouter } from 'expo-router';
 import { addDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { sendNotification } from '@/services/notificationService';
+import { sendNotification, sendPushNotification } from '@/services/notificationService';
 
 export default function CreateTeam() {
     const [name, setName] = useState('');
@@ -23,6 +23,8 @@ export default function CreateTeam() {
     const [leader, setLeader] = useState('');
     const [creatorEmail, setCreatorEmail] = useState('');
     const router = useRouter();
+    const [role, setRole] = useState('');
+    const [memberCount, setMemberCount] = useState('');
 
     useEffect(() => {
         AsyncStorage.getItem('currentUser').then((raw) => {
@@ -30,6 +32,7 @@ export default function CreateTeam() {
                 const user = JSON.parse(raw);
                 setLeader(user.name);
                 setCreatorEmail(user.email);
+                setRole(user.role);
             }
         });
     }, []);
@@ -41,30 +44,50 @@ export default function CreateTeam() {
         }
 
         try {
-            await addDoc(collection(db, 'teams'), {
+            const baseData = {
                 name,
                 leader,
                 leaderEmail: creatorEmail,
                 description,
                 members: 1,
+                membersList: [creatorEmail],
                 createdAt: new Date(),
-                approved: false,
-            });
+                maxMembers: parseInt(memberCount) || 10,
+            };
 
-            const q = query(collection(db, 'users'), where('role', '==', '교역자'));
-            const snapshot = await getDocs(q);
-            snapshot.docs.forEach(async (docSnap) => {
-                const pastor = docSnap.data();
-                await sendNotification({
-                    to: pastor.email,
-                    text: `${leader}님이 "${name}" 소모임을 생성했습니다. 승인하시겠습니까?`,
-                    link: '/pastor?tab=teams', // ✅ 이동 링크
+            if (role === '교역자') {
+                await addDoc(collection(db, 'teams'), {
+                    ...baseData,
+                    approved: true,
                 });
-            });
+            } else {
+                await addDoc(collection(db, 'teams'), {
+                    ...baseData,
+                    approved: false,
+                });
 
-            Alert.alert('생성 완료', '교역자의 승인이 완료되면 소모임이 등록됩니다.', [
-                { text: '확인', onPress: () => router.replace('/teams') },
-            ]);
+                const q = query(collection(db, 'users'), where('role', '==', '교역자'));
+                const snapshot = await getDocs(q);
+                snapshot.docs.forEach(async (docSnap) => {
+                    const pastor = docSnap.data();
+
+                    await sendNotification({
+                        to: pastor.email,
+                        text: `${leader}님이 "${name}" 소모임을 생성했습니다.`,
+                        link: '/pastor?tab=teams',
+                    });
+
+                    if (pastor.expoPushToken) {
+                        await sendPushNotification({
+                            to: pastor.expoPushToken,
+                            title: '📌 소모임 승인 요청',
+                            body: `${leader}님의 소모임 승인 요청`,
+                        });
+                    }
+                });
+            }
+
+            router.replace('/teams');
         } catch (error: any) {
             Alert.alert('생성 실패', error.message);
         }
@@ -95,6 +118,14 @@ export default function CreateTeam() {
                         multiline
                         numberOfLines={4}
                         style={[styles.input, styles.textArea]}
+                    />
+
+                    <TextInput
+                        placeholder="최대 인원 수 (예: 5)"
+                        keyboardType="numeric"
+                        value={memberCount}
+                        onChangeText={setMemberCount}
+                        style={styles.input}
                     />
 
                     <TouchableOpacity onPress={handleSubmit} style={styles.button}>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import {
     View,
     Text,
@@ -10,16 +10,24 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { login } from '@/services/authService';
+import { registerPushToken } from '@/services/registerPushToken';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const router = useRouter();
 
+
     const handleLogin = async () => {
         try {
-            await login(email.trim(), password.trim());
-            router.replace('/'); // 로그인 성공 시 홈으로 이동
+            const user = await login(email.trim(), password.trim());
+            await AsyncStorage.setItem('currentUser', JSON.stringify(user));
+
+            await registerPushToken(); // ✅ 바로 호출
+
+            router.replace('/');
+
         } catch (error: any) {
             Alert.alert('로그인 실패', error.message);
         }

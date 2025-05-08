@@ -7,7 +7,7 @@ import {
     SafeAreaView,
     FlatList,
     TouchableOpacity,
-    Dimensions,
+    Dimensions,Alert
 } from 'react-native';
 import {
     collection,
@@ -32,6 +32,12 @@ export default function PastorPage() {
         { key: 'teams', title: '소모임 승인' },
     ]);
 
+    useEffect(() => {
+        if (tab === 'teams') {
+            setIndex(1);
+        }
+    }, [tab]);
+
     const [prayers, setPrayers] = useState<any[]>([]);
     const [pendingTeams, setPendingTeams] = useState<any[]>([]);
 
@@ -46,8 +52,13 @@ export default function PastorPage() {
     };
 
     const approveTeam = async (id: string) => {
-        await updateDoc(doc(db, 'teams', id), { approved: true });
-        fetchData();
+        try {
+            await updateDoc(doc(db, 'teams', id), { approved: true });
+            Alert.alert('승인 완료', '소모임이 승인되었습니다.');
+            setPendingTeams((prev) => prev.filter(team => team.id !== id)); // 🔹 항목 제거
+        } catch (e) {
+            Alert.alert('오류', '승인에 실패했습니다.');
+        }
     };
 
     useEffect(() => {
@@ -92,7 +103,7 @@ export default function PastorPage() {
     );
 
     return (
-        <SafeAreaView style={{ flex: 1 }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff'  }}>
             <TabView
                 navigationState={{ index, routes }}
                 renderScene={SceneMap({ prayers: PrayersRoute, teams: TeamsRoute })}

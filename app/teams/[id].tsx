@@ -12,7 +12,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { doc, getDoc, updateDoc, increment, collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import { getCurrentUser } from '@/services/authService';
-import { sendNotification } from '@/services/notificationService';
+import {sendNotification, sendPushNotification} from '@/services/notificationService';
 
 export default function TeamDetail() {
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -35,26 +35,35 @@ export default function TeamDetail() {
     const handleJoin = async () => {
         if (!team || !user) return;
 
-        const currentMembers = team.members ?? 1;
-        const capacity = team.capacity ?? 1;
+        const currentMembers = team.members ?? 0;
+        const capacity = team.capacity ?? 99;
 
         if (currentMembers >= capacity) {
             Alert.alert('인원 초과', '모집이 마감되었습니다.');
             return;
         }
 
-        // 1. 인원 수 증가
-        await updateDoc(doc(db, 'teams', id), {
-            members: increment(1),
+        // 🔥 인원 증가 제거: 승인 이후 반영해야 함
+
+        // ✅ 알림 전송
+        await sendNotification({
+            to: team.leaderEmail,
+            message: `${user.name}님이 "${team.name}" 모임에 가입 신청했습니다.`,
+            type: 'team_join_request',
+            link: '/notifications',
+            teamId: team.id,
+            teamName: team.name,         // ✅ 추가
+            applicantEmail: user.email,  // ✅ 추가
+            applicantName: user.name,
         });
 
-        // 2. 팀장에게 알림 전송
-        const q = query(collection(db, 'users'), where('name', '==', team.leader));
-        const snapshot = await getDocs(q);
-        snapshot.forEach(doc => {
-            const leaderEmail = doc.data().email;
-            sendNotification(leaderEmail, `${user.name}님이 ${team.name} 소모임에 가입을 신청했습니다.`);
-        });
+        if (team.leaderPushToken) {
+            await sendPushNotification({
+                to: team.leaderPushToken,
+                title: '🙋 소모임 가입 신청',
+                body: `${user.name}님의 신청`,
+            });
+        }
 
         Alert.alert('가입 신청 완료', '모임장에게 신청 메시지를 보냈습니다.');
         router.back();
@@ -83,7 +92,7 @@ export default function TeamDetail() {
             <Text style={styles.title}>{team.name}</Text>
             <Text style={styles.leader}>👤 모임장: {team.leader}</Text>
             <Text style={styles.description}>{team.description}</Text>
-            <Text style={styles.meta}>👥 인원: {team.members ?? 1} / {team.capacity ?? 1}</Text>
+            <Text style={styles.meta}>👥 인원: {team.members ?? 0} / {team.maxMembers ?? '명'}</Text>
 
             <TouchableOpacity
                 onPress={handleJoin}
