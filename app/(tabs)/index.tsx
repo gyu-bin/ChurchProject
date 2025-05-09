@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
     View, Text, SafeAreaView, FlatList, RefreshControl,
-    TouchableOpacity, Image, Modal, Alert, Linking
+    TouchableOpacity, Image, Modal, Alert, Linking,Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -35,6 +35,9 @@ export default function HomeScreen() {
     const [publicPrayers, setPublicPrayers] = useState<any[]>([]);
     const [user, setUser] = useState<any>(null);
     const [notifications, setNotifications] = useState<any[]>([]);
+
+    const screenWidth = Dimensions.get('window').width;
+    const thumbnailHeight = screenWidth * 0.56; // 유튜브 16:9 비율 (기본 추천)
 
     useEffect(() => {
         let unsubscribe: () => void;
@@ -109,11 +112,39 @@ export default function HomeScreen() {
 
         try {
             await addDoc(collection(db, 'prayer_requests'), {
+                name: user?.name || '익명',
                 title,
                 content,
                 visibility,
                 createdAt: new Date(),
             });
+
+            // 교역자용 기도제목일 경우 알림 전송
+            if (visibility === 'pastor') {
+                const q = query(collection(db, 'users'), where('role', '==', '교역자'));
+                const snap = await getDocs(q);
+
+                snap.docs.forEach(async (docSnap) => {
+                    const pastor = docSnap.data();
+
+                    // 1. 알림 DB 저장
+                    await sendNotification({
+                        to: pastor.email,
+                        message: `${user?.name ?? '익명'}님의 기도제목이 등록되었습니다.`,
+                        type: 'prayer_private',
+                        link: '/pastor?tab=prayers',
+                    });
+
+                    // 2. 푸시 알림
+                    if (pastor.expoPushToken) {
+                        await sendPushNotification({
+                            to: pastor.expoPushToken,
+                            title: '🙏 새로운 기도제목',
+                            body: `${user?.name ?? '익명'}님의 기도제목`,
+                        });
+                    }
+                });
+            }
 
             Alert.alert('제출 완료', '기도제목이 제출되었습니다.');
             setModalVisible(false);
@@ -150,10 +181,35 @@ export default function HomeScreen() {
                             <Text style={{ fontSize: 14, color: theme.colors.subtext }}>({verse.reference})</Text>
                         </View>
 
-                        <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md }}>
-                            <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>📺 추천 설교</Text>
-                            <TouchableOpacity onPress={() => Linking.openURL(`https://www.youtube.com/watch?v=${youtubeId}`)}>
-                                <Image source={{ uri: `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg` }} style={{ width: '100%', height: 220, borderRadius: theme.radius.md, marginTop: 10 }} />
+                        <View
+                            style={{
+                                backgroundColor: theme.colors.surface,
+                                borderRadius: theme.radius.lg,
+                                padding: theme.spacing.md,
+                                width: '100%',
+                            }}
+                        >
+                            <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>
+                                📺 추천 설교
+                            </Text>
+                            <TouchableOpacity
+                                onPress={() =>
+                                    Linking.openURL(`https://www.youtube.com/watch?v=${youtubeId}`)
+                                }
+                            >
+                                <Image
+                                    source={{
+                                        uri: `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`,
+                                    }}
+                                    style={{
+                                        width: '100%',
+                                        aspectRatio: 16 / 9, // ✅ 화면 너비 기준 16:9 유지
+                                        borderRadius: theme.radius.md,
+                                        marginTop: 10,
+                                        backgroundColor: '#ccc', // 로딩 시 배경
+                                    }}
+                                    resizeMode="cover"
+                                />
                             </TouchableOpacity>
                         </View>
 
@@ -178,7 +234,7 @@ export default function HomeScreen() {
                 visible={modalVisible}
                 onClose={() => setModalVisible(false)}
                 onSubmit={submitPrayer}
-                name={user?.name}
+                name={user?.name ?? '익명'} // 이름 전달
                 title={title}
                 content={content}
                 visibility={visibility}
@@ -198,7 +254,9 @@ export default function HomeScreen() {
                             <View style={{ backgroundColor: theme.colors.surface, borderRadius: 16, padding: 20, marginBottom: 12 }}>
                                 <Text style={{ fontSize: 17, fontWeight: '600', color: theme.colors.primary }}>🙏 {item.title}</Text>
                                 <Text style={{ fontSize: 16, color: theme.colors.text, marginTop: 6 }}>{item.content}</Text>
-                                <Text style={{ fontSize: 13, color: theme.colors.subtext, marginTop: 4, textAlign: 'right' }}>- {item.name}</Text>
+                                <Text style={{ fontSize: 13, color: theme.colors.subtext, marginTop: 4, textAlign: 'right' }}>
+                                    - {item.name ?? '익명'}
+                                </Text>
                             </View>
                         )}
                     />
