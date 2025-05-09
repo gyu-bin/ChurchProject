@@ -18,6 +18,17 @@ import { useDesign } from '@/context/DesignSystem';
 
 const youtubeIds = ["hWvJdJ3Da6o", "GT5qxS6ozWU", "E3jJ02NDYCY"];
 
+type Prayer = {
+    id: string;
+    title: string;
+    content: string;
+    name: string;
+    visibility: 'all' | 'pastor';
+    createdAt?: {
+        toDate: () => Date;
+    };
+};
+
 export default function HomeScreen() {
     const router = useRouter();
     const { mode } = useAppTheme();
@@ -31,10 +42,11 @@ export default function HomeScreen() {
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [visibility, setVisibility] = useState<'all' | 'pastor'>('all');
-    const [prayers, setPrayers] = useState<any[]>([]);
+    const [prayers, setPrayers] = useState<Prayer[]>([]);
     const [publicPrayers, setPublicPrayers] = useState<any[]>([]);
     const [user, setUser] = useState<any>(null);
     const [notifications, setNotifications] = useState<any[]>([]);
+
 
     const screenWidth = Dimensions.get('window').width;
     const thumbnailHeight = screenWidth * 0.56; // 유튜브 16:9 비율 (기본 추천)
@@ -78,22 +90,33 @@ export default function HomeScreen() {
     }, []);
 
     const fetchPrayers = async () => {
-        const q = query(
-            collection(db, 'prayer_requests'),
-            where('visibility', '==', 'all'),
-            orderBy('createdAt', 'desc')
-        );
+        const q = query(collection(db, 'prayer_requests'), where('visibility', '==', 'all'));
         const snapshot = await getDocs(q);
-        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const list: Prayer[] = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...(doc.data() as Omit<Prayer, 'id'>),
+        }));
+
+        list.sort((a, b) => {
+            const aDate = a.createdAt?.toDate?.() ?? new Date(0);
+            const bDate = b.createdAt?.toDate?.() ?? new Date(0);
+            return bDate.getTime() - aDate.getTime();
+        });
+
         setPrayers(list);
     };
 
     const onRefresh = useCallback(async () => {
-        setRefreshing(true);
-        setVerse(verses[Math.floor(Math.random() * verses.length)]);
-        setYoutubeId(youtubeIds[Math.floor(Math.random() * youtubeIds.length)]);
-        await fetchPrayers();
-        setRefreshing(false);
+        try {
+            setRefreshing(true);
+            setVerse(verses[Math.floor(Math.random() * verses.length)]);
+            setYoutubeId(youtubeIds[Math.floor(Math.random() * youtubeIds.length)]);
+            await fetchPrayers();  // 반드시 await
+        } catch (e) {
+            console.error('❌ 리프레시 에러:', e);
+        } finally {
+            setRefreshing(false); // 완료되든 실패하든 무조건 호출
+        }
     }, []);
 
     const fetchPublicPrayers = async () => {

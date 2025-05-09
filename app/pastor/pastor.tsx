@@ -1,7 +1,3 @@
-// ✅ 두 페이지 모두 공통 디자인 시스템 적용
-// ✅ 다크모드 대응 (useAppTheme + useDesign 적용)
-
-// 📁 app/pastor.tsx 전체 수정본
 import React, { useEffect, useState } from 'react';
 import {
     View, Text, SafeAreaView, FlatList, TouchableOpacity, Dimensions, Alert
@@ -15,8 +11,19 @@ import { useLocalSearchParams } from 'expo-router';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useDesign } from '@/context/DesignSystem';
+import { getCurrentUser } from '@/services/authService';
 
 const initialLayout = { width: Dimensions.get('window').width };
+
+// ✅ Team 타입 정의
+interface Team {
+    id: string;
+    name: string;
+    leader: string;
+    leaderEmail: string;
+    description: string;
+    approved?: boolean;
+}
 
 export default function PastorPage() {
     const { tab } = useLocalSearchParams();
@@ -27,23 +34,40 @@ export default function PastorPage() {
     ]);
 
     const [prayers, setPrayers] = useState<any[]>([]);
-    const [pendingTeams, setPendingTeams] = useState<any[]>([]);
-
+    const [pendingTeams, setPendingTeams] = useState<Team[]>([]);
     const { colors, spacing, font, radius } = useDesign();
 
-    const fetchData = async () => {
-        const prayerSnap = await getDocs(
-            query(collection(db, 'prayer_requests'), orderBy('createdAt', 'desc'))
-        );
-        setPrayers(prayerSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-
-        const teamSnap = await getDocs(
-            query(collection(db, 'teams'), orderBy('createdAt', 'desc'))
-        );
-        setPendingTeams(teamSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    };
-
     useEffect(() => {
+        const fetchData = async () => {
+            const currentUser = await getCurrentUser();
+
+            const prayerSnap = await getDocs(
+                query(collection(db, 'prayer_requests'), orderBy('createdAt', 'desc'))
+            );
+            setPrayers(prayerSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+            const teamSnap = await getDocs(
+                query(collection(db, 'teams'), orderBy('createdAt', 'desc'))
+            );
+            const allTeams = teamSnap.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    name: data.name,
+                    leader: data.leader,
+                    leaderEmail: data.leaderEmail,
+                    description: data.description,
+                    approved: data.approved ?? false,
+                } as Team;
+            });
+            // ✅ 승인되지 않은 팀만, 내 팀 제외
+            const filtered = allTeams.filter(
+                (team: any) => !team.approved && team.leaderEmail !== currentUser.email
+            );
+
+            setPendingTeams(filtered);
+        };
+
         fetchData();
     }, [tab]);
 
@@ -55,7 +79,8 @@ export default function PastorPage() {
                 Alert.alert('오류', '해당 모임을 찾을 수 없습니다.');
                 return;
             }
-            const teamData = teamSnap.data();
+
+            const teamData = teamSnap.data() as Team;
             await updateDoc(teamRef, { approved: true });
 
             await sendNotification({
@@ -92,11 +117,18 @@ export default function PastorPage() {
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ padding: spacing.lg }}
             renderItem={({ item }) => (
-                <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md }}>
+                <View style={{
+                    backgroundColor: colors.surface,
+                    borderRadius: radius.md,
+                    padding: spacing.md,
+                    marginBottom: spacing.md,
+                }}>
                     <Text style={{ fontSize: font.body, fontWeight: 'bold', color: colors.text }}>{item.title}</Text>
                     <Text style={{ fontSize: font.caption, color: colors.subtext }}>🙋 {item.name}</Text>
                     <Text style={{ fontSize: font.body, color: colors.text, marginVertical: spacing.sm }}>{item.content}</Text>
-                    <Text style={{ fontSize: font.caption, color: colors.subtext }}>📢 공개: {item.visibility === 'pastor' ? '교역자만' : '전체'}</Text>
+                    <Text style={{ fontSize: font.caption, color: colors.subtext }}>
+                        📢 공개: {item.visibility === 'pastor' ? '교역자만' : '전체'}
+                    </Text>
                 </View>
             )}
         />
@@ -108,13 +140,23 @@ export default function PastorPage() {
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ padding: spacing.lg }}
             renderItem={({ item }) => (
-                <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md }}>
+                <View style={{
+                    backgroundColor: colors.surface,
+                    borderRadius: radius.md,
+                    padding: spacing.md,
+                    marginBottom: spacing.md,
+                }}>
                     <Text style={{ fontSize: font.body, fontWeight: 'bold', color: colors.text }}>{item.name}</Text>
                     <Text style={{ fontSize: font.caption, color: colors.subtext }}>👤 모임장: {item.leader}</Text>
                     <Text style={{ fontSize: font.body, color: colors.text, marginVertical: spacing.sm }}>{item.description}</Text>
                     <TouchableOpacity
                         onPress={() => approveTeam(item.id)}
-                        style={{ backgroundColor: colors.primary, padding: spacing.sm, borderRadius: radius.sm, alignItems: 'center' }}
+                        style={{
+                            backgroundColor: colors.primary,
+                            padding: spacing.sm,
+                            borderRadius: radius.sm,
+                            alignItems: 'center',
+                        }}
                     >
                         <Text style={{ color: '#fff', fontWeight: 'bold' }}>승인하기</Text>
                     </TouchableOpacity>

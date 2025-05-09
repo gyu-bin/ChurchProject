@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-    View, Text, TouchableOpacity, Pressable, SafeAreaView
+    View, Text, TouchableOpacity, Pressable, SafeAreaView,Dimensions
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
@@ -73,7 +73,7 @@ export default function SettingsScreen() {
             {/* 🧑‍💼 교역자 전용 페이지 버튼 */}
             {user?.role === '교역자' && (
                 <TouchableOpacity
-                    onPress={() => router.push('/pastor')}
+                    onPress={() => router.push('/pastor/pastor')}
                     style={{
                         backgroundColor: colors.primary,
                         paddingVertical: spacing.md,
