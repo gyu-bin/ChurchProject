@@ -1,6 +1,6 @@
 // app/_layout.tsx
 
-import { ThemeProviderCustom } from '@/context/ThemeContext';
+import { ThemeProvider } from '@/context/ThemeContext';
 import { DesignSystemProvider } from '@/context/DesignSystem';
 import RootLayoutInner from './_layout-inner';
 import React, { useEffect } from 'react';
@@ -13,10 +13,10 @@ export default function RootLayout() {
     }, []);
 
     return (
-        <ThemeProviderCustom>
+        <ThemeProvider>
             <DesignSystemProvider>
                 <RootLayoutInner />
             </DesignSystemProvider>
-        </ThemeProviderCustom>
+        </ThemeProvider>
     );
 }

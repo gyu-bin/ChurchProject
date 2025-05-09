@@ -50,7 +50,16 @@ export default function TeamsScreen() {
                 <View style={styles.textContainer}>
                     <Text style={[styles.name, { color: colors.text }]}>{item.name}</Text>
                     <Text style={[styles.meta, { color: colors.subtext }]}>👤 모임장: {item.leader}</Text>
-                    <Text style={[styles.meta, isFull && styles.fullText, { color: isFull ? colors.error : colors.subtext }]}>👥 인원: {members} / {max ?? '명'} {isFull ? '(모집마감)' : ''}</Text>
+                    <Text
+                        style={[
+                            styles.meta,
+                            item.membersList?.length >= item.maxMembers && styles.fullText,
+                            { color: item.membersList?.length >= item.maxMembers ? colors.error : colors.subtext }
+                        ]}
+                    >
+                        👥 인원: {item.membersList?.length ?? 0} / {item.maxMembers ?? '명'}
+                        {item.membersList?.length >= item.maxMembers ? ' (모집마감)' : ''}
+                    </Text>
                 </View>
             </TouchableOpacity>
         );

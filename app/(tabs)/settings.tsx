@@ -37,72 +37,36 @@ export default function SettingsScreen() {
             {/* 🔷 사용자 정보 카드 */}
             {user && (
                 <View style={{
-                    backgroundColor: colors.card,
+                    backgroundColor: colors.surface,
                     borderRadius: radius.lg,
                     padding: spacing.lg,
                     marginBottom: spacing.lg,
-                    shadowColor: '#000',
+                    shadowColor: mode === 'light' ? '#000' : 'transparent',
                     shadowOpacity: 0.05,
-                    shadowRadius: 4,
-                    elevation: 2
+                    shadowRadius: 6,
+                    elevation: 2,
                 }}>
-                    <Text style={{ fontSize: font.body, color: colors.text }}>이름: {user.name}</Text>
-                    <Text style={{ fontSize: font.body, color: colors.text }}>이메일: {user.email}</Text>
-                    <Text style={{ fontSize: font.body, color: colors.text }}>캠퍼스: {user.campus}</Text>
-                    <Text style={{ fontSize: font.body, color: colors.text }}>소속: {user.division}</Text>
-                    <Text style={{ fontSize: font.body, color: colors.text }}>역할: {user.role}</Text>
+                    <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: spacing.sm, color: colors.primary }}>
+                        🙋 내 정보
+                    </Text>
+
+                    {[
+                        { label: '이름', value: user.name },
+                        { label: '이메일', value: user.email },
+                        { label: '캠퍼스', value: user.campus },
+                        { label: '소속', value: user.division },
+                        { label: '역할', value: user.role },
+                    ].map((item, idx) => (
+                        <View key={idx} style={{ flexDirection: 'row', marginBottom: 6 }}>
+                            <Text style={{ fontWeight: '600', color: colors.subtext, width: 70 }}>{item.label}</Text>
+                            <Text style={{ color: colors.text }}>{item.value}</Text>
+                        </View>
+                    ))}
                 </View>
             )}
 
-            {/* 🔆 다크모드 전환 */}
-            {/*<View style={{*/}
-            {/*    backgroundColor: colors.card,*/}
-            {/*    padding: spacing.lg,*/}
-            {/*    borderRadius: radius.lg,*/}
-            {/*    marginBottom: spacing.lg,*/}
-            {/*    alignItems: 'center'*/}
-            {/*}}>*/}
-            {/*    <Text style={{ fontSize: font.body, fontWeight: '600', color: colors.text }}>🌓 다크모드 전환</Text>*/}
-            {/*    <View style={{*/}
-            {/*        flexDirection: 'row',*/}
-            {/*        backgroundColor: colors.border,*/}
-            {/*        borderRadius: radius.xl,*/}
-            {/*        marginTop: spacing.sm,*/}
-            {/*        overflow: 'hidden',*/}
-            {/*    }}>*/}
-            {/*        <Pressable*/}
-            {/*            style={{*/}
-            {/*                flex: 1,*/}
-            {/*                paddingVertical: spacing.sm,*/}
-            {/*                alignItems: 'center',*/}
-            {/*                backgroundColor: !isDark ? colors.primary : colors.surface,*/}
-            {/*            }}*/}
-            {/*            onPress={() => { if (isDark) toggleTheme(); }}*/}
-            {/*        >*/}
-            {/*            <Text style={{*/}
-            {/*                fontWeight: '600',*/}
-            {/*                color: !isDark ? '#ffffff' : colors.text*/}
-            {/*            }}>Light</Text>*/}
-            {/*        </Pressable>*/}
-
-            {/*        <Pressable*/}
-            {/*            style={{*/}
-            {/*                flex: 1,*/}
-            {/*                paddingVertical: spacing.sm,*/}
-            {/*                alignItems: 'center',*/}
-            {/*                backgroundColor: isDark ? colors.primary : colors.surface,*/}
-            {/*            }}*/}
-            {/*            onPress={() => { if (!isDark) toggleTheme(); }}*/}
-            {/*        >*/}
-            {/*            <Text style={{*/}
-            {/*                fontWeight: '600',*/}
-            {/*                color: isDark ? '#ffffff' : colors.text*/}
-            {/*            }}>Dark</Text>*/}
-            {/*        </Pressable>*/}
-            {/*    </View>*/}
-            {/*</View>*/}
-
             <View style={{ alignItems: 'center', marginVertical: spacing.md }}>
+                <Text style={{ fontSize: font.body, fontWeight: '600', color: colors.text }}>🌓 다크모드 전환</Text>
                 <ThemeToggle />
             </View>
 

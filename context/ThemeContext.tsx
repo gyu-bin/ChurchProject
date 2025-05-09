@@ -1,19 +1,40 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+// context/ThemeContext.tsx
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Appearance } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type ThemeMode = 'light' | 'dark';
 
-interface ThemeContextType {
+interface ThemeContextValue {
     mode: ThemeMode;
     toggleTheme: () => void;
 }
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const ThemeContext = createContext<ThemeContextValue>({
+    mode: 'light',
+    toggleTheme: () => {},
+});
 
-export const ThemeProviderCustom = ({ children }: { children: ReactNode }) => {
+export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [mode, setMode] = useState<ThemeMode>('light');
 
-    const toggleTheme = () => {
-        setMode((prev) => (prev === 'light' ? 'dark' : 'light'));
+    useEffect(() => {
+        const loadTheme = async () => {
+            const saved = await AsyncStorage.getItem('themeMode');
+            if (saved === 'dark' || saved === 'light') {
+                setMode(saved);
+            } else {
+                const systemTheme = Appearance.getColorScheme();
+                setMode(systemTheme === 'dark' ? 'dark' : 'light');
+            }
+        };
+        loadTheme();
+    }, []);
+
+    const toggleTheme = async () => {
+        const newMode = mode === 'light' ? 'dark' : 'light';
+        setMode(newMode);
+        await AsyncStorage.setItem('themeMode', newMode);
     };
 
     return (
@@ -23,8 +44,4 @@ export const ThemeProviderCustom = ({ children }: { children: ReactNode }) => {
     );
 };
 
-export const useAppTheme = () => {
-    const context = useContext(ThemeContext);
-    if (!context) throw new Error('useAppTheme must be used within ThemeProviderCustom');
-    return context;
-};
+export const useAppTheme = () => useContext(ThemeContext);

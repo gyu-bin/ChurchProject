@@ -5,7 +5,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     collection, getDocs, query, where, doc,
-    updateDoc, deleteDoc, arrayUnion, increment, onSnapshot
+    updateDoc, deleteDoc, arrayUnion, increment, onSnapshot,orderBy
 } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import { format } from 'date-fns';
@@ -40,20 +40,34 @@ export default function NotificationsScreen() {
 
         const q = query(collection(db, 'notifications'), where('to', '==', user.email));
         const unsubscribe = onSnapshot(q, (snap) => {
-            const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const list = snap.docs
+                .map(doc => {
+                    const data = doc.data() as {
+                        createdAt?: { seconds: number };
+                        [key: string]: any;
+                    };
+                    return { id: doc.id, ...data };
+                })
+                .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0)); // 최신순 정렬
             setNotifications(list);
         });
 
         return () => unsubscribe();
     }, [user]);
 
-    const handleNotificationPress = (notification: any) => {
+    const handleNotificationPress = async (notification: any) => {
         if (notification.type === 'team_join_request') {
             setSelectedNotification(notification);
             setModalVisible(true);
         } else if (notification.link) {
-            router.push(notification.link);
-            deleteDoc(doc(db, 'notifications', notification.id));
+            try {
+                router.push(notification.link);
+            } catch (e) {
+                console.error('❌ 라우팅 에러:', e);
+            } finally {
+                // ✅ 알림 삭제
+                await deleteDoc(doc(db, 'notifications', notification.id));
+            }
         }
     };
 
@@ -79,6 +93,10 @@ export default function NotificationsScreen() {
                     message: `"${selectedNotification.teamName}" 모임에 가입이 승인되었습니다.`,
                     type: 'team_join_approved',
                     link: '/teams',
+                    teamId: selectedNotification.teamId,
+                    teamName: selectedNotification.teamName,
+                    applicantEmail: selectedNotification.applicantEmail,
+                    applicantName: selectedNotification.applicantName,
                 }));
 
                 const tokenSnap = await getDocs(query(
@@ -96,6 +114,7 @@ export default function NotificationsScreen() {
                 }
 
                 Alert.alert('✅ 승인 완료', `${selectedNotification.applicantName}님이 소모임에 가입되었습니다.`);
+                router.replace('/');
             }
 
             await Promise.all([...firestorePromises, ...pushPromises]);
@@ -112,10 +131,6 @@ export default function NotificationsScreen() {
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, padding: spacing.lg }}>
-            <Text style={{ fontSize: font.heading, fontWeight: 'bold', marginBottom: spacing.md, color: colors.text }}>
-                📢 알림 ({notifications.length})
-            </Text>
-
             <FlatList
                 data={notifications}
                 keyExtractor={(item) => item.id}
@@ -125,18 +140,40 @@ export default function NotificationsScreen() {
                         style={{
                             backgroundColor: colors.surface,
                             padding: spacing.md,
-                            borderRadius: radius.md,
-                            marginBottom: spacing.sm,
-                            borderWidth: 1,
-                            borderColor: colors.border,
+                            borderRadius: 12,
+                            marginBottom: spacing.md,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            shadowColor: mode === 'light' ? '#000' : 'transparent',
+                            shadowOpacity: 0.05,
+                            shadowRadius: 6,
+                            elevation: 3,
                         }}
                     >
-                        <Text style={{ fontSize: font.body, color: colors.text }}>{item.message}</Text>
-                        {item.createdAt?.seconds && (
-                            <Text style={{ fontSize: font.caption, color: colors.subtext }}>
-                                {format(new Date(item.createdAt.seconds * 1000), 'yyyy-MM-dd HH:mm')}
+                        {/* 아이콘 */}
+                        <View style={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: 20,
+                            backgroundColor: mode === 'dark' ? colors.border : '#f1f5f9',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            marginRight: spacing.md,
+                        }}>
+                            <Text style={{ fontSize: 18 }}>📢</Text>
+                        </View>
+
+                        {/* 텍스트 */}
+                        <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text }}>
+                                {item.message}
                             </Text>
-                        )}
+                            {item.createdAt?.seconds && (
+                                <Text style={{ fontSize: 13, color: colors.subtext, marginTop: 4 }}>
+                                    {format(new Date(item.createdAt.seconds * 1000), 'yyyy-MM-dd HH:mm')}
+                                </Text>
+                            )}
+                        </View>
                     </TouchableOpacity>
                 )}
                 ListEmptyComponent={<Text style={{ textAlign: 'center', color: colors.subtext }}>알림이 없습니다.</Text>}
