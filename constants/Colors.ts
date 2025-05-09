@@ -1,5 +1,3 @@
-// constants/theme.ts
-
 export const LightTheme = {
   colors: {
     background: '#f9fafb',
@@ -49,4 +47,9 @@ export const DarkTheme = {
   spacing: LightTheme.spacing,
   radius: LightTheme.radius,
   font: LightTheme.font,
+};
+
+export const Colors = {
+  light: LightTheme.colors,
+  dark: DarkTheme.colors,
 };

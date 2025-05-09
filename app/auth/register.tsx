@@ -132,12 +132,10 @@ export default function RegisterSlideScreen() {
                         {/* password */}
                         <View style={styles.slide}>
                             <TextInput
-                                ref={(ref) => { inputRefs.current['password'] = ref }}
                                 style={styles.input}
                                 placeholder="비밀번호"
                                 placeholderTextColor="#666"
-                                // secureTextEntry
-                                value={form.password}
+                                value={'●'.repeat(form.password.length)} // 글자 수만큼 ●로 가려서 표시
                                 onChangeText={(text) => updateField('password', text)}
                                 textContentType="none"
                                 autoComplete="off"
@@ -154,7 +152,7 @@ export default function RegisterSlideScreen() {
                                 style={styles.input}
                                 placeholder="비밀번호 확인"
                                 placeholderTextColor="#666"
-                                value={form.confirm}
+                                value={'●'.repeat(form.confirm.length)} // 글자 수만큼 ●로 가려서 표시
                                 onChangeText={(text) => updateField('confirm', text)}
                                 textContentType="none"
                                 autoComplete="off"

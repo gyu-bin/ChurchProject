@@ -162,7 +162,8 @@ export default function HomeScreen() {
                                 to: pastor.email,
                                 message: `${user?.name ?? '익명'}님의 기도제목이 등록되었습니다.`,
                                 type: 'prayer_private',
-                                link: '/pastor?tab=prayers',
+                                link: '/pastor/pastor', // ✅ 쿼리 없이 경로만
+                                tab: 'prayers',         // ✅ 별도 필드로 전달
                             })
                         );
                     }

@@ -25,6 +25,7 @@ export async function sendNotification({
                                            message,
                                            type,
                                            link,
+                                           tab, // ✅ 추가
                                            teamId,
                                            teamName,
                                            applicantEmail,
@@ -34,6 +35,7 @@ export async function sendNotification({
     message: string;
     type: NotificationType;
     link?: string;
+    tab?: string; // ✅ 타입 정의에 추가
     teamId?: string;
     teamName?: string;
     applicantEmail?: string;
@@ -47,6 +49,7 @@ export async function sendNotification({
             message,
             type,
             link: link ?? null,
+            tab: tab ?? null, // ✅ Firestore에 함께 저장
             teamId: teamId ?? null,
             teamName: teamName ?? null,
             applicantEmail: applicantEmail ?? null,

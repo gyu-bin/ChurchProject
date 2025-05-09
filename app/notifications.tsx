@@ -60,16 +60,21 @@ export default function NotificationsScreen() {
             setSelectedNotification(notification);
             setModalVisible(true);
         } else {
-            // ✅ 링크가 있는 경우만 푸시, 없는 경우에도 삭제
             if (notification.link) {
                 try {
-                    router.push(notification.link);
+                    if (notification.link === '/pastor/pastor') {
+                        router.push({
+                            pathname: '/pastor/pastor',
+                            params: { tab: 'prayers' },
+                        });
+                    } else {
+                        router.push(notification.link);
+                    }
                 } catch (e) {
                     console.error('❌ 라우팅 에러:', e);
                 }
             }
 
-            // ✅ 승인 알림 포함 모든 일반 알림 삭제 처리
             await deleteDoc(doc(db, 'notifications', notification.id));
         }
     };
