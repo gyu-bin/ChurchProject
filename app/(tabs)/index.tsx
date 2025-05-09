@@ -119,31 +119,53 @@ export default function HomeScreen() {
                 createdAt: new Date(),
             });
 
-            // 교역자용 기도제목일 경우 알림 전송
             if (visibility === 'pastor') {
                 const q = query(collection(db, 'users'), where('role', '==', '교역자'));
                 const snap = await getDocs(q);
 
-                snap.docs.forEach(async (docSnap) => {
+                const notifiedEmails = new Set<string>();
+                const pushTokens = new Set<string>();
+                const notificationPromises: Promise<void>[] = [];
+
+                for (const docSnap of snap.docs) {
                     const pastor = docSnap.data();
 
-                    // 1. 알림 DB 저장
-                    await sendNotification({
-                        to: pastor.email,
-                        message: `${user?.name ?? '익명'}님의 기도제목이 등록되었습니다.`,
-                        type: 'prayer_private',
-                        link: '/pastor?tab=prayers',
-                    });
+                    // Firestore 알림 저장 (중복 방지)
+                    if (pastor?.email && !notifiedEmails.has(pastor.email)) {
+                        notifiedEmails.add(pastor.email);
 
-                    // 2. 푸시 알림
-                    if (pastor.expoPushToken) {
-                        await sendPushNotification({
-                            to: pastor.expoPushToken,
-                            title: '🙏 새로운 기도제목',
-                            body: `${user?.name ?? '익명'}님의 기도제목`,
-                        });
+                        notificationPromises.push(
+                            sendNotification({
+                                to: pastor.email,
+                                message: `${user?.name ?? '익명'}님의 기도제목이 등록되었습니다.`,
+                                type: 'prayer_private',
+                                link: '/pastor?tab=prayers',
+                            })
+                        );
                     }
-                });
+
+                    // 푸시 토큰 수집 (유효성 검사 포함)
+                    if (
+                        pastor?.expoPushToken &&
+                        typeof pastor.expoPushToken === 'string' &&
+                        pastor.expoPushToken.startsWith('ExponentPushToken')
+                    ) {
+                        pushTokens.add(pastor.expoPushToken);
+                    }
+                }
+
+                // 알림 저장 병렬 처리
+                await Promise.all(notificationPromises);
+
+                // 푸시 전송 (중복 제거된 토큰만)
+                const uniqueTokens = Array.from(pushTokens);
+                if (uniqueTokens.length > 0) {
+                    await sendPushNotification({
+                        to: uniqueTokens,
+                        title: '🙏 새로운 기도제목',
+                        body: `${user?.name ?? '익명'}님의 기도제목`,
+                    });
+                }
             }
 
             Alert.alert('제출 완료', '기도제목이 제출되었습니다.');
@@ -152,6 +174,7 @@ export default function HomeScreen() {
             setContent('');
             setVisibility('all');
             fetchPrayers();
+            router.replace('/');
         } catch (err: any) {
             Alert.alert('제출 실패', err.message);
         }

@@ -16,6 +16,8 @@ import { db } from '@/firebase/config';
 import { doc, setDoc } from 'firebase/firestore';
 import uuid from 'react-native-uuid';
 import { useRouter } from 'expo-router';
+import { registerPushToken } from '@/services/registerPushToken';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -49,14 +51,18 @@ export default function RegisterSlideScreen() {
 
         if (step === steps.length - 1) {
             try {
-                const userId = uuid.v4().toString();
-                await setDoc(doc(db, 'users', form.email), {
+                const userData = {
                     ...form,
                     createdAt: new Date(),
-                });
-                Alert.alert('가입 완료', '이제 로그인해 주세요.');
-                // router.replace('/auth/login');
-                setTimeout(() => router.replace('/auth/login'), 300);
+                };
+
+                await setDoc(doc(db, 'users', form.email), userData);
+
+                await AsyncStorage.setItem('currentUser', JSON.stringify(userData));
+                await registerPushToken(); // ✅ 푸시토큰 등록 시도
+
+                Alert.alert('가입 완료', '환영합니다!');
+                setTimeout(() => router.replace('/'), 300);
             } catch (e: any) {
                 Alert.alert('회원가입 실패', e.message);
             }

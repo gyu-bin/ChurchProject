@@ -4,7 +4,7 @@ import {
     ActivityIndicator, ScrollView
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, query,  collection, where, getDocs} from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import { getCurrentUser } from '@/services/authService';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
@@ -33,17 +33,20 @@ export default function TeamDetail() {
         };
         fetch();
     }, []);
+    /* if (team.membersList?.includes(user.email)) {
+               Alert.alert('참여 불가', '이미 가입된 모임입니다.');
+               return;
+           }*/
 
     const handleJoin = async () => {
         if (!team || !user) return;
-        if (team.membersList?.includes(user.email)) {
-            Alert.alert('참여 불가', '이미 가입된 모임입니다.');
-            return;
-        }
+
         if ((team.members ?? 0) >= (team.capacity ?? 99)) {
             Alert.alert('인원 초과', '모집이 마감되었습니다.');
             return;
         }
+
+        // 1. Firestore 알림 등록
         await sendNotification({
             to: team.leaderEmail,
             message: `${user.name}님이 "${team.name}" 모임에 가입 신청했습니다.`,
@@ -54,13 +57,26 @@ export default function TeamDetail() {
             applicantEmail: user.email,
             applicantName: user.name,
         });
-        if (team.leaderPushToken) {
+
+        // 2. leaderEmail 기준 expoTokens에서 푸시 토큰 조회
+        const q = query(collection(db, 'expoTokens'), where('email', '==', team.leaderEmail));
+        const snap = await getDocs(q);
+
+        const tokens: string[] = [];
+        snap.forEach(doc => {
+            const token = doc.data().token;
+            if (token) tokens.push(token);
+        });
+
+        // 3. 푸시 알림 전송 (중복 제거된 토큰)
+        if (tokens.length > 0) {
             await sendPushNotification({
-                to: team.leaderPushToken,
+                to: tokens,
                 title: '🙋 소모임 가입 신청',
                 body: `${user.name}님의 신청`,
             });
         }
+
         Alert.alert('가입 신청 완료', '모임장에게 신청 메시지를 보냈습니다.');
         router.back();
     };

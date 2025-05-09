@@ -66,26 +66,34 @@ export default function CreateTeam() {
 
                 const q = query(collection(db, 'users'), where('role', '==', '교역자'));
                 const snapshot = await getDocs(q);
-                snapshot.docs.forEach(async (docSnap) => {
+
+                const notified = new Set<string>();
+                const firestorePromises: Promise<void>[] = [];
+                const pushPromises: Promise<void>[] = [];
+
+                snapshot.docs.forEach((docSnap) => {
                     const pastor = docSnap.data();
 
-                    if (pastor.email === creatorEmail) return;
+                    if (pastor.email === creatorEmail || notified.has(pastor.email)) return;
+                    notified.add(pastor.email);
 
-                    await sendNotification({
+                    firestorePromises.push(sendNotification({
                         to: pastor.email,
                         message: `${leader}님이 "${name}" 소모임을 생성했습니다.`,
                         type: 'team_create',
                         link: '/pastor?tab=teams',
-                    });
+                    }));
 
                     if (pastor.expoPushToken) {
-                        await sendPushNotification({
+                        pushPromises.push(sendPushNotification({
                             to: pastor.expoPushToken,
                             title: '📌 소모임 승인 요청',
-                            body: `${leader}님의 소모임 승인 요청`,
-                        });
+                            body: `${leader}님의 소모임 생성 승인 요청`,
+                        }));
                     }
                 });
+
+                await Promise.all([...firestorePromises, ...pushPromises]);
             }
 
             router.replace('/teams');

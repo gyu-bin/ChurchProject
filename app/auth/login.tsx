@@ -7,6 +7,9 @@ import {
     Alert,
     StyleSheet,
     SafeAreaView,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { login } from '@/services/authService';
@@ -18,14 +21,14 @@ export default function LoginScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const router = useRouter();
-    const { reload } = useAuth(); // ✅ reload 훅 불러오기
+    const { reload } = useAuth();
 
     const handleLogin = async () => {
         try {
             const user = await login(email.trim(), password.trim());
             await AsyncStorage.setItem('currentUser', JSON.stringify(user));
             await registerPushToken();
-            await reload(); // ✅ 로그인 직후 상태 갱신
+            await reload();
             router.replace('/');
         } catch (error: any) {
             Alert.alert('로그인 실패', error.message);
@@ -34,42 +37,49 @@ export default function LoginScreen() {
 
     return (
         <SafeAreaView style={styles.wrapper}>
-            <View style={styles.container}>
-                <Text style={styles.title}>로그인</Text>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                style={{ flex: 1 }}
+            >
+                <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
+                    <View style={styles.container}>
+                        <Text style={styles.title}>로그인</Text>
 
-                <View style={styles.inputGroup}>
-                    <TextInput
-                        placeholder="이메일"
-                        value={email}
-                        onChangeText={setEmail}
-                        style={styles.input}
-                        autoCapitalize="none"
-                        keyboardType="email-address"
-                        placeholderTextColor="#9ca3af"
-                    />
-                </View>
+                        <View style={styles.inputGroup}>
+                            <TextInput
+                                placeholder="이메일"
+                                value={email}
+                                onChangeText={setEmail}
+                                style={styles.input}
+                                autoCapitalize="none"
+                                keyboardType="email-address"
+                                placeholderTextColor="#9ca3af"
+                            />
+                        </View>
 
-                <View style={styles.inputGroup}>
-                    <TextInput
-                        placeholder="비밀번호"
-                        value={password}
-                        onChangeText={setPassword}
-                        style={styles.input}
-                        secureTextEntry
-                        placeholderTextColor="#9ca3af"
-                    />
-                </View>
+                        <View style={styles.inputGroup}>
+                            <TextInput
+                                placeholder="비밀번호"
+                                value={password}
+                                onChangeText={setPassword}
+                                style={styles.input}
+                                secureTextEntry
+                                placeholderTextColor="#9ca3af"
+                            />
+                        </View>
 
-                <TouchableOpacity style={styles.button} onPress={handleLogin}>
-                    <Text style={styles.buttonText}>로그인</Text>
-                </TouchableOpacity>
+                        <TouchableOpacity style={styles.button} onPress={handleLogin}>
+                            <Text style={styles.buttonText}>로그인</Text>
+                        </TouchableOpacity>
 
-                <TouchableOpacity onPress={() => router.push('/auth/register')}>
-                    <Text style={styles.linkText}>
-                        아직 회원이 아니신가요? <Text style={styles.link}>회원가입</Text>
-                    </Text>
-                </TouchableOpacity>
-            </View>
+                        <TouchableOpacity onPress={() => router.push('/auth/register')}>
+                            <Text style={styles.linkText}>
+                                아직 회원이 아니신가요? <Text style={styles.link}>회원가입</Text>
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </ScrollView>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
@@ -78,6 +88,9 @@ const styles = StyleSheet.create({
     wrapper: {
         flex: 1,
         backgroundColor: '#fff',
+    },
+    scrollContainer: {
+        flexGrow: 1,
     },
     container: {
         flex: 1,

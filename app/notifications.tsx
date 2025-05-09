@@ -64,6 +64,9 @@ export default function NotificationsScreen() {
         }
 
         try {
+            const firestorePromises: Promise<void>[] = [];
+            const pushPromises: Promise<void>[] = [];
+
             if (approve) {
                 const teamRef = doc(db, 'teams', selectedNotification.teamId);
                 await updateDoc(teamRef, {
@@ -71,32 +74,36 @@ export default function NotificationsScreen() {
                     members: increment(1),
                 });
 
-                await sendNotification({
+                firestorePromises.push(sendNotification({
                     to: selectedNotification.applicantEmail,
                     message: `"${selectedNotification.teamName}" 모임에 가입이 승인되었습니다.`,
                     type: 'team_join_approved',
                     link: '/teams',
-                });
+                }));
 
                 const tokenSnap = await getDocs(query(
                     collection(db, 'expoTokens'),
                     where('email', '==', selectedNotification.applicantEmail)
                 ));
+
                 if (!tokenSnap.empty) {
                     const token = tokenSnap.docs[0].data().token;
-                    await sendPushNotification({
+                    pushPromises.push(sendPushNotification({
                         to: token,
                         title: '🙌 가입 승인 완료',
                         body: `"${selectedNotification.teamName}" 모임에 가입되었어요.`,
-                    });
+                    }));
                 }
 
                 Alert.alert('✅ 승인 완료', `${selectedNotification.applicantName}님이 소모임에 가입되었습니다.`);
             }
 
+            await Promise.all([...firestorePromises, ...pushPromises]);
+
             await deleteDoc(doc(db, 'notifications', selectedNotification.id));
             setModalVisible(false);
             setSelectedNotification(null);
+
         } catch (e) {
             console.error('❌ 승인 처리 에러:', e);
             Alert.alert('오류', '처리에 실패했습니다.');
