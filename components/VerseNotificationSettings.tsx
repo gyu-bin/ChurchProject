@@ -69,24 +69,27 @@ export default function PushDevotional() {
         const minutes = tempTime.getMinutes();
         setTime(tempTime);
         setShowPicker(false);
-        await AsyncStorage.setItem('devotionalTime', tempTime.toString());
 
+        await AsyncStorage.setItem('devotionalTime', tempTime.toString());
         await Notifications.cancelAllScheduledNotificationsAsync();
 
         const randomVerse: Verses = verses[Math.floor(Math.random() * verses.length)];
 
+        // ✅ 알림은 즉시 발송되지 않으며, 지정된 시간에만 뜸
         await Notifications.scheduleNotificationAsync({
             content: {
                 title: '📖 오늘의 말씀',
                 body: `${randomVerse.verse} (${randomVerse.reference})`,
             },
             trigger: {
+                type: 'calendar',
                 hour: hours,
                 minute: minutes,
                 repeats: true,
-            } as Notifications.CalendarTriggerInput
+            } as Notifications.CalendarTriggerInput,
         });
 
+        // ❌ 알림을 직접 보내는 코드 없음 → 즉시 알림 뜨지 않음
         Alert.alert('설정 완료', `${hours}시 ${minutes}분에 랜덤 말씀 알림이 설정되었습니다.`);
     };
 
@@ -149,7 +152,8 @@ export default function PushDevotional() {
                         <DateTimePicker
                             mode="time"
                             value={tempTime}
-                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                            display="spinner" // ✅ iOS 스피너 형태
+                            themeVariant={isDark ? 'dark' : 'light'} // ✅ 밝기 모드에 따라 명시
                             onChange={(_, selectedTime) => {
                                 if (selectedTime) setTempTime(selectedTime);
                             }}
