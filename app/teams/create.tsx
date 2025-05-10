@@ -22,7 +22,6 @@ export default function CreateTeam() {
     const router = useRouter();
 
     const { colors, spacing, radius, font } = useDesign();
-    const { mode } = useAppTheme();
 
     useEffect(() => {
         AsyncStorage.getItem('currentUser').then((raw) => {
@@ -59,10 +58,13 @@ export default function CreateTeam() {
                     approved: true,
                 });
             } else {
-                await addDoc(collection(db, 'teams'), {
+                // 🔥 소모임 생성 → teamRef 반환
+                const teamRef = await addDoc(collection(db, 'teams'), {
                     ...baseData,
                     approved: false,
                 });
+
+                const newTeamId = teamRef.id; // ✅ 여기서 ID 추출
 
                 const q = query(collection(db, 'users'), where('role', '==', '교역자'));
                 const snapshot = await getDocs(q);
@@ -82,6 +84,8 @@ export default function CreateTeam() {
                         message: `${leader}님이 "${name}" 소모임을 생성했습니다.`,
                         type: 'team_create',
                         link: '/pastor?tab=teams',
+                        teamId: newTeamId, // ✅ 이제 정상적으로 전달됨
+                        teamName: name,     // ✅ 이 값도 추가 추천
                     }));
 
                     if (pastor.expoPushToken) {

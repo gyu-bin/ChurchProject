@@ -20,10 +20,8 @@ Notifications.setNotificationHandler({
 });
 
 export default function RootLayoutInner() {
-  const colorScheme = useColorScheme();
   const { user, loading } = useAuth();
   const pathname = usePathname();
-
   const { mode } = useAppTheme();
 
   const [fontsLoaded] = useFonts({
@@ -32,13 +30,13 @@ export default function RootLayoutInner() {
 
   if (!fontsLoaded || loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#2563eb" />
-      </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#2563eb" />
+        </View>
     );
   }
 
-  if (!user && pathname !== '/intro' && pathname !== '/auth/login' && pathname !== '/auth/register') {
+  if (!user && pathname !== '/intro' && !pathname.startsWith('/auth')) {
     return <Redirect href="/intro" />;
   }
 
@@ -47,14 +45,14 @@ export default function RootLayoutInner() {
   }
 
   return (
-    <ThemeProvider value={mode === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="auth/login" options={{ headerShown: false }} />
-        <Stack.Screen name="auth/register" options={{ headerShown: false }} />
-        <Stack.Screen name="intro" options={{ headerShown: false }} />
-      </Stack>
-      <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
-    </ThemeProvider>
+      <ThemeProvider value={mode === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="auth/login" options={{ headerShown: false }} />
+          <Stack.Screen name="auth/register" options={{ headerShown: false }} />
+          <Stack.Screen name="intro" options={{ headerShown: false }} />
+        </Stack>
+        <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
+      </ThemeProvider>
   );
 }

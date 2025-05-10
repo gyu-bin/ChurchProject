@@ -7,7 +7,8 @@ import catechismData from '@/assets/catechism/catechism.json';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDesign } from '@/context/DesignSystem';
 import { useAppTheme } from '@/context/ThemeContext';
-
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Platform } from 'react-native';
 type CatechismItem = {
     question_number: number;
     question: string;
@@ -22,7 +23,7 @@ export default function Catechism() {
 
     const { colors, font, spacing, radius } = useDesign();
     const { mode } = useAppTheme();
-
+    const insets = useSafeAreaInsets();
     useEffect(() => {
         setData(catechismData);
         loadLastSeen();
@@ -46,7 +47,8 @@ export default function Catechism() {
     const selectedItem = data.find((item) => item.question_number === selected);
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: '8%' }}>
+            {/*<SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>*/}
             <TouchableOpacity
                 onPress={() => setModalVisible(true)}
                 style={{

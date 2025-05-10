@@ -4,7 +4,7 @@ import {
     ActivityIndicator, ScrollView
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { doc, getDoc, query, collection, where, getDocs, updateDoc, increment, arrayRemove } from 'firebase/firestore';
+import { doc, getDoc, query, collection, where, getDocs, updateDoc, increment, arrayRemove, deleteDoc } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import { getCurrentUser } from '@/services/authService';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
@@ -32,8 +32,12 @@ export default function TeamDetail() {
 
     const { colors, font, spacing, radius } = useDesign();
     const { mode } = useAppTheme();
-
+    const [currentUser, setCurrentUser] = useState<any>(null);
     const isCreator = team?.leaderEmail === user?.email;
+
+    useEffect(() => {
+        getCurrentUser().then(setCurrentUser);
+    }, []);
 
     useEffect(() => {
         const fetch = async () => {
@@ -148,6 +152,27 @@ export default function TeamDetail() {
         ]);
     };
 
+    const deleteTeam = async (id: string) => {
+        Alert.alert('삭제 확인', '정말로 이 소모임을 삭제하시겠습니까?', [
+            { text: '취소', style: 'cancel' },
+            {
+                text: '삭제',
+                style: 'destructive',
+                onPress: async () => {
+                    try {
+                        await deleteDoc(doc(db, 'teams', id));
+                        setTeam(null); // ❗단일 객체니까 이렇게 처리
+                        Alert.alert('삭제 완료', '소모임이 삭제되었습니다.');
+                        router.replace('/teams'); // 삭제 후 소모임 목록으로 이동
+                    } catch (e) {
+                        Alert.alert('오류', '삭제에 실패했습니다.');
+                        console.error(e);
+                    }
+                },
+            },
+        ]);
+    };
+
     if (loading) {
         return (
             <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
@@ -243,13 +268,38 @@ export default function TeamDetail() {
                     </View>
                 )}
 
-                {!isFull && !isCreator && (
+                {isCreator && (
+                    <TouchableOpacity
+                        onPress={() => deleteTeam(team.id)}
+                        style={{
+                            backgroundColor: colors.error,
+                            paddingVertical: spacing.md,
+                            borderRadius: radius.md,
+                            alignItems: 'center',
+                            marginTop: spacing.md,
+                        }}
+                    >
+                        <Text style={{ color: '#fff', fontSize: font.body, fontWeight: 'bold' }}>
+                            🗑️ 모임 삭제하기
+                        </Text>
+                    </TouchableOpacity>
+                )}
+
+                {!isFull && !isCreator && !team.membersList?.includes(user.email) && (
                     <TouchableOpacity
                         onPress={handleJoin}
                         disabled={isFull}
-                        style={{ backgroundColor: isFull ? colors.border : colors.primary, paddingVertical: spacing.md, borderRadius: radius.md, alignItems: 'center', marginTop: spacing.sm }}
+                        style={{
+                            backgroundColor: isFull ? colors.border : colors.primary,
+                            paddingVertical: spacing.md,
+                            borderRadius: radius.md,
+                            alignItems: 'center',
+                            marginTop: spacing.sm,
+                        }}
                     >
-                        <Text style={{ color: '#fff', fontSize: font.body, fontWeight: '600' }}>{isFull ? '모집마감' : '가입 신청하기'}</Text>
+                        <Text style={{ color: '#fff', fontSize: font.body, fontWeight: '600' }}>
+                            {isFull ? '모집마감' : '가입 신청하기'}
+                        </Text>
                     </TouchableOpacity>
                 )}
             </ScrollView>

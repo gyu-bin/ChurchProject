@@ -15,6 +15,8 @@ import PrayerModal from '../prayerModal';
 import { StatusBar } from 'expo-status-bar';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useDesign } from '@/context/DesignSystem';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Platform } from 'react-native';
 
 const youtubeIds = ["hWvJdJ3Da6o", "GT5qxS6ozWU", "E3jJ02NDYCY"];
 
@@ -46,6 +48,8 @@ export default function HomeScreen() {
     const [publicPrayers, setPublicPrayers] = useState<any[]>([]);
     const [user, setUser] = useState<any>(null);
     const [notifications, setNotifications] = useState<any[]>([]);
+
+    const insets = useSafeAreaInsets();
 
 
     const screenWidth = Dimensions.get('window').width;
@@ -205,7 +209,7 @@ export default function HomeScreen() {
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background,paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>
             <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
             <FlatList
                 ListHeaderComponent={(

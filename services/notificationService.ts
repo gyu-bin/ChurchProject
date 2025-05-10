@@ -79,6 +79,9 @@ export async function sendPushNotification({
             sound: 'default',
             title,
             body,
+            data: {
+                screen: 'notifications', // ✅ 알림 클릭 시 이동할 화면
+            },
         }));
 
         const response = await fetch('https://exp.host/--/api/v2/push/send', {

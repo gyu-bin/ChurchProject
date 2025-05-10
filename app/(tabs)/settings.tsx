@@ -8,6 +8,8 @@ import { useAppTheme } from '@/context/ThemeContext';
 import { useDesign } from '@/context/DesignSystem';
 import ThemeToggle from "@/components/ThemeToggle";
 import PushSettings from "@/components/VerseNotificationSettings";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Platform } from 'react-native';
 
 export default function SettingsScreen() {
     const [user, setUser] = useState<any>(null);
@@ -15,6 +17,8 @@ export default function SettingsScreen() {
     const { mode, toggleTheme } = useAppTheme();
     const isDark = mode === 'dark';
     const { colors, spacing, font, radius } = useDesign();
+    const insets = useSafeAreaInsets();
+    const horizontalMargin = Platform.OS === 'ios' ? 20 : 0;
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -30,8 +34,9 @@ export default function SettingsScreen() {
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, padding: spacing.lg }}>
-            <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.text, marginBottom: spacing.lg }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, padding: spacing.lg, paddingTop: '10%'}}>
+        {/*<SafeAreaView style={{ flex: 1, backgroundColor: colors.background, padding: spacing.lg, paddingTop: '10%'}}>*/}
+            <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.text, marginBottom: spacing.lg,marginHorizontal: horizontalMargin}}>
                 ⚙️ 설정
             </Text>
 
@@ -42,6 +47,7 @@ export default function SettingsScreen() {
                     borderRadius: radius.lg,
                     padding: spacing.lg,
                     marginBottom: spacing.lg,
+                    marginHorizontal: horizontalMargin, // ✅ 아이폰 전용 마진
                     shadowColor: mode === 'light' ? '#000' : 'transparent',
                     shadowOpacity: 0.05,
                     shadowRadius: 6,
@@ -66,10 +72,14 @@ export default function SettingsScreen() {
                 </View>
             )}
 
-            <View style={{ alignItems: 'center', marginVertical: spacing.md }}>
+            <View style={{ alignItems: 'center', marginVertical: spacing.md, marginHorizontal: horizontalMargin }}>
                 <Text style={{ fontSize: font.body, fontWeight: '600', color: colors.text }}>🌓 다크모드 전환</Text>
                 <ThemeToggle />
             </View>
+
+
+
+            <PushSettings></PushSettings>
 
             {/* 🧑‍💼 교역자 전용 페이지 버튼 */}
             {user?.role === '교역자' && (
@@ -80,7 +90,8 @@ export default function SettingsScreen() {
                         paddingVertical: spacing.md,
                         borderRadius: radius.md,
                         alignItems: 'center',
-                        marginBottom: spacing.md
+                        marginBottom: spacing.md,
+                        marginHorizontal: horizontalMargin, // ✅ 아이폰 전용 마진
                     }}
                 >
                     <Text style={{ color: '#fff', fontSize: font.body, fontWeight: '600' }}>
@@ -89,8 +100,6 @@ export default function SettingsScreen() {
                 </TouchableOpacity>
             )}
 
-            <PushSettings></PushSettings>
-
             {/* 🚪 로그아웃 버튼 */}
             <TouchableOpacity
                 onPress={handleLogout}
@@ -98,7 +107,8 @@ export default function SettingsScreen() {
                     backgroundColor: colors.error,
                     paddingVertical: spacing.md,
                     borderRadius: radius.md,
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    marginHorizontal: horizontalMargin, // ✅ 아이폰 전용 마진
                 }}
             >
                 <Text style={{ color: '#fff', fontSize: font.body, fontWeight: 'bold' }}>

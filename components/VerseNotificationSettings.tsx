@@ -22,7 +22,7 @@ export default function PushDevotional() {
     const [showPicker, setShowPicker] = useState(false);
     const [time, setTime] = useState(new Date());
     const [tempTime, setTempTime] = useState(new Date());
-
+    const horizontalMargin = Platform.OS === 'ios' ? 20 : 0;
 // 🔁 변경 후
     const { mode } = useAppTheme();
     const isDark = mode === 'dark';
@@ -100,6 +100,7 @@ export default function PushDevotional() {
                 padding: 16,
                 borderRadius: 12,
                 marginVertical: 12,
+                marginHorizontal: horizontalMargin, // ✅ 아이폰 전용 마진
             }}
         >
             <Text style={{ fontSize: 18, fontWeight: 'bold', color: textColor, marginBottom: 12 }}>
@@ -153,9 +154,16 @@ export default function PushDevotional() {
                             mode="time"
                             value={tempTime}
                             display="spinner" // ✅ iOS 스피너 형태
+                            is24Hour={false}
                             themeVariant={isDark ? 'dark' : 'light'} // ✅ 밝기 모드에 따라 명시
-                            onChange={(_, selectedTime) => {
-                                if (selectedTime) setTempTime(selectedTime);
+                            onChange={(event, selectedTime) => {
+                                if (event.type === 'set' && selectedTime) {
+                                    setTempTime(selectedTime);
+                                    setShowPicker(false); // ✅ 선택 시 모달 닫기
+                                    handleConfirm(); // ✅ 시간 저장 및 알림 등록
+                                } else {
+                                    setShowPicker(false); // ✅ 취소 시에도 닫기
+                                }
                             }}
                         />
                         <View style={{ flexDirection: 'row', marginTop: 20 }}>

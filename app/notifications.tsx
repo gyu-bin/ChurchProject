@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-    View, Text, FlatList, TouchableOpacity, Modal, Alert, SafeAreaView
+    View, Text, FlatList, TouchableOpacity, Modal, Alert, SafeAreaView,
+    Platform, RefreshControl
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     collection, getDocs, query, where, doc,
-    updateDoc, deleteDoc, arrayUnion, increment, onSnapshot,orderBy
+    updateDoc, deleteDoc, arrayUnion, increment, onSnapshot
 } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import { format } from 'date-fns';
@@ -13,72 +14,100 @@ import { useRouter } from 'expo-router';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useDesign } from '@/context/DesignSystem';
+import Toast from 'react-native-root-toast'; // 🔹 꼭 설치되어 있어야 함
+// ✅ 타입 선언
+interface NotificationItem {
+    id: string;
+    message: string;
+    type: string;
+    link?: string;
+    createdAt?: {
+        seconds: number;
+        nanoseconds: number;
+    };
+    teamId?: string;
+    teamName?: string;
+    applicantEmail?: string;
+    applicantName?: string;
+}
 
 export default function NotificationsScreen() {
     const [user, setUser] = useState<any>(null);
-    const [notifications, setNotifications] = useState<any[]>([]);
-    const [selectedNotification, setSelectedNotification] = useState<any | null>(null);
+    const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+    const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
-    const router = useRouter();
+    const [refreshing, setRefreshing] = useState(false);
 
+    const router = useRouter();
     const { colors, spacing, font, radius } = useDesign();
     const { mode } = useAppTheme();
 
+    // ✅ 유저 정보 로딩
     useEffect(() => {
         const loadUser = async () => {
             const raw = await AsyncStorage.getItem('currentUser');
-            if (raw) {
-                const currentUser = JSON.parse(raw);
-                setUser(currentUser);
-            }
+            if (raw) setUser(JSON.parse(raw));
         };
         loadUser();
     }, []);
 
+    // ✅ 실시간 알림 구독
     useEffect(() => {
         if (!user) return;
-
         const q = query(collection(db, 'notifications'), where('to', '==', user.email));
         const unsubscribe = onSnapshot(q, (snap) => {
-            const list = snap.docs
-                .map(doc => {
-                    const data = doc.data() as {
-                        createdAt?: { seconds: number };
-                        [key: string]: any;
-                    };
-                    return { id: doc.id, ...data };
-                })
-                .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0)); // 최신순 정렬
+            const list: NotificationItem[] = snap.docs
+                .map(doc => ({ id: doc.id, ...doc.data() } as NotificationItem))
+                .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
             setNotifications(list);
         });
-
         return () => unsubscribe();
     }, [user]);
 
-    const handleNotificationPress = async (notification: any) => {
+    // ✅ 수동 새로고침
+    const onRefresh = useCallback(async () => {
+        if (!user) return;
+        try {
+            setRefreshing(true);
+            const q = query(collection(db, 'notifications'), where('to', '==', user.email));
+            const snap = await getDocs(q);
+            const list: NotificationItem[] = snap.docs
+                .map(doc => ({ id: doc.id, ...doc.data() } as NotificationItem))
+                .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
+            setNotifications(list);
+        } catch (e) {
+            console.error('🔄 알림 새로고침 실패:', e);
+        } finally {
+            setRefreshing(false);
+        }
+    }, [user]);
+
+    // ✅ 알림 클릭 시 이동 또는 모달
+    const handleNotificationPress = async (notification: NotificationItem) => {
         if (notification.type === 'team_join_request') {
             setSelectedNotification(notification);
             setModalVisible(true);
-        } else {
-            if (notification.link) {
-                try {
-                    if (notification.link === '/pastor/pastor') {
-                        router.push({
-                            pathname: '/pastor/pastor',
-                            params: { tab: 'prayers' },
-                        });
-                    } else {
-                        router.push(notification.link);
-                    }
-                } catch (e) {
-                    console.error('❌ 라우팅 에러:', e);
-                }
+            return;
+        }
+
+        try {
+            if (notification.type === 'team_create') {
+                router.push({ pathname: '/pastor/pastor', params: { tab: 'teams' } });
+                return;
+            }
+
+            if (notification.link === '/pastor/pastor') {
+                router.push({ pathname: '/pastor/pastor', params: { tab: 'prayers' } });
+                return;
             }
 
             await deleteDoc(doc(db, 'notifications', notification.id));
+        } catch (e) {
+            console.error('❌ 라우팅 에러:', e);
         }
     };
 
+    // ✅ 가입 승인 처리
     const handleApproval = async (approve: boolean) => {
         if (!selectedNotification?.teamId || !selectedNotification?.applicantEmail) {
             Alert.alert('오류', '알림 데이터가 올바르지 않습니다.');
@@ -86,9 +115,6 @@ export default function NotificationsScreen() {
         }
 
         try {
-            const firestorePromises: Promise<void>[] = [];
-            const pushPromises: Promise<void>[] = [];
-
             if (approve) {
                 const teamRef = doc(db, 'teams', selectedNotification.teamId);
                 await updateDoc(teamRef, {
@@ -96,16 +122,12 @@ export default function NotificationsScreen() {
                     members: increment(1),
                 });
 
-                firestorePromises.push(sendNotification({
+                await sendNotification({
                     to: selectedNotification.applicantEmail,
                     message: `"${selectedNotification.teamName}" 모임에 가입이 승인되었습니다.`,
                     type: 'team_join_approved',
                     link: '/teams',
-                    teamId: selectedNotification.teamId,
-                    teamName: selectedNotification.teamName,
-                    applicantEmail: selectedNotification.applicantEmail,
-                    applicantName: selectedNotification.applicantName,
-                }));
+                });
 
                 const tokenSnap = await getDocs(query(
                     collection(db, 'expoTokens'),
@@ -114,23 +136,20 @@ export default function NotificationsScreen() {
 
                 if (!tokenSnap.empty) {
                     const token = tokenSnap.docs[0].data().token;
-                    pushPromises.push(sendPushNotification({
+                    await sendPushNotification({
                         to: token,
                         title: '🙌 가입 승인 완료',
                         body: `"${selectedNotification.teamName}" 모임에 가입되었어요.`,
-                    }));
+                    });
                 }
 
                 Alert.alert('✅ 승인 완료', `${selectedNotification.applicantName}님이 소모임에 가입되었습니다.`);
                 router.replace('/');
             }
 
-            await Promise.all([...firestorePromises, ...pushPromises]);
-
             await deleteDoc(doc(db, 'notifications', selectedNotification.id));
             setModalVisible(false);
             setSelectedNotification(null);
-
         } catch (e) {
             console.error('❌ 승인 처리 에러:', e);
             Alert.alert('오류', '처리에 실패했습니다.');
@@ -142,6 +161,7 @@ export default function NotificationsScreen() {
             <FlatList
                 data={notifications}
                 keyExtractor={(item) => item.id}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 renderItem={({ item }) => (
                     <TouchableOpacity
                         onPress={() => handleNotificationPress(item)}
@@ -160,18 +180,15 @@ export default function NotificationsScreen() {
                     >
                         {/* 아이콘 */}
                         <View style={{
-                            width: 40,
-                            height: 40,
-                            borderRadius: 20,
+                            width: 40, height: 40, borderRadius: 20,
                             backgroundColor: mode === 'dark' ? colors.border : '#f1f5f9',
-                            justifyContent: 'center',
-                            alignItems: 'center',
+                            justifyContent: 'center', alignItems: 'center',
                             marginRight: spacing.md,
                         }}>
                             <Text style={{ fontSize: 18 }}>📢</Text>
                         </View>
 
-                        {/* 텍스트 */}
+                        {/* 메시지 + 시간 */}
                         <View style={{ flex: 1 }}>
                             <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text }}>
                                 {item.message}
@@ -184,52 +201,93 @@ export default function NotificationsScreen() {
                         </View>
                     </TouchableOpacity>
                 )}
-                ListEmptyComponent={<Text style={{ textAlign: 'center', color: colors.subtext }}>알림이 없습니다.</Text>}
+                ListEmptyComponent={
+                    <Text style={{
+                        textAlign: 'center', color: colors.subtext,
+                        paddingTop: Platform.OS === 'android' ? 0 : 20,
+                        fontSize: 20
+                    }}>
+                        알림이 없습니다.
+                    </Text>
+                }
             />
 
-            <Modal visible={modalVisible} animationType="slide" transparent>
-                <View style={{
-                    flex: 1,
-                    backgroundColor: 'rgba(0,0,0,0.4)',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                }}>
-                    <View style={{
-                        width: '85%',
-                        backgroundColor: colors.surface,
-                        padding: spacing.lg,
-                        borderRadius: radius.lg,
-                        elevation: 5,
-                    }}>
-                        <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.text, marginBottom: spacing.md }}>
-                            가입 승인 요청
-                        </Text>
-                        <Text style={{ color: colors.text, marginBottom: spacing.md }}>
+            {/* 가입 승인 모달 */}
+            <Modal visible={modalVisible} animationType="fade" transparent>
+                <View
+                    style={{
+                        flex: 1,
+                        backgroundColor: 'rgba(0,0,0,0.25)',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                    }}
+                >
+                    <View
+                        style={{
+                            width: '85%',
+                            backgroundColor: colors.surface,
+                            padding: spacing.lg,
+                            borderRadius: radius.lg,
+                            elevation: 5,
+                        }}
+                    >
+                        {/* ✅ 제목 + 닫기 버튼 가로정렬 */}
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.text }}>
+                                가입 승인 요청
+                            </Text>
+                            <TouchableOpacity onPress={() => setModalVisible(false)}>
+                                <Text style={{ fontSize: 22, color: colors.subtext }}>✖️</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={{ color: colors.text, marginTop: spacing.md, marginBottom: spacing.md }}>
                             {selectedNotification?.applicantName}님이 "{selectedNotification?.teamName}" 모임에 가입을 신청했습니다.
                         </Text>
-                        <TouchableOpacity
-                            onPress={() => handleApproval(true)}
-                            style={{
-                                backgroundColor: colors.primary,
-                                paddingVertical: spacing.md,
-                                borderRadius: radius.md,
-                                alignItems: 'center',
-                                marginBottom: spacing.sm,
-                            }}
-                        >
-                            <Text style={{ color: '#fff', fontWeight: 'bold' }}>승인하기</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => handleApproval(false)}
-                            style={{
-                                backgroundColor: colors.border,
-                                paddingVertical: spacing.md,
-                                borderRadius: radius.md,
-                                alignItems: 'center',
-                            }}
-                        >
-                            <Text style={{ fontWeight: 'bold', color: colors.text }}>거절하기</Text>
-                        </TouchableOpacity>
+
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm }}>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    handleApproval(true);
+                                    Toast.show('✅ 승인 완료', {
+                                        duration: Toast.durations.SHORT,
+                                        position: Toast.positions.BOTTOM,
+                                        backgroundColor: colors.primary,
+                                        textColor: '#fff',
+                                    });
+                                }}
+                                style={{
+                                    flex: 1,
+                                    backgroundColor: colors.primary,
+                                    paddingVertical: spacing.md,
+                                    borderRadius: radius.md,
+                                    alignItems: 'center',
+                                }}
+                            >
+                                <Text style={{ color: '#fff', fontWeight: 'bold' }}>✅ 승인</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                onPress={() => {
+                                    handleApproval(false);
+                                    Toast.show('❌ 요청이 거절되었습니다.', {
+                                        duration: Toast.durations.SHORT,
+                                        position: Toast.positions.BOTTOM,
+                                        backgroundColor: colors.error,
+                                        textColor: '#fff',
+                                    });
+                                }}
+                                style={{
+                                    flex: 1,
+                                    backgroundColor: colors.error,
+                                    paddingVertical: spacing.md,
+                                    borderRadius: radius.md,
+                                    alignItems: 'center',
+                                }}
+                            >
+                                <Text style={{ color: '#fff', fontWeight: 'bold' }}>❌ 거절</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
             </Modal>

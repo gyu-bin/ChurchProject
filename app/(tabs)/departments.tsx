@@ -7,7 +7,8 @@ import {
 import { useRouter } from 'expo-router';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useDesign } from '@/context/DesignSystem';
-
+import {useSafeAreaInsets} from "react-native-safe-area-context";
+import { Platform } from 'react-native';
 const CAMPUS_DIVISIONS: Record<string, string[]> = {
     신촌캠퍼스: ['유치부', '초등부', '중고등부', '청년1부', '청년2부', '장년부'],
     문래캠퍼스: ['유치부', '초등부', '중고등부', '청년1부', '청년2부', '장년부'],
@@ -25,6 +26,8 @@ export default function DepartmentsScreen() {
     const slideX = useRef(new Animated.Value(0)).current;
 
     const campuses = Object.keys(CAMPUS_DIVISIONS);
+
+    const insets = useSafeAreaInsets();
 
     const handleCampusSelect = (campus: string) => {
         Animated.timing(slideX, {
@@ -51,7 +54,8 @@ export default function DepartmentsScreen() {
     };
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: '10%' }}>
+            {/*<SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>*/}
             <Animated.View
                 style={[
                     styles.slideContainer,

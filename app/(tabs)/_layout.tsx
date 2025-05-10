@@ -1,21 +1,30 @@
 import { Tabs } from 'expo-router';
-import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
-
-import { useColorScheme } from '@/hooks/useColorScheme';
+import React from 'react';
+import { Platform, View } from 'react-native';
+import { useAppTheme } from '@/context/ThemeContext'; // ✅ 여기를 사용
 
 export default function TabLayout() {
-    const colorScheme = useColorScheme();
+    const { mode } = useAppTheme(); // ✅ 커스텀 훅 사용
+    const isDark = mode === 'dark';
+
+    const tabBarBackgroundColor = isDark ? '#1f2937' : '#ffffff';
+    const tabBarBorderColor = isDark ? '#374151' : '#e5e7eb';
+    const tabBarTextActive = '#2563eb';
+    const tabBarTextInactive = isDark ? '#9ca3af' : '#999999';
 
     return (
         <Tabs
             screenOptions={({ route }) => ({
                 headerShown: false,
-                tabBarActiveTintColor: '#2563eb',
-                tabBarInactiveTintColor: colorScheme === 'dark' ? '#888' : '#999',
+                tabBarActiveTintColor: tabBarTextActive,
+                tabBarInactiveTintColor: tabBarTextInactive,
                 tabBarStyle: {
-                    backgroundColor: colorScheme === 'dark' ? '#111' : '#fff',
-                    borderTopColor: colorScheme === 'dark' ? '#222' : '#eee',
+                    backgroundColor: tabBarBackgroundColor,
+                    borderTopColor: tabBarBorderColor,
+                    borderTopWidth: 1,
+                    height: Platform.OS === 'android' ? 78 : 75,
+                    paddingTop: 4,
                 },
                 tabBarIcon: ({ color, size }) => {
                     let iconName: keyof typeof Ionicons.glyphMap = 'home';

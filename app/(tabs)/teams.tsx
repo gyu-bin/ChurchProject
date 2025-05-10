@@ -1,19 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import {
-    View,
-    Text,
-    FlatList,
-    TouchableOpacity,
-    SafeAreaView,
-    Dimensions,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { db } from '@/firebase/config';
-import { useRouter } from 'expo-router';
+import React, {useEffect, useState} from 'react';
+import {Dimensions, FlatList, Platform, SafeAreaView, StyleSheet, Text, TouchableOpacity, View,} from 'react-native';
+import {Ionicons} from '@expo/vector-icons';
+import {collection, onSnapshot, query, where, deleteDoc, doc} from 'firebase/firestore';
+import {db} from '@/firebase/config';
+import {useRouter} from 'expo-router';
 import SkeletonBox from '@/components/Skeleton';
-import { useDesign } from '@/context/DesignSystem';
-import { StyleSheet } from 'react-native';
+import {useDesign} from '@/context/DesignSystem';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 export default function TeamsScreen() {
     const [teams, setTeams] = useState<any[]>([]);
@@ -21,15 +14,17 @@ export default function TeamsScreen() {
     const [isGrid, setIsGrid] = useState(true);
     const router = useRouter();
     const { colors, font, spacing, radius } = useDesign();
+    const insets = useSafeAreaInsets();
+    const horizontalpadding = Platform.OS === 'ios' ? 20 : 0;
+    const [currentUser, setCurrentUser] = useState<any>(null);
 
     useEffect(() => {
         const q = query(collection(db, 'teams'), where('approved', '==', true));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetched = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        return onSnapshot(q, (snapshot) => {
+            const fetched = snapshot.docs.map((doc) => ({id: doc.id, ...doc.data()}));
             setTeams(fetched);
             setLoading(false);
         });
-        return unsubscribe;
     }, []);
 
     const handlePress = (id: string) => {
@@ -76,8 +71,9 @@ export default function TeamsScreen() {
     );
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-            <View style={styles.header}>
+        // <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: '10%'}}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>
+        <View style={styles.header}>
                 <Text style={[styles.title, { color: colors.text }]}>📋 소그룹 목록</Text>
                 <View style={styles.actions}>
                     <TouchableOpacity onPress={() => router.push('/teams/create')}>
@@ -113,7 +109,7 @@ const screenWidth = Dimensions.get('window').width;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        paddingHorizontal: 16,
+        paddingHorizontal: Platform.OS === 'ios' ? 15 : 10,
         paddingTop: 20,
         alignItems: 'center',
     },
@@ -123,6 +119,8 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 20,
+        paddingTop: Platform.OS === 'ios' ? 15 : 10,
+        paddingHorizontal: Platform.OS === 'ios' ? 15 : 10
     },
     title: {
         fontSize: 24,
