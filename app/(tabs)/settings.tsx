@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useDesign } from '@/context/DesignSystem';
 import ThemeToggle from "@/components/ThemeToggle";
+import PushSettings from "@/components/VerseNotificationSettings";
 
 export default function SettingsScreen() {
     const [user, setUser] = useState<any>(null);
@@ -87,6 +88,8 @@ export default function SettingsScreen() {
                     </Text>
                 </TouchableOpacity>
             )}
+
+            <PushSettings></PushSettings>
 
             {/* 🚪 로그아웃 버튼 */}
             <TouchableOpacity
