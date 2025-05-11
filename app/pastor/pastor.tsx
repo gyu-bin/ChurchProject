@@ -1,7 +1,7 @@
-// ✅ 전체수정된 pastor/pastor 코드
+// ✅ 전체수정된 pastor/pastor 코드 (Empty 상태 UI 추가 반영)
 import React, {useCallback, useEffect, useState} from 'react';
 import {
-    View, Text, SafeAreaView, FlatList, TouchableOpacity, Dimensions, Alert,RefreshControl
+    View, Text, SafeAreaView, FlatList, TouchableOpacity, Dimensions, Alert, RefreshControl
 } from 'react-native';
 import {
     collection, getDocs, query, orderBy, updateDoc, doc, getDoc, where, deleteDoc
@@ -41,18 +41,15 @@ export default function PastorPage() {
     const [pendingTeams, setPendingTeams] = useState<Team[]>([]);
     const { colors, spacing, font, radius } = useDesign();
     const [refreshing, setRefreshing] = useState(false);
+
     useEffect(() => {
         const fetchData = async () => {
             const currentUser = await getCurrentUser();
 
-            const prayerSnap = await getDocs(
-                query(collection(db, 'prayer_requests'), orderBy('createdAt', 'desc'))
-            );
+            const prayerSnap = await getDocs(query(collection(db, 'prayer_requests'), orderBy('createdAt', 'desc')));
             setPrayers(prayerSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
-            const teamSnap = await getDocs(
-                query(collection(db, 'teams'), orderBy('createdAt', 'desc'))
-            );
+            const teamSnap = await getDocs(query(collection(db, 'teams'), orderBy('createdAt', 'desc')));
             const allTeams = teamSnap.docs.map(doc => {
                 const data = doc.data();
                 return {
@@ -62,14 +59,13 @@ export default function PastorPage() {
                     leaderEmail: data.leaderEmail,
                     description: data.description,
                     approved: data.approved ?? false,
-                    createdAt: data.createdAt, // ✅ 요청일용 필드 추가
+                    createdAt: data.createdAt,
                 } as Team;
             });
 
             const filtered = allTeams.filter(
                 (team: any) => !team.approved && team.leaderEmail !== currentUser.email
             );
-
             setPendingTeams(filtered);
         };
 
@@ -83,21 +79,13 @@ export default function PastorPage() {
         await Promise.all(deletePromises);
     };
 
-    // 새로고침 함수
-    // ⏳ 최소 500ms 정도는 로딩 애니메이션을 유지하도록 딜레이 추가
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
         try {
             const currentUser = await getCurrentUser();
-
-            const prayerSnap = await getDocs(
-                query(collection(db, 'prayer_requests'), orderBy('createdAt', 'desc'))
-            );
+            const prayerSnap = await getDocs(query(collection(db, 'prayer_requests'), orderBy('createdAt', 'desc')));
             setPrayers(prayerSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-
-            const teamSnap = await getDocs(
-                query(collection(db, 'teams'), orderBy('createdAt', 'desc'))
-            );
+            const teamSnap = await getDocs(query(collection(db, 'teams'), orderBy('createdAt', 'desc')));
             const allTeams = teamSnap.docs.map(doc => {
                 const data = doc.data();
                 return {
@@ -114,8 +102,6 @@ export default function PastorPage() {
                 (team: any) => !team.approved && team.leaderEmail !== currentUser.email
             );
             setPendingTeams(filtered);
-
-            // 👇 최소한 500ms 이상 보여주기
             await new Promise(resolve => setTimeout(resolve, 2000));
         } catch (e) {
             console.error('❌ 새로고침 실패:', e);
@@ -198,57 +184,77 @@ export default function PastorPage() {
         ]);
     };
 
-    const PrayersRoute = () => (
-        <FlatList
-            data={prayers.filter(p => p.visibility === 'pastor')}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={{ padding: spacing.lg }}
-            refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            }
-            renderItem={({ item }) => (
-                <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md }}>
-                    <Text style={{ fontSize: font.body, fontWeight: 'bold', color: colors.text }}>{item.title}</Text>
-                    <Text style={{ fontSize: font.caption, color: colors.subtext }}>🙋 {item.name}</Text>
-                    <Text style={{ fontSize: font.body, color: colors.text, marginVertical: spacing.sm }}>{item.content}</Text>
-                    <Text style={{ fontSize: font.caption, color: colors.subtext }}>📢 공개: {item.visibility === 'pastor' ? '교역자만' : '전체'}</Text>
-                    {item.createdAt?.toDate && (
-                        <Text style={{ fontSize: font.caption, color: colors.subtext }}>🕒 {format(item.createdAt.toDate(), 'yy-MM-dd HH:mm')}</Text>
-                    )}
-                    <TouchableOpacity onPress={() => deletePrayer(item.id)} style={{ marginTop: spacing.sm, backgroundColor: colors.error, padding: spacing.sm, borderRadius: radius.sm, alignItems: 'center' }}>
-                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>삭제</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
-        />
-    );
 
-    const TeamsRoute = () => (
-        <FlatList
-            data={pendingTeams}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={{ padding: spacing.lg }}
-            refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            }
-            renderItem={({ item }) => (
-                <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md }}>
-                    <Text style={{ fontSize: font.body, fontWeight: 'bold', color: colors.text }}>{item.name}</Text>
-                    <Text style={{ fontSize: font.caption, color: colors.subtext }}>👤 모임장: {item.leader}</Text>
-                    <Text style={{ fontSize: font.caption, color: colors.subtext, marginBottom: 4 }}>🕒 요청일: {item.createdAt?.toDate ? format(item.createdAt.toDate(), 'yy-MM-dd HH:mm') : '시간 정보 없음'}</Text>
-                    <Text style={{ fontSize: font.body, color: colors.text, marginVertical: spacing.sm }}>{item.description}</Text>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm, marginTop: spacing.md }}>
-                        <TouchableOpacity onPress={() => approveTeam(item.id)} style={{ flex: 1, backgroundColor: colors.primary, padding: spacing.sm, borderRadius: radius.sm, alignItems: 'center' }}>
-                            <Text style={{ color: '#fff', fontWeight: 'bold' }}>승인하기</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => deleteTeamRequest(item.id)} style={{ flex: 1, backgroundColor: colors.error, padding: spacing.sm, borderRadius: radius.sm, alignItems: 'center' }}>
-                            <Text style={{ color: '#fff', fontWeight: 'bold' }}>삭제하기</Text>
+    const PrayersRoute = () => {
+        const visiblePrayers = prayers.filter(p => p.visibility === 'pastor');
+        if (visiblePrayers.length === 0) {
+            return (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: '15%'}}>
+                    <Text style={{ fontSize: 20, color: colors.subtext }}>
+                        교역자에게 기도제목이 도착하지 않았어요ㅠㅠ
+                    </Text>
+                </View>
+            );
+        }
+        return (
+            <FlatList
+                data={visiblePrayers}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={{ padding: spacing.lg }}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                renderItem={({ item }) => (
+                    <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md }}>
+                        <Text style={{ fontSize: font.body, fontWeight: 'bold', color: colors.text }}>{item.title}</Text>
+                        <Text style={{ fontSize: font.caption, color: colors.subtext }}>🙋 {item.name}</Text>
+                        <Text style={{ fontSize: font.body, color: colors.text, marginVertical: spacing.sm }}>{item.content}</Text>
+                        <Text style={{ fontSize: font.caption, color: colors.subtext }}>📢 공개: {item.visibility === 'pastor' ? '교역자만' : '전체'}</Text>
+                        {item.createdAt?.toDate && (
+                            <Text style={{ fontSize: font.caption, color: colors.subtext }}>🕒 {format(item.createdAt.toDate(), 'yy-MM-dd HH:mm')}</Text>
+                        )}
+                        <TouchableOpacity onPress={() => deletePrayer(item.id)} style={{ marginTop: spacing.sm, backgroundColor: colors.error, padding: spacing.sm, borderRadius: radius.sm, alignItems: 'center' }}>
+                            <Text style={{ color: '#fff', fontWeight: 'bold' }}>삭제</Text>
                         </TouchableOpacity>
                     </View>
+                )}
+            />
+        );
+    };
+
+    const TeamsRoute = () => {
+        if (pendingTeams.length === 0) {
+            return (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: '15%'}}>
+                    <Text style={{ fontSize: 20, color: colors.subtext }}>
+                        아직 소모임 개설 요청이 없어요ㅠㅠ
+                    </Text>
                 </View>
-            )}
-        />
-    );
+            );
+        }
+        return (
+            <FlatList
+                data={pendingTeams}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={{ padding: spacing.lg }}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                renderItem={({ item }) => (
+                    <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md }}>
+                        <Text style={{ fontSize: font.body, fontWeight: 'bold', color: colors.text }}>{item.name}</Text>
+                        <Text style={{ fontSize: font.caption, color: colors.subtext }}>👤 모임장: {item.leader}</Text>
+                        <Text style={{ fontSize: font.caption, color: colors.subtext, marginBottom: 4 }}>🕒 요청일: {item.createdAt?.toDate ? format(item.createdAt.toDate(), 'yy-MM-dd HH:mm') : '시간 정보 없음'}</Text>
+                        <Text style={{ fontSize: font.body, color: colors.text, marginVertical: spacing.sm }}>{item.description}</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm, marginTop: spacing.md }}>
+                            <TouchableOpacity onPress={() => approveTeam(item.id)} style={{ flex: 1, backgroundColor: colors.primary, padding: spacing.sm, borderRadius: radius.sm, alignItems: 'center' }}>
+                                <Text style={{ color: '#fff', fontWeight: 'bold' }}>승인하기</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => deleteTeamRequest(item.id)} style={{ flex: 1, backgroundColor: colors.error, padding: spacing.sm, borderRadius: radius.sm, alignItems: 'center' }}>
+                                <Text style={{ color: '#fff', fontWeight: 'bold' }}>삭제하기</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                )}
+            />
+        );
+    };
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>

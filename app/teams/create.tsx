@@ -10,7 +10,7 @@ import { db } from '@/firebase/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
 import { useDesign } from '@/context/DesignSystem';
-import { useAppTheme } from '@/context/ThemeContext';
+// import { useAppTheme } from '@/context/ThemeContext';
 
 export default function CreateTeam() {
     const [name, setName] = useState('');

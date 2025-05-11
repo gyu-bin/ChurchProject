@@ -10,7 +10,6 @@ export async function registerPushToken() {
 
         if (!Device.isDevice) {
             console.warn('❌ 실제 디바이스에서만 작동합니다.');
-            return;
         }
 
         const { status: existingStatus } = await Notifications.getPermissionsAsync();

@@ -22,6 +22,7 @@ interface PrayerModalProps {
     name: string;
     title: string;
     content: string;
+    email: string; // ✅ 추가
     visibility: 'all' | 'pastor';
     setTitle: (text: string) => void;
     setContent: (text: string) => void;
@@ -35,6 +36,7 @@ export default function PrayerModal({
                                         name,
                                         title,
                                         content,
+                                        email,
                                         visibility,
                                         setTitle,
                                         setContent,

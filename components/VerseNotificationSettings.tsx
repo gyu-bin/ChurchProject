@@ -8,13 +8,13 @@ import {
     Alert,
     TouchableOpacity,
     Modal,
-    useColorScheme,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { verses } from '@/assets/verses';
 import { useAppTheme } from '@/context/ThemeContext';
+import DateTimePicker from '@react-native-community/datetimepicker';
+
 type Verses = { verse: string; reference: string };
 
 export default function PushDevotional() {
@@ -22,8 +22,8 @@ export default function PushDevotional() {
     const [showPicker, setShowPicker] = useState(false);
     const [time, setTime] = useState(new Date());
     const [tempTime, setTempTime] = useState(new Date());
+
     const horizontalMargin = Platform.OS === 'ios' ? 20 : 0;
-// 🔁 변경 후
     const { mode } = useAppTheme();
     const isDark = mode === 'dark';
 
@@ -75,7 +75,6 @@ export default function PushDevotional() {
 
         const randomVerse: Verses = verses[Math.floor(Math.random() * verses.length)];
 
-        // ✅ 알림은 즉시 발송되지 않으며, 지정된 시간에만 뜸
         await Notifications.scheduleNotificationAsync({
             content: {
                 title: '📖 오늘의 말씀',
@@ -89,18 +88,34 @@ export default function PushDevotional() {
             } as Notifications.CalendarTriggerInput,
         });
 
-        // ❌ 알림을 직접 보내는 코드 없음 → 즉시 알림 뜨지 않음
-        Alert.alert('설정 완료', `${hours}시 ${minutes}분에 랜덤 말씀 알림이 설정되었습니다.`);
+        Alert.alert(
+            '설정 완료',
+            `${formatAMPM(tempTime)}에 랜덤 말씀 알림이 설정되었습니다.`
+        );
+    };
+
+    const formatAMPM = (date: Date) => {
+        let hours = date.getHours();
+        const minutes = date.getMinutes();
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12 || 12; // 0시는 12시로 표시
+        return `${ampm} ${hours.toString().padStart(2, '0')}시 ${minutes.toString().padStart(2, '0')}분`;
     };
 
     return (
         <View
             style={{
                 backgroundColor: cardColor,
-                padding: 16,
+                paddingVertical: 20,
+                paddingHorizontal: 16,
                 borderRadius: 12,
                 marginVertical: 12,
-                marginHorizontal: horizontalMargin, // ✅ 아이폰 전용 마진
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 4,
+                alignSelf: 'stretch',
             }}
         >
             <Text style={{ fontSize: 18, fontWeight: 'bold', color: textColor, marginBottom: 12 }}>
@@ -122,7 +137,7 @@ export default function PushDevotional() {
             {enabled && (
                 <>
                     <Text style={{ color: subTextColor, marginBottom: 6 }}>
-                        설정된 시간: {time.getHours()}시 {time.getMinutes()}분
+                        설정된 시간: {formatAMPM(time)}
                     </Text>
                     <TouchableOpacity onPress={() => setShowPicker(true)}>
                         <Text style={{ color: '#3b82f6', fontSize: 14 }}>시간 변경</Text>
@@ -130,50 +145,47 @@ export default function PushDevotional() {
                 </>
             )}
 
-            {/* 시간 선택 모달 */}
-            <Modal visible={showPicker} transparent animationType="slide">
-                <View
-                    style={{
-                        flex: 1,
-                        backgroundColor: 'rgba(0,0,0,0.4)',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                    }}
-                >
+            {showPicker && (
+                <Modal visible={showPicker} transparent animationType="slide">
                     <View
                         style={{
-                            backgroundColor: isDark ? '#1f2937' : '#fff',
-                            padding: 24,
-                            borderRadius: 16,
-                            width: '80%',
+                            flex: 1,
+                            backgroundColor: 'rgba(0,0,0,0.4)',
+                            justifyContent: 'center',
                             alignItems: 'center',
                         }}
                     >
-                        <Text style={{ fontSize: 16, marginBottom: 12, color: textColor }}>시간 선택</Text>
-                        <DateTimePicker
-                            mode="time"
-                            value={tempTime}
-                            display="spinner" // ✅ iOS 스피너 형태
-                            is24Hour={false}
-                            themeVariant={isDark ? 'dark' : 'light'} // ✅ 밝기 모드에 따라 명시
-                            onChange={(event, selectedTime) => {
-                                if (event.type === 'set' && selectedTime) {
-                                    setTempTime(selectedTime);
-                                    setShowPicker(false); // ✅ 선택 시 모달 닫기
-                                    handleConfirm(); // ✅ 시간 저장 및 알림 등록
-                                } else {
-                                    setShowPicker(false); // ✅ 취소 시에도 닫기
-                                }
+                        <View
+                            style={{
+                                backgroundColor: isDark ? '#1f2937' : '#fff',
+                                padding: 24,
+                                borderRadius: 16,
+                                width: '80%',
+                                alignItems: 'center',
                             }}
-                        />
-                        <View style={{ flexDirection: 'row', marginTop: 20 }}>
-                            <Button title="취소" onPress={() => setShowPicker(false)} />
-                            <View style={{ width: 20 }} />
-                            <Button title="확인" onPress={handleConfirm} />
+                        >
+                            <Text style={{ fontSize: 16, marginBottom: 12, color: textColor }}>시간 선택</Text>
+                            <DateTimePicker
+                                mode="time"
+                                value={tempTime}
+                                display="spinner"
+                                is24Hour={false}
+                                themeVariant={isDark ? 'dark' : 'light'}
+                                onChange={(event, selectedTime) => {
+                                    if (event.type === 'set' && selectedTime) {
+                                        setTempTime(selectedTime); // 🔹 시간만 설정
+                                    }
+                                }}
+                            />
+                            <View style={{ flexDirection: 'row', marginTop: 20 }}>
+                                <Button title="취소" onPress={() => setShowPicker(false)} />
+                                <View style={{ width: 20 }} />
+                                <Button title="확인" onPress={handleConfirm} />
+                            </View>
                         </View>
                     </View>
-                </View>
-            </Modal>
+                </Modal>
+            )}
         </View>
     );
 }

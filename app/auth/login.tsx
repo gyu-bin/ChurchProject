@@ -16,6 +16,7 @@ import { login } from '@/services/authService';
 import { registerPushToken } from '@/services/registerPushToken';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@/hooks/useAuth';
+import { loginUser } from '@/services/authService';
 
 export default function LoginScreen() {
     const [email, setEmail] = useState('');

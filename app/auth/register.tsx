@@ -1,17 +1,10 @@
-// RegisterSlideScreen.tsx 전체 수정본
+// ✅ Firebase Auth 기반 회원가입 + Firestore 사용자 정보 저장 + 비밀번호 보기 토글
+
 import React, { useRef, useState } from 'react';
 import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    StyleSheet,
-    Alert,
-    Animated,
-    Dimensions,
-    SafeAreaView,
-    KeyboardAvoidingView,
-    Platform,
+    View, Text, TextInput, TouchableOpacity,
+    StyleSheet, Alert, Animated, Dimensions,
+    SafeAreaView, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { db } from '@/firebase/config';
 import { doc, setDoc } from 'firebase/firestore';
@@ -20,7 +13,6 @@ import { registerPushToken } from '@/services/registerPushToken';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-
 const campuses = ['문래', '신촌'];
 const divisions = ['유치부', '초등부', '중고등부', '청년1부', '청년2부', '장년부'];
 const roles = ['성도', '교역자'];
@@ -30,18 +22,18 @@ export default function RegisterSlideScreen() {
     const slideX = useRef(new Animated.Value(0)).current;
     const [step, setStep] = useState(0);
     const inputRefs = useRef<Record<string, TextInput | null>>({});
+    const [showPassword, setShowPassword] = useState(false);
 
     const steps = ['email', 'password', 'confirm', 'name', 'campus', 'division', 'role'] as const;
 
     const [form, setForm] = useState({
-        email: '',
-        password: '',
-        confirm: '',
-        name: '',
-        campus: '',
-        division: '',
-        role: '성도',
+        email: '', password: '', confirm: '',
+        name: '', campus: '', division: '', role: '',
     });
+
+    const updateField = (key: string, value: string) => {
+        setForm(prev => ({ ...prev, [key]: value }));
+    };
 
     const handleNext = async () => {
         const currentKey = steps[step];
@@ -49,17 +41,22 @@ export default function RegisterSlideScreen() {
         if (!currentValue.trim()) {
             return Alert.alert('입력 오류', '내용을 입력하세요.');
         }
-
         if (currentKey === 'confirm' && form.password !== form.confirm) {
             return Alert.alert('비밀번호 불일치', '비밀번호가 일치하지 않습니다.');
         }
 
         if (step === steps.length - 1) {
             try {
-                const userData = { ...form, createdAt: new Date() };
+                const { confirm, ...userWithoutConfirm } = form;
+                const userData = {
+                    ...userWithoutConfirm,
+                    createdAt: new Date(),
+                };
+
                 await setDoc(doc(db, 'users', form.email), userData);
                 await AsyncStorage.setItem('currentUser', JSON.stringify(userData));
                 await registerPushToken();
+
                 Alert.alert('가입 완료', '환영합니다!');
                 setTimeout(() => router.replace('/'), 300);
             } catch (e: any) {
@@ -73,14 +70,10 @@ export default function RegisterSlideScreen() {
             duration: 300,
             useNativeDriver: true,
         }).start(() => {
-            setStep((prev) => prev + 1);
+            setStep(prev => prev + 1);
             const nextKey = steps[step + 1];
             setTimeout(() => inputRefs.current[nextKey]?.focus(), 100);
         });
-    };
-
-    const updateField = (key: string, value: string) => {
-        setForm((prev) => ({ ...prev, [key]: value }));
     };
 
     const handleBack = () => {
@@ -92,7 +85,6 @@ export default function RegisterSlideScreen() {
             }).start(() => router.replace('/auth/login'));
             return;
         }
-
         const newStep = step - 1;
         Animated.timing(slideX, {
             toValue: -newStep * SCREEN_WIDTH,
@@ -115,7 +107,7 @@ export default function RegisterSlideScreen() {
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
                 <View style={styles.slider}>
                     <Animated.View style={[styles.slideRow, { transform: [{ translateX: slideX }] }]}>
-                        {/* email */}
+                        {/* 이메일 */}
                         <View style={styles.slide}>
                             <TextInput
                                 ref={(ref) => { inputRefs.current['email'] = ref }}
@@ -123,42 +115,46 @@ export default function RegisterSlideScreen() {
                                 placeholder="이메일"
                                 placeholderTextColor="#666"
                                 value={form.email}
-                                onChangeText={(text) => updateField('email', text)}
+                                onChangeText={text => updateField('email', text)}
                                 autoCapitalize="none"
                                 keyboardType="email-address"
                             />
                         </View>
 
-                        {/* password */}
+                        {/* 비밀번호 */}
                         <View style={styles.slide}>
                             <TextInput
+                                ref={(ref) => { inputRefs.current['password'] = ref }}
                                 style={styles.input}
                                 placeholder="비밀번호"
                                 placeholderTextColor="#666"
-                                value={'●'.repeat(form.password.length)} // 글자 수만큼 ●로 가려서 표시
+                                value={form.password}
                                 onChangeText={(text) => updateField('password', text)}
-                                textContentType="none"
+                                secureTextEntry={!showPassword}
+                                autoCapitalize="none"
                                 autoComplete="off"
-                                importantForAutofill="no"
-                                autoCorrect={false}
-                                spellCheck={false}
+                                textContentType="oneTimeCode"
                             />
+                            <TouchableOpacity onPress={() => setShowPassword(prev => !prev)}>
+                                <Text style={{ color: '#2563eb' }}>
+                                    {showPassword ? '🙈 숨기기' : '👁 보기'}
+                                </Text>
+                            </TouchableOpacity>
                         </View>
 
-                        {/* confirm password */}
+                        {/* 비밀번호 확인 */}
                         <View style={styles.slide}>
                             <TextInput
                                 ref={(ref) => { inputRefs.current['confirm'] = ref }}
                                 style={styles.input}
                                 placeholder="비밀번호 확인"
                                 placeholderTextColor="#666"
-                                value={'●'.repeat(form.confirm.length)} // 글자 수만큼 ●로 가려서 표시
-                                onChangeText={(text) => updateField('confirm', text)}
-                                textContentType="none"
+                                value={form.confirm}
+                                onChangeText={text => updateField('confirm', text)}
+                                secureTextEntry={!showPassword}
+                                autoCapitalize="none"
                                 autoComplete="off"
-                                importantForAutofill="no"
-                                autoCorrect={false}
-                                spellCheck={false}
+                                textContentType="oneTimeCode"
                             />
                             {form.confirm.length > 0 && form.confirm !== form.password && (
                                 <Text style={{ color: 'red', marginTop: 4 }}>비밀번호가 일치하지 않습니다.</Text>
@@ -168,7 +164,7 @@ export default function RegisterSlideScreen() {
                             )}
                         </View>
 
-                        {/* name */}
+                        {/* 이름 */}
                         <View style={styles.slide}>
                             <TextInput
                                 ref={(ref) => { inputRefs.current['name'] = ref }}
@@ -176,52 +172,40 @@ export default function RegisterSlideScreen() {
                                 placeholder="이름"
                                 placeholderTextColor="#666"
                                 value={form.name}
-                                onChangeText={(text) => updateField('name', text)}
+                                onChangeText={text => updateField('name', text)}
                             />
                         </View>
 
-                        {/* campus */}
+                        {/* 캠퍼스 선택 */}
                         <View style={styles.slide}>
                             <Text style={styles.label}>캠퍼스를 선택하세요</Text>
                             <View style={styles.optionGroup}>
-                                {campuses.map((campus) => (
-                                    <TouchableOpacity
-                                        key={campus}
-                                        onPress={() => updateField('campus', campus)}
-                                        style={[styles.option, form.campus === campus && styles.optionSelected]}
-                                    >
+                                {campuses.map(campus => (
+                                    <TouchableOpacity key={campus} onPress={() => updateField('campus', campus)} style={[styles.option, form.campus === campus && styles.optionSelected]}>
                                         <Text style={styles.optionText}>{campus}</Text>
                                     </TouchableOpacity>
                                 ))}
                             </View>
                         </View>
 
-                        {/* division */}
+                        {/* 소속 선택 */}
                         <View style={styles.slide}>
                             <Text style={styles.label}>소속을 선택하세요</Text>
                             <View style={styles.optionGroup}>
-                                {divisions.map((d) => (
-                                    <TouchableOpacity
-                                        key={d}
-                                        onPress={() => updateField('division', d)}
-                                        style={[styles.option, form.division === d && styles.optionSelected]}
-                                    >
+                                {divisions.map(d => (
+                                    <TouchableOpacity key={d} onPress={() => updateField('division', d)} style={[styles.option, form.division === d && styles.optionSelected]}>
                                         <Text style={styles.optionText}>{d}</Text>
                                     </TouchableOpacity>
                                 ))}
                             </View>
                         </View>
 
-                        {/* role */}
+                        {/* 역할 선택 */}
                         <View style={styles.slide}>
                             <Text style={styles.label}>역할을 선택하세요</Text>
                             <View style={styles.optionGroup}>
-                                {roles.map((r) => (
-                                    <TouchableOpacity
-                                        key={r}
-                                        onPress={() => updateField('role', r)}
-                                        style={[styles.option, form.role === r && styles.optionSelected]}
-                                    >
+                                {roles.map(r => (
+                                    <TouchableOpacity key={r} onPress={() => updateField('role', r)} style={[styles.option, form.role === r && styles.optionSelected]}>
                                         <Text style={styles.optionText}>{r}</Text>
                                     </TouchableOpacity>
                                 ))}
@@ -241,7 +225,7 @@ export default function RegisterSlideScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#fff' },
     slider: { flex: 1, overflow: 'hidden' },
-    slideRow: { flexDirection: 'row', width: SCREEN_WIDTH * 7 },
+    slideRow: { flexDirection: 'row' },
     slide: {
         width: SCREEN_WIDTH,
         paddingHorizontal: 24,
