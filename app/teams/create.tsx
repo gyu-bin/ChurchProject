@@ -42,9 +42,14 @@ export default function CreateTeam() {
             return;
         }
 
-        // 🔒 생성 권한 제한
         if (role === '새가족') {
             Alert.alert('권한 부족', '정회원 또는 교역자만 소모임을 생성할 수 있습니다.');
+            return;
+        }
+
+        const max = parseInt(memberCount);
+        if (isNaN(max) || max < 2 || max > 99) {
+            Alert.alert('입력 오류', '참여 인원 수는 1명 이상 99명 이하로 설정해주세요.');
             return;
         }
 
@@ -57,18 +62,19 @@ export default function CreateTeam() {
                 members: 1,
                 membersList: [creatorEmail],
                 createdAt: new Date(),
-                maxMembers: parseInt(memberCount) || 10,
+                maxMembers: max,
             };
 
             if (role === '교역자' || role === '정회원') {
-                // 🔥 소모임 생성 → teamRef 반환
                 const teamRef = await addDoc(collection(db, 'teams'), {
                     ...baseData,
-                    approved: false,
+                    approved: true, // ✅ 자동 승인
                 });
 
-                const newTeamId = teamRef.id; // ✅ 여기서 ID 추출
+                const newTeamId = teamRef.id;
 
+                // 🔔 알림 전송 로직은 필요시 주석 해제
+                /*
                 const q = query(collection(db, 'users'), where('role', '==', '교역자'));
                 const snapshot = await getDocs(q);
 
@@ -78,31 +84,31 @@ export default function CreateTeam() {
 
                 snapshot.docs.forEach((docSnap) => {
                     const pastor = docSnap.data();
-
                     if (pastor.email === creatorEmail || notified.has(pastor.email)) return;
                     notified.add(pastor.email);
 
-                    /*firestorePromises.push(sendNotification({
+                    firestorePromises.push(sendNotification({
                         to: pastor.email,
                         message: `${leader}님이 "${name}" 소모임을 생성했습니다.`,
                         type: 'team_create',
                         link: '/pastor?tab=teams',
-                        teamId: newTeamId, // ✅ 이제 정상적으로 전달됨
-                        teamName: name,     // ✅ 이 값도 추가 추천
+                        teamId: newTeamId,
+                        teamName: name,
                     }));
 
                     if (pastor.expoPushToken) {
                         pushPromises.push(sendPushNotification({
                             to: pastor.expoPushToken,
-                            title: '📌 소모임 승인 요청',
-                            body: `${leader}님의 소모임 생성 승인 요청`,
+                            title: '📌 소모임 생성 알림',
+                            body: `${leader}님의 소모임이 생성되었습니다.`,
                         }));
-                    }*/
+                    }
                 });
 
                 await Promise.all([...firestorePromises, ...pushPromises]);
+                */
             }
-            
+
             Alert.alert('완료', '모임이 성공적으로 생성되었습니다.');
             router.replace('/teams');
         } catch (error: any) {
