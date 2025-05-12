@@ -23,7 +23,6 @@ export default function PushDevotional() {
     const [time, setTime] = useState(new Date());
     const [tempTime, setTempTime] = useState(new Date());
 
-    const horizontalMargin = Platform.OS === 'ios' ? 20 : 0;
     const { mode } = useAppTheme();
     const isDark = mode === 'dark';
 
@@ -65,6 +64,7 @@ export default function PushDevotional() {
     };
 
     const handleConfirm = async () => {
+        console.log('handleConfirm')
         const hours = tempTime.getHours();
         const minutes = tempTime.getMinutes();
         setTime(tempTime);
@@ -87,49 +87,35 @@ export default function PushDevotional() {
                 repeats: true,
             } as Notifications.CalendarTriggerInput,
         });
-
-        Alert.alert(
-            '설정 완료',
-            `${formatAMPM(tempTime)}에 랜덤 말씀 알림이 설정되었습니다.`
-        );
     };
 
     const formatAMPM = (date: Date) => {
         let hours = date.getHours();
         const minutes = date.getMinutes();
         const ampm = hours >= 12 ? 'PM' : 'AM';
-        hours = hours % 12 || 12; // 0시는 12시로 표시
+        hours = hours % 12 || 12;
         return `${ampm} ${hours.toString().padStart(2, '0')}시 ${minutes.toString().padStart(2, '0')}분`;
     };
 
     return (
-        <View
-            style={{
-                backgroundColor: cardColor,
-                paddingVertical: 20,
-                paddingHorizontal: 16,
-                borderRadius: 12,
-                marginVertical: 12,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 4,
-                elevation: 4,
-                alignSelf: 'stretch',
-            }}
-        >
+        <View style={{
+            backgroundColor: cardColor,
+            paddingVertical: 20,
+            paddingHorizontal: 16,
+            borderRadius: 12,
+            marginVertical: 12,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+            elevation: 4,
+            alignSelf: 'stretch',
+        }}>
             <Text style={{ fontSize: 18, fontWeight: 'bold', color: textColor, marginBottom: 12 }}>
                 📖 오늘의 말씀 알림
             </Text>
 
-            <View
-                style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: 12,
-                }}
-            >
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <Text style={{ color: textColor, fontSize: 16 }}>알림 받기</Text>
                 <Switch value={enabled} onValueChange={toggleSwitch} />
             </View>
@@ -146,45 +132,100 @@ export default function PushDevotional() {
             )}
 
             {showPicker && (
-                <Modal visible={showPicker} transparent animationType="slide">
-                    <View
-                        style={{
-                            flex: 1,
-                            backgroundColor: 'rgba(0,0,0,0.4)',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                        }}
-                    >
-                        <View
-                            style={{
+                Platform.OS === 'ios' ? (
+                    <Modal visible={showPicker} transparent animationType="slide">
+                        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}>
+                            <View style={{
                                 backgroundColor: isDark ? '#1f2937' : '#fff',
                                 padding: 24,
                                 borderRadius: 16,
                                 width: '80%',
                                 alignItems: 'center',
-                            }}
-                        >
-                            <Text style={{ fontSize: 16, marginBottom: 12, color: textColor }}>시간 선택</Text>
-                            <DateTimePicker
-                                mode="time"
-                                value={tempTime}
-                                display="spinner"
-                                is24Hour={false}
-                                themeVariant={isDark ? 'dark' : 'light'}
-                                onChange={(event, selectedTime) => {
-                                    if (event.type === 'set' && selectedTime) {
-                                        setTempTime(selectedTime); // 🔹 시간만 설정
-                                    }
-                                }}
-                            />
-                            <View style={{ flexDirection: 'row', marginTop: 20 }}>
-                                <Button title="취소" onPress={() => setShowPicker(false)} />
-                                <View style={{ width: 20 }} />
-                                <Button title="확인" onPress={handleConfirm} />
+                            }}>
+                                <Text style={{ fontSize: 16, marginBottom: 12, color: textColor }}>시간 선택</Text>
+                                <DateTimePicker
+                                    mode="time"
+                                    value={tempTime}
+                                    display="spinner"
+                                    is24Hour={false}
+                                    themeVariant={isDark ? 'dark' : 'light'}
+                                    onChange={(event, selectedTime) => {
+                                        if (selectedTime) setTempTime(selectedTime);
+                                    }}
+                                />
+                                <View style={{ flexDirection: 'row', marginTop: 20 }}>
+                                    <Button title="취소" onPress={() => setShowPicker(false)} />
+                                    <View style={{ width: 20 }} />
+                                    <Button title="확인" onPress={handleConfirm} />
+                                </View>
                             </View>
                         </View>
-                    </View>
-                </Modal>
+                    </Modal>
+                ) : (
+                    <DateTimePicker
+                        mode="time"
+                        value={tempTime}
+                        display="spinner"
+                        is24Hour={false}
+                        onChange={async (event, selectedTime) => {
+                            if (event.type === 'set' && selectedTime) {
+                                const now = new Date();
+                                const correctedTime = new Date(now);
+                                correctedTime.setHours(selectedTime.getHours());
+                                correctedTime.setMinutes(selectedTime.getMinutes());
+                                correctedTime.setSeconds(0);
+                                correctedTime.setMilliseconds(0);
+
+                                // 만약 이미 지난 시간이라면 내일로 설정
+                                if (correctedTime.getTime() < now.getTime()) {
+                                    correctedTime.setDate(correctedTime.getDate() + 1);
+                                }
+
+                                console.log('예약 시각:', correctedTime.toString());
+
+                                Alert.alert(
+                                    '설정 완료',
+                                    `${formatAMPM(correctedTime)}에 랜덤 말씀 알림이 설정되었습니다.`
+                                );
+
+                                setTempTime(correctedTime);
+                                setTime(correctedTime);
+                                setShowPicker(false);
+
+                                await AsyncStorage.setItem('devotionalTime', correctedTime.toString());
+                                await Notifications.cancelAllScheduledNotificationsAsync();
+
+                                const randomVerse = verses[Math.floor(Math.random() * verses.length)];
+
+                                await Notifications.scheduleNotificationAsync({
+                                    content: {
+                                        title: '테스트 알림',
+                                        body: '5분 뒤에 울리는지 확인',
+                                        sound: true,
+                                        channelId: 'default',
+                                    },
+                                    trigger: {
+                                        seconds: 300,
+                                    },
+                                });
+                                /*await Notifications.scheduleNotificationAsync({
+                                    content: {
+                                        title: '📖 오늘의 말씀',
+                                        body: `${randomVerse.verse} (${randomVerse.reference})`,
+                                        sound: true,
+                                        priority: Notifications.AndroidNotificationPriority.HIGH,
+                                    },
+                                    trigger: {
+                                        date: correctedTime,
+                                        repeats: true, // ✅ 매일 반복
+                                    },
+                                });*/
+                            } else {
+                                setShowPicker(false);
+                            }
+                        }}
+                    />
+                )
             )}
         </View>
     );

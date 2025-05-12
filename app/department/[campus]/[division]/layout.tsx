@@ -1,11 +1,12 @@
-import { Tabs } from 'expo-router';
+//department/[campus]/[division]/layout.tsx
+import { Stack } from 'expo-router';
 
-export default function DivisionLayout() {
+export default function CampusLayout() {
     return (
-        <Tabs>
-            <Tabs.Screen name="index" options={{ title: '홈',headerShown: false }} />
-            <Tabs.Screen name="photos" options={{ title: '사진' }} />
-            <Tabs.Screen name="board" options={{ title: '게시판' }} />
-        </Tabs>
+        <Stack>
+            <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="board" />
+            <Stack.Screen name="photos" />
+        </Stack>
     );
 }

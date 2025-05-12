@@ -15,7 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const campuses = ['문래', '신촌'];
 const divisions = ['유치부', '초등부', '중고등부', '청년1부', '청년2부', '장년부'];
-const roles = ['성도', '교역자'];
+const roles = ['새가족', '정회원', '교역자'];
 
 export default function RegisterSlideScreen() {
     const router = useRouter();
@@ -174,6 +174,9 @@ export default function RegisterSlideScreen() {
                                 value={form.name}
                                 onChangeText={text => updateField('name', text)}
                             />
+                            <Text style={{ marginTop: 8, fontSize: 13, color: 'red' }}>
+                                ※ 가입 시 반드시 본명으로 해주세요. 익명일 경우 계정이 임의 삭제될 수 있습니다.
+                            </Text>
                         </View>
 
                         {/* 캠퍼스 선택 */}
@@ -223,7 +226,7 @@ export default function RegisterSlideScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff' },
+    container: { flex: 1, backgroundColor: '#fff'},
     slider: { flex: 1, overflow: 'hidden' },
     slideRow: { flexDirection: 'row' },
     slide: {
@@ -244,6 +247,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         marginBottom: 12,
+        marginTop: 80,
     },
     optionGroup: {
         flexDirection: 'row',

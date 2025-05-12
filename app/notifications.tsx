@@ -178,7 +178,7 @@ export default function NotificationsScreen() {
                             elevation: 3,
                         }}
                     >
-                        {/* 아이콘 */}
+                         아이콘
                         <View style={{
                             width: 40, height: 40, borderRadius: 20,
                             backgroundColor: mode === 'dark' ? colors.border : '#f1f5f9',
@@ -188,7 +188,7 @@ export default function NotificationsScreen() {
                             <Text style={{ fontSize: 18 }}>📢</Text>
                         </View>
 
-                        {/* 메시지 + 시간 */}
+                         메시지 + 시간
                         <View style={{ flex: 1 }}>
                             <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text }}>
                                 {item.message}
@@ -242,7 +242,7 @@ export default function NotificationsScreen() {
                         </View>
 
                         <Text style={{ color: colors.text, marginTop: spacing.md, marginBottom: spacing.md }}>
-                            {selectedNotification?.applicantName}님이 "{selectedNotification?.teamName}" 모임에 가입을 신청했습니다.
+                            {selectedNotification?.applicantName}님이 &#34;{selectedNotification?.teamName}&#34; 모임에 가입을 신청했습니다.
                         </Text>
 
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm }}>

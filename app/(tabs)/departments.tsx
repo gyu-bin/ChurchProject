@@ -2,16 +2,16 @@
 
 import React, { useState, useRef } from 'react';
 import {
-    View, Text, TouchableOpacity, StyleSheet, Animated, FlatList, useColorScheme, SafeAreaView, Dimensions
+    View, Text, TouchableOpacity, StyleSheet, Animated, FlatList, useColorScheme, SafeAreaView, Dimensions,Platform
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useDesign } from '@/context/DesignSystem';
 import {useSafeAreaInsets} from "react-native-safe-area-context";
-import { Platform } from 'react-native';
 const CAMPUS_DIVISIONS: Record<string, string[]> = {
     신촌캠퍼스: ['유치부', '초등부', '중고등부', '청년1부', '청년2부', '장년부'],
     문래캠퍼스: ['유치부', '초등부', '중고등부', '청년1부', '청년2부', '장년부'],
+    인덕원캠퍼스: ['유치부', '초등부', '중고등부', '청년1부', '청년2부', '장년부'],
 };
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -54,8 +54,7 @@ export default function DepartmentsScreen() {
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: '10%' }}>
-            {/*<SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>*/}
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background}}>
             <Animated.View
                 style={[
                     styles.slideContainer,
@@ -77,7 +76,7 @@ export default function DepartmentsScreen() {
                 </View>
 
                 {/* 부서 선택 화면 */}
-                <View style={[styles.page, { width: SCREEN_WIDTH, backgroundColor: colors.background }]}>
+                <View style={[styles.page, { width: SCREEN_WIDTH, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 80 :20 }]}>
                     <TouchableOpacity onPress={handleBack} style={styles.backButton}>
                         <Text style={{ color: colors.primary, fontWeight: '600' }}>← 캠퍼스 선택으로 돌아가기</Text>
                     </TouchableOpacity>

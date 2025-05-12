@@ -51,6 +51,8 @@ export default function RootLayoutInner() {
           <Stack.Screen name="auth/login" options={{ headerShown: false }} />
           <Stack.Screen name="auth/register" options={{ headerShown: false }} />
           <Stack.Screen name="intro" options={{ headerShown: false }} />
+          <Stack.Screen name="teams" options={{ headerShown: false }} />
+          <Stack.Screen name="department/[campus]/[division]/index" options={{ headerShown: false }} />
         </Stack>
         <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
       </ThemeProvider>

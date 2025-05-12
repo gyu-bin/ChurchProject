@@ -1,15 +1,17 @@
-// components/PrayerListModal.tsx
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Modal,
     SafeAreaView,
     View,
     Text,
     FlatList,
-    TouchableOpacity,Dimensions
+    TouchableOpacity,
+    Dimensions,
+    RefreshControl,
 } from 'react-native';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useDesign } from '@/context/DesignSystem';
+
 interface PrayerItem {
     id: string;
     title: string;
@@ -27,6 +29,7 @@ interface Props {
     currentUser: { email: string };
     onClose: () => void;
     onDelete: (id: string) => void;
+    onRefresh?: () => Promise<void>; // 🔄 외부 새로고침 함수
 }
 
 export default function PrayerListModal({
@@ -35,11 +38,30 @@ export default function PrayerListModal({
                                             currentUser,
                                             onClose,
                                             onDelete,
+                                            onRefresh,
                                         }: Props) {
     const { mode } = useAppTheme();
     const theme = useDesign();
-
     const screenWidth = Dimensions.get('window').width;
+
+    const [localPrayers, setLocalPrayers] = useState<PrayerItem[]>([]);
+    const [refreshing, setRefreshing] = useState(false);
+
+    useEffect(() => {
+        setLocalPrayers(prayers);
+    }, [prayers]);
+
+    const handleDelete = (id: string) => {
+        onDelete(id);
+        setLocalPrayers(prev => prev.filter(p => p.id !== id));
+    };
+
+    const handleRefresh = async () => {
+        if (!onRefresh) return;
+        setRefreshing(true);
+        await onRefresh();
+        setRefreshing(false);
+    };
 
     return (
         <Modal visible={visible} animationType="slide">
@@ -49,12 +71,19 @@ export default function PrayerListModal({
                 </Text>
 
                 <FlatList
-                    data={prayers.sort((a, b) =>
+                    data={[...localPrayers].sort((a, b) =>
                         (b.createdAt?.toDate?.()?.getTime?.() || 0) -
                         (a.createdAt?.toDate?.()?.getTime?.() || 0)
                     )}
                     keyExtractor={(item) => item.id}
                     contentContainerStyle={{ paddingBottom: 40 }}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={handleRefresh}
+                            tintColor={theme.colors.primary}
+                        />
+                    }
                     renderItem={({ item }) => (
                         <View style={{
                             backgroundColor: theme.colors.surface,
@@ -98,10 +127,10 @@ export default function PrayerListModal({
 
                             {currentUser?.email && item.email === currentUser.email && (
                                 <TouchableOpacity
-                                    onPress={() => onDelete(item.id)}
+                                    onPress={() => handleDelete(item.id)}
                                     style={{
                                         marginTop: 16,
-                                        backgroundColor: '#EF4444', // 밝은 빨강
+                                        backgroundColor: '#EF4444',
                                         paddingVertical: 10,
                                         borderRadius: 999,
                                         alignItems: 'center',

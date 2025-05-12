@@ -1,7 +1,8 @@
+//app/teams/[id].tsx
 import React, { useEffect, useState } from 'react';
 import {
     View, Text, SafeAreaView, TouchableOpacity, Alert, Image,
-    ActivityIndicator, ScrollView
+    ActivityIndicator, ScrollView, Platform,RefreshControl
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { doc, getDoc, query, collection, where, getDocs, updateDoc, increment, arrayRemove, deleteDoc } from 'firebase/firestore';
@@ -10,7 +11,8 @@ import { getCurrentUser } from '@/services/authService';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
 import { useDesign } from '@/context/DesignSystem';
 import { useAppTheme } from '@/context/ThemeContext';
-
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {Ionicons} from "@expo/vector-icons";
 type Team = {
     id: string;
     name: string;
@@ -29,18 +31,22 @@ export default function TeamDetail() {
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<any>(null);
     const router = useRouter();
-
     const { colors, font, spacing, radius } = useDesign();
     const { mode } = useAppTheme();
+    const isDark = mode === 'dark';
     const [currentUser, setCurrentUser] = useState<any>(null);
     const isCreator = team?.leaderEmail === user?.email;
+    const insets = useSafeAreaInsets();
+    const [refreshing, setRefreshing] = useState(false); // 추가
 
     useEffect(() => {
         getCurrentUser().then(setCurrentUser);
     }, []);
 
-    useEffect(() => {
-        const fetch = async () => {
+// 🔄 API 호출 로직 분리
+    const fetchTeam = async () => {
+        setRefreshing(true);
+        try {
             const docSnap = await getDoc(doc(db, 'teams', id));
             if (!docSnap.exists()) return;
 
@@ -62,10 +68,16 @@ export default function TeamDetail() {
                 const users = results.flatMap(snap => snap.docs.map(doc => doc.data()));
                 setMemberUsers(users);
             }
-
+        } catch (e) {
+            console.error('❌ 팀 불러오기 실패:', e);
+        } finally {
             setLoading(false);
-        };
-        fetch();
+            setRefreshing(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchTeam();
     }, []);
 
     const handleJoin = async () => {
@@ -192,8 +204,30 @@ export default function TeamDetail() {
     const isFull = (team?.members ?? 0) >= (team?.capacity ?? 99);
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-            <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 35 : 0 }}>
+            <View
+                style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingHorizontal: spacing.lg,
+                    marginTop: Platform.OS === 'android' ? insets.top : spacing.md,
+                }}
+            >
+                <TouchableOpacity onPress={() => router.back()}>
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={{ fontSize: font.body, fontWeight: '600', color: colors.text, marginLeft: 8 }}>
+                    소모임 목록
+                </Text>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={fetchTeam}
+                                tintColor={colors.primary}
+                            />
+                        }>
                 {team.thumbnail && (
                     <Image
                         source={{ uri: team.thumbnail }}
@@ -201,7 +235,11 @@ export default function TeamDetail() {
                     />
                 )}
 
-                <View style={{ backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg }}>
+                <View style={{ backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg,
+                    shadowColor: isDark ? 'transparent' : '#000',
+                    shadowOpacity: 0.05,
+                    shadowRadius: 6,
+                    elevation: 2,}}>
                     <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.text }}>{team.name}</Text>
                     <Text style={{ fontSize: font.caption, color: colors.subtext, marginBottom: spacing.sm }}>by {team.leader}</Text>
 
@@ -216,7 +254,11 @@ export default function TeamDetail() {
                     </Text>
                 </View>
 
-                <View style={{ backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg }}>
+                <View style={{ backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg,
+                    shadowColor: isDark ? 'transparent' : '#000',
+                    shadowOpacity: 0.05,
+                    shadowRadius: 6,
+                    elevation: 2,}}>
                     <Text style={{ fontSize: font.body, fontWeight: '600', color: colors.text, marginBottom: spacing.sm }}>모임 소개</Text>
                     <Text style={{ fontSize: font.body, color: colors.text, lineHeight: 22 }}>{team.description}</Text>
                 </View>
@@ -225,7 +267,11 @@ export default function TeamDetail() {
                     <View style={{
                         backgroundColor: colors.surface,
                         borderRadius: radius.lg,
-                        padding: spacing.lg
+                        padding: spacing.lg,
+                        shadowColor: isDark ? 'transparent' : '#000',
+                        shadowOpacity: 0.05,
+                        shadowRadius: 6,
+                        elevation: 2,
                     }}>
                         <Text style={{
                             fontSize: font.body,

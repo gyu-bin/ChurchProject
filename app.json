@@ -10,9 +10,12 @@
     "newArchEnabled": true,
     "owner": "rbqls6651",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rbqls6651.churchappexpo"
     },
     "android": {
+      "package": "com.rbqls6651.churchappexpo",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"

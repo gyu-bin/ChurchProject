@@ -135,7 +135,7 @@ export default function PrayerModal({
                                         </Text>
                                     </TouchableOpacity>
 
-                                    <TouchableOpacity
+                                    {/*<TouchableOpacity
                                         onPress={() => setVisibility('pastor')}
                                         style={{
                                             borderWidth: 1,
@@ -155,7 +155,7 @@ export default function PrayerModal({
                                         >
                                             교역자만
                                         </Text>
-                                    </TouchableOpacity>
+                                    </TouchableOpacity>*/}
                                 </View>
                             </View>
 
@@ -187,7 +187,7 @@ export default function PrayerModal({
                                     paddingVertical: spacing.sm,
                                     backgroundColor: colors.border,
                                     borderRadius: radius.md,
-                                    height: 30,
+                                    height: 40,
                                 }}
                             >
                                 <Text style={{ color: colors.text, fontSize: font.caption, fontWeight: '500' }}>

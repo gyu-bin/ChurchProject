@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     View, Text, TouchableOpacity, Modal, FlatList,
-    SafeAreaView, ScrollView
+    SafeAreaView, Animated, PanResponder, Dimensions, Platform
 } from 'react-native';
 import catechismData from '@/assets/catechism/catechism.json';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDesign } from '@/context/DesignSystem';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Platform } from 'react-native';
+
 type CatechismItem = {
     question_number: number;
     question: string;
@@ -24,6 +24,10 @@ export default function Catechism() {
     const { colors, font, spacing, radius } = useDesign();
     const { mode } = useAppTheme();
     const insets = useSafeAreaInsets();
+    const screenWidth = Dimensions.get('window').width;
+
+    const translateX = useRef(new Animated.Value(0)).current;
+
     useEffect(() => {
         setData(catechismData);
         loadLastSeen();
@@ -38,6 +42,33 @@ export default function Catechism() {
         await AsyncStorage.setItem('last_seen_question', num.toString());
     };
 
+    const animateTo = (direction: 'left' | 'right') => {
+        const toValue = direction === 'left' ? -screenWidth : screenWidth;
+        Animated.timing(translateX, {
+            toValue,
+            duration: 250,
+            useNativeDriver: true,
+        }).start(() => {
+            const newSelected = direction === 'left' ? selected + 1 : selected - 1;
+            setSelected(newSelected);
+            saveLastSeen(newSelected);
+            translateX.setValue(0); // 초기화
+        });
+    };
+
+    const panResponder = useRef(
+        PanResponder.create({
+            onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 20,
+            onPanResponderRelease: (_, gesture) => {
+                if (gesture.dx < -50 && selected < data.length) {
+                    animateTo('left');
+                } else if (gesture.dx > 50 && selected > 1) {
+                    animateTo('right');
+                }
+            }
+        })
+    ).current;
+
     const handleSelect = (num: number) => {
         setSelected(num);
         saveLastSeen(num);
@@ -47,8 +78,7 @@ export default function Catechism() {
     const selectedItem = data.find((item) => item.question_number === selected);
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: '8%' }}>
-            {/*<SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>*/}
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? insets.top : '8%',}}>
             <TouchableOpacity
                 onPress={() => setModalVisible(true)}
                 style={{
@@ -67,12 +97,20 @@ export default function Catechism() {
 
             {/* 문항 선택 모달 */}
             <Modal visible={modalVisible} animationType="slide">
-                <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, padding: spacing.md }}>
+                <SafeAreaView
+                    style={{
+                        flex: 1,
+                        backgroundColor: colors.background,
+                        paddingTop: spacing.md,
+                        paddingBottom: spacing.md,
+                    }}
+                >
                     <Text style={{
                         fontSize: font.heading,
                         fontWeight: 'bold',
                         color: colors.primary,
-                        marginBottom: spacing.md
+                        marginBottom: spacing.md,
+                        paddingHorizontal: spacing.md // ✅ 아이폰 여백
                     }}>
                         문항 선택
                     </Text>
@@ -87,6 +125,7 @@ export default function Catechism() {
                                     paddingVertical: spacing.md,
                                     borderBottomWidth: 1,
                                     borderBottomColor: colors.border,
+                                    paddingHorizontal: spacing.md // ✅ 아이폰 여백
                                 }}
                             >
                                 <Text style={{ fontSize: font.body, color: colors.text }}>
@@ -115,53 +154,63 @@ export default function Catechism() {
 
             {/* 선택된 문항 */}
             {selectedItem && (
-                <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
-                    <View style={{
-                        backgroundColor: colors.surface,
-                        borderRadius: radius.lg,
+                <View style={{ flex: 1 }} {...panResponder.panHandlers}>
+                    <Animated.View style={{
+                        flex: 1,
                         padding: spacing.lg,
-                        elevation: 2
+                        transform: [{ translateX }],
                     }}>
-                        <Text style={{
-                            fontSize: font.heading,
-                            fontWeight: 'bold',
-                            color: colors.primary,
-                            marginBottom: spacing.md,
+                        <View style={{
+                            backgroundColor: colors.surface,
+                            borderRadius: radius.lg,
+                            padding: spacing.lg,
+                            justifyContent: 'center',
+                            shadowColor: '#000',
+                            shadowOpacity: 0.05,
+                            shadowRadius: 6,
+                            elevation: 3
                         }}>
-                            Q{selectedItem.question_number}. {selectedItem.question}
-                        </Text>
+                            <Text style={{
+                                fontSize: font.heading,
+                                fontWeight: 'bold',
+                                color: colors.primary,
+                                marginBottom: spacing.md,
+                            }}>
+                                Q{selectedItem.question_number}. {selectedItem.question}
+                            </Text>
 
-                        <Text style={{
-                            fontSize: font.body,
-                            color: colors.text,
-                            lineHeight: 26
-                        }}>
-                            {selectedItem.answer}
-                        </Text>
+                            <Text style={{
+                                fontSize: font.body,
+                                color: colors.text,
+                                lineHeight: 26
+                            }}>
+                                {selectedItem.answer}
+                            </Text>
 
-                        {Array.isArray(selectedItem.references) && selectedItem.references.length > 0 && (
-                            <View style={{ marginTop: spacing.lg }}>
-                                <Text style={{
-                                    fontSize: font.caption,
-                                    fontWeight: 'bold',
-                                    color: colors.subtext,
-                                    marginBottom: spacing.sm
-                                }}>
-                                    📖 성경 참고 구절:
-                                </Text>
-                                {selectedItem.references.map((ref, idx) => (
-                                    <Text key={idx} style={{
+                            {Array.isArray(selectedItem.references) && selectedItem.references.length > 0 && (
+                                <View style={{ marginTop: spacing.lg }}>
+                                    <Text style={{
                                         fontSize: font.caption,
+                                        fontWeight: 'bold',
                                         color: colors.subtext,
-                                        marginLeft: spacing.sm
+                                        marginBottom: spacing.sm
                                     }}>
-                                        • {ref}
+                                        📖 성경 참고 구절:
                                     </Text>
-                                ))}
-                            </View>
-                        )}
-                    </View>
-                </ScrollView>
+                                    {selectedItem.references.map((ref, idx) => (
+                                        <Text key={idx} style={{
+                                            fontSize: font.caption,
+                                            color: colors.subtext,
+                                            marginLeft: spacing.sm
+                                        }}>
+                                            • {ref}
+                                        </Text>
+                                    ))}
+                                </View>
+                            )}
+                        </View>
+                    </Animated.View>
+                </View>
             )}
         </SafeAreaView>
     );

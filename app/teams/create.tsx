@@ -10,6 +10,8 @@ import { db } from '@/firebase/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
 import { useDesign } from '@/context/DesignSystem';
+import {Ionicons} from "@expo/vector-icons";
+import {useSafeAreaInsets} from "react-native-safe-area-context";
 // import { useAppTheme } from '@/context/ThemeContext';
 
 export default function CreateTeam() {
@@ -20,7 +22,7 @@ export default function CreateTeam() {
     const [role, setRole] = useState('');
     const [memberCount, setMemberCount] = useState('');
     const router = useRouter();
-
+    const insets = useSafeAreaInsets();
     const { colors, spacing, radius, font } = useDesign();
 
     useEffect(() => {
@@ -40,6 +42,12 @@ export default function CreateTeam() {
             return;
         }
 
+        // 🔒 생성 권한 제한
+        if (role === '새가족') {
+            Alert.alert('권한 부족', '정회원 또는 교역자만 소모임을 생성할 수 있습니다.');
+            return;
+        }
+
         try {
             const baseData = {
                 name,
@@ -52,12 +60,7 @@ export default function CreateTeam() {
                 maxMembers: parseInt(memberCount) || 10,
             };
 
-            if (role === '교역자') {
-                await addDoc(collection(db, 'teams'), {
-                    ...baseData,
-                    approved: true,
-                });
-            } else {
+            if (role === '교역자' || role === '정회원') {
                 // 🔥 소모임 생성 → teamRef 반환
                 const teamRef = await addDoc(collection(db, 'teams'), {
                     ...baseData,
@@ -79,7 +82,7 @@ export default function CreateTeam() {
                     if (pastor.email === creatorEmail || notified.has(pastor.email)) return;
                     notified.add(pastor.email);
 
-                    firestorePromises.push(sendNotification({
+                    /*firestorePromises.push(sendNotification({
                         to: pastor.email,
                         message: `${leader}님이 "${name}" 소모임을 생성했습니다.`,
                         type: 'team_create',
@@ -94,12 +97,13 @@ export default function CreateTeam() {
                             title: '📌 소모임 승인 요청',
                             body: `${leader}님의 소모임 생성 승인 요청`,
                         }));
-                    }
+                    }*/
                 });
 
                 await Promise.all([...firestorePromises, ...pushPromises]);
             }
-
+            
+            Alert.alert('완료', '모임이 성공적으로 생성되었습니다.');
             router.replace('/teams');
         } catch (error: any) {
             Alert.alert('생성 실패', error.message);
@@ -107,7 +111,22 @@ export default function CreateTeam() {
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background,paddingTop: Platform.OS === 'android' ? 30 : 0 }}>
+            <View
+                style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingHorizontal: spacing.lg,
+                    marginTop: Platform.OS === 'android' ? insets.top : spacing.md,
+                }}
+            >
+                <TouchableOpacity onPress={() => router.back()}>
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={{ fontSize: font.body, fontWeight: '600', color: colors.text, marginLeft: 8 }}>
+                    소모임 목록
+                </Text>
+            </View>
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -191,6 +210,19 @@ export default function CreateTeam() {
                     >
                         <Text style={{ color: '#fff', fontSize: font.body, fontWeight: 'bold' }}>소모임 생성</Text>
                     </TouchableOpacity>
+
+                    <Text style={{
+                        fontSize: 12,
+                        color: colors.subtext,
+                        textAlign: 'center',
+                        marginTop: spacing.lg,
+                        lineHeight: 20,
+                    }}>
+                        ※ 소모임은 정회원 또는 교역자만 생성할 수 있습니다.{'\n'}
+                        ※ 모임장은 정회원 이상이어야 하며, 최소 5명 이상이 모여야 합니다.{'\n'}
+                        ※ 생성 후 1개월 내 인원이 없을 경우 모임이 삭제될 수 있습니다.{'\n'}
+                        ※ 교회와 무관한 주제의 모임은 임의로 삭제될 수 있습니다.
+                    </Text>
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>

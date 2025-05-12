@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-    View, Text, TouchableOpacity, SafeAreaView, Platform, ScrollView, KeyboardAvoidingView
+    View, Text, TouchableOpacity, SafeAreaView, Platform, ScrollView, KeyboardAvoidingView, Alert, Modal
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
@@ -9,6 +9,8 @@ import { useDesign } from '@/context/DesignSystem';
 import ThemeToggle from "@/components/ThemeToggle";
 import PushSettings from "@/components/VerseNotificationSettings";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { doc, updateDoc,getDoc,onSnapshot } from 'firebase/firestore';
+import { db } from '@/firebase/config';
 
 export default function SettingsScreen() {
     const [user, setUser] = useState<any>(null);
@@ -18,6 +20,46 @@ export default function SettingsScreen() {
     const { colors, spacing, font, radius } = useDesign();
     const insets = useSafeAreaInsets();
     const horizontalMargin = Platform.OS === 'ios' ? 20 : 16;
+
+    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+    // 유저 정보 불러오기
+    useEffect(() => {
+        let unsubscribe: () => void;
+
+        const listenUser = async () => {
+            const raw = await AsyncStorage.getItem('currentUser');
+            if (!raw) return;
+            const cachedUser = JSON.parse(raw);
+            const userRef = doc(db, 'users', cachedUser.email);
+
+            unsubscribe = onSnapshot(userRef, async (docSnap) => {
+                if (docSnap.exists()) {
+                    const fresh = { ...docSnap.data(), email: cachedUser.email };
+                    setUser(fresh); // ✅ 실시간 업데이트
+                    await AsyncStorage.setItem('currentUser', JSON.stringify(fresh));
+                }
+            });
+        };
+
+        listenUser();
+
+        return () => {
+            if (unsubscribe) unsubscribe(); // 💡 메모리 누수 방지
+        };
+    }, []);
+
+// 정회원 전환
+    const handleUpgrade = async () => {
+        if (!user?.email) return;
+
+        const updatedUser = { ...user, role: '정회원' };
+        await updateDoc(doc(db, 'users', user.email), { role: '정회원' });
+        await AsyncStorage.setItem('currentUser', JSON.stringify(updatedUser));
+        setUser(updatedUser); // ✅ 상태도 즉시 반영
+        setShowUpgradeModal(false);
+        Alert.alert('업데이트 완료', '정회원으로 전환되었습니다.');
+    };
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -107,7 +149,7 @@ export default function SettingsScreen() {
                     {/*말씀알림*/}
                     <PushSettings/>
 
-                    {user?.role === '교역자' && (
+                    {/*{user?.role === '교역자' && (
                         <TouchableOpacity
                             onPress={() => router.push('/pastor/pastor')}
                             style={{
@@ -122,6 +164,72 @@ export default function SettingsScreen() {
                                 📌 교역자 전용 페이지
                             </Text>
                         </TouchableOpacity>
+                    )}*/}
+
+                    {user?.role === '새가족' && (
+                        <>
+                            <TouchableOpacity
+                                onPress={() => setShowUpgradeModal(true)}
+                                style={{
+                                    marginTop: 24,
+                                    backgroundColor: colors.primary,
+                                    padding: spacing.md,
+                                    borderRadius: radius.md,
+                                    alignItems: 'center',
+                                }}
+                            >
+                                <Text style={{ color: '#fff', fontWeight: 'bold' }}>정회원이 되었나요2?</Text>
+                            </TouchableOpacity>
+
+                            <Modal visible={showUpgradeModal} transparent animationType="fade">
+                                <View style={{
+                                    flex: 1,
+                                    backgroundColor: 'rgba(0,0,0,0.5)',
+                                    justifyContent: 'center',
+                                    alignItems: 'center'
+                                }}>
+                                    <View style={{
+                                        backgroundColor: colors.surface,
+                                        padding: spacing.lg,
+                                        borderRadius: radius.lg,
+                                        width: '80%'
+                                    }}>
+                                        <Text style={{
+                                            fontSize: font.body,
+                                            fontWeight: '600',
+                                            color: colors.text,
+                                            marginBottom: spacing.md,
+                                        }}>
+                                            정회원이 되었나요1?
+                                        </Text>
+
+                                        <TouchableOpacity
+                                            onPress={handleUpgrade}
+                                            style={{
+                                                backgroundColor: colors.primary,
+                                                paddingVertical: spacing.md,
+                                                borderRadius: radius.md,
+                                                alignItems: 'center',
+                                                marginBottom: spacing.md,
+
+                                            }}
+                                        >
+                                            <Text style={{ color: '#fff', fontWeight: 'bold' }}>예</Text>
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                            onPress={() => setShowUpgradeModal(false)}
+                                            style={{
+                                                alignItems: 'center',
+                                                paddingVertical: spacing.sm,
+                                            }}
+                                        >
+                                            <Text style={{ color: colors.subtext }}>취소</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            </Modal>
+                        </>
                     )}
 
                     <TouchableOpacity
