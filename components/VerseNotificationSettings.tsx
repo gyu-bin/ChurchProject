@@ -133,16 +133,35 @@ export default function PushDevotional() {
 
     // ✅ Android용 시간 변경 처리
     const handleAndroidTimeChange = async (event: any, selectedTime?: Date) => {
-        if (event.type === 'set' && selectedTime) {
-            setTempTime(selectedTime);
-            setTime(selectedTime);
-            setShowPicker(false);
-            await AsyncStorage.setItem('devotionalTime', selectedTime.toString());
-            await scheduleDailyAlarm(selectedTime);
-            Alert.alert('설정 완료', `${formatAMPM(selectedTime)}에 랜덤 말씀 알림이 설정되었습니다.`);
-        } else {
-            setShowPicker(false);
-        }
+        const hours = tempTime.getHours();
+        const minutes = tempTime.getMinutes();
+        setTime(tempTime);
+        setShowPicker(false);
+
+        Alert.alert(
+            '설정 완료',
+            `${formatAMPM(tempTime)}에 랜덤 말씀 알림이 설정되었습니다.`
+        );
+
+        await AsyncStorage.setItem('devotionalTime', tempTime.toString());
+        await Notifications.cancelAllScheduledNotificationsAsync();
+
+        const randomVerse: Verses = verses[Math.floor(Math.random() * verses.length)];
+
+        await Notifications.scheduleNotificationAsync({
+            content: {
+                title: '📖 오늘의 말씀',
+                body: `${randomVerse.verse} (${randomVerse.reference})`,
+            },
+            trigger: {
+                type: 'calendar',
+                hour: hours,
+                minute: minutes,
+                repeats: true,
+            } as Notifications.CalendarTriggerInput,
+        });
+
+
     };
 
     return (
