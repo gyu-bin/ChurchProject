@@ -24,6 +24,18 @@ export default function PushDevotional() {
     const subTextColor = isDark ? '#9ca3af' : '#6b7280';
     const cardColor = isDark ? '#374151' : '#ffffff';
 
+    useEffect(() => {
+        (async () => {
+            const savedEnabled = await AsyncStorage.getItem('devotionalEnabled');
+            const savedTime = await AsyncStorage.getItem('devotionalTime');
+
+            if (savedEnabled === 'true' && savedTime) {
+                const parsedTime = new Date(savedTime);
+                await scheduleDailyAlarm(parsedTime); // 🔁 매일 앱 실행 시 예약
+            }
+        })();
+    }, []);
+
     // 🔧 알림 채널 등록 (Android only)
     useEffect(() => {
         if (Platform.OS === 'android') {
@@ -82,15 +94,9 @@ export default function PushDevotional() {
                 priority: Notifications.AndroidNotificationPriority.HIGH,
             }as any,
             trigger: {
-                type: 'calendar',
-                hour: alarmTime.getHours(),
-                minute: alarmTime.getMinutes(),
-                repeats: true, // ✅ 매일 반복됨
-            } as Notifications.CalendarTriggerInput,
-            // trigger: {
-            //     type: 'date',
-            //     date: alarmTime,
-            // } as Notifications.DateTriggerInput,
+                type: 'date',
+                date: alarmTime,
+            } as Notifications.DateTriggerInput,
         });
     };
 
