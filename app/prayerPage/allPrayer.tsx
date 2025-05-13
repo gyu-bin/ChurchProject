@@ -7,10 +7,11 @@ import {
     FlatList,
     TouchableOpacity,
     Dimensions,
-    RefreshControl,
+    RefreshControl, Platform,
 } from 'react-native';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useDesign } from '@/context/DesignSystem';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface PrayerItem {
     id: string;
@@ -43,7 +44,7 @@ export default function PrayerListModal({
     const { mode } = useAppTheme();
     const theme = useDesign();
     const screenWidth = Dimensions.get('window').width;
-
+    const insets = useSafeAreaInsets();
     const [localPrayers, setLocalPrayers] = useState<PrayerItem[]>([]);
     const [refreshing, setRefreshing] = useState(false);
 
@@ -65,8 +66,11 @@ export default function PrayerListModal({
 
     return (
         <Modal visible={visible} animationType="slide">
-            <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background, padding: theme.spacing.lg }}>
-                <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text, marginBottom: 24 }}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background}}>
+                <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text,
+                    marginBottom: 24, paddingTop: Platform.OS === 'android' ? insets.top : 20,
+                    paddingHorizontal: 20
+                }}>
                     📃 전체 기도제목
                 </Text>
 
