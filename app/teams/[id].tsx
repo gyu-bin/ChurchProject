@@ -93,8 +93,14 @@ export default function TeamDetail() {
             return;
         }
 
+        // ✅ 1. Push 토큰 가져오기 (email 기준으로)
+        const q = query(collection(db, 'expoTokens'), where('email', '==', team.leaderEmail));
+        const snap = await getDocs(q);
+        const tokens: string[] = snap.docs.map(doc => doc.data().token).filter(Boolean);
+
+// ✅ 2. Firestore 알림 저장 (email 저장)
         await sendNotification({
-            to: team.leaderEmail,
+            to: team.leaderEmail, // Firestore 알림 받는 주체(email)
             message: `${user.name}님이 "${team.name}" 모임에 가입 신청했습니다.`,
             type: 'team_join_request',
             link: '/notifications',
@@ -104,10 +110,7 @@ export default function TeamDetail() {
             applicantName: user.name,
         });
 
-        const q = query(collection(db, 'expoTokens'), where('email', '==', team.leaderEmail));
-        const snap = await getDocs(q);
-        const tokens: string[] = snap.docs.map(doc => doc.data().token).filter(Boolean);
-
+// ✅ 3. Expo 푸시 전송 (token 기반)
         if (tokens.length > 0) {
             await sendPushNotification({
                 to: tokens,

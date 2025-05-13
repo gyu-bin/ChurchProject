@@ -23,7 +23,7 @@ export default function TabLayout() {
                     backgroundColor: tabBarBackgroundColor,
                     borderTopColor: tabBarBorderColor,
                     borderTopWidth: 1,
-                    height: Platform.OS === 'android' ? 78 : 75,
+                    height: Platform.OS === 'android' ? 73: 75,
                     paddingTop: 4,
                 },
                 tabBarIcon: ({ color, size }) => {

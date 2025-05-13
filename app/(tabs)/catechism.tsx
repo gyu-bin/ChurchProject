@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    View, Text, TouchableOpacity, Modal, FlatList, SafeAreaView, Platform
+    View, Text, TouchableOpacity, Modal, FlatList, SafeAreaView, Platform, Dimensions
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import PagerView from 'react-native-pager-view';
@@ -19,26 +19,32 @@ const categories = [
 
 export default function CatechismPage() {
     const pagerRef = useRef<PagerView>(null);
-    const [selectedCategory, setSelectedCategory] = useState(categories[1]); // default: 소요리문답
+    const flatListRef = useRef<FlatList>(null);
+    const itemHeightRef = useRef(60);
+
+    const [selectedCategory, setSelectedCategory] = useState(categories[1]);
     const [modalVisible, setModalVisible] = useState(false);
     const [categoryModal, setCategoryModal] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [initialized, setInitialized] = useState(false);
 
-    const { mode } = useAppTheme();
     const { colors, font, spacing, radius } = useDesign();
     const insets = useSafeAreaInsets();
 
     useEffect(() => {
+        const loadState = async () => {
+            const storedCate = await AsyncStorage.getItem('last_catechism_category');
+            const storedNum = await AsyncStorage.getItem(`last_seen_${storedCate || 'shorter'}`);
+            const found = categories.find(c => c.key === storedCate);
+            const indexToSet = storedNum ? Math.max(parseInt(storedNum) - 1, 0) : 0;
+
+            if (found) setSelectedCategory(found);
+            setCurrentIndex(indexToSet);
+            setInitialized(true);
+        };
+
         loadState();
     }, []);
-
-    const loadState = async () => {
-        const storedCate = await AsyncStorage.getItem('last_catechism_category');
-        const storedNum = await AsyncStorage.getItem(`last_seen_${storedCate || 'shorter'}`);
-        const found = categories.find(c => c.key === storedCate);
-        if (found) setSelectedCategory(found);
-        if (storedNum) setCurrentIndex(Math.max(parseInt(storedNum) - 1, 0));
-    };
 
     const saveState = async (cateKey: string, index: number) => {
         await AsyncStorage.setItem('last_catechism_category', cateKey);
@@ -59,139 +65,142 @@ export default function CatechismPage() {
         setModalVisible(false);
     };
 
-    const handleCategoryChange = (category: typeof selectedCategory) => {
+    const handleCategoryChange = async (category: typeof selectedCategory) => {
+        const storedNum = await AsyncStorage.getItem(`last_seen_${category.key}`);
+        const restoredIndex = storedNum ? Math.max(parseInt(storedNum) - 1, 0) : 0;
+
         setSelectedCategory(category);
-        setCurrentIndex(0);
-        saveState(category.key, 0);
-        pagerRef.current?.setPage(0);
+        setCurrentIndex(restoredIndex);
+        saveState(category.key, restoredIndex);
+
+        setTimeout(() => {
+            pagerRef.current?.setPage(restoredIndex);
+        }, 0);
+
         setCategoryModal(false);
     };
 
-    return (
-        <SafeAreaView style={{
-            flex: 1,
-            backgroundColor: colors.background,
+    const openQuestionModal = () => {
+        setModalVisible(true);
 
-        }}>
-            {/* 📌 상단 교리문답 선택 버튼 */}
+        setTimeout(() => {
+            const ITEM_HEIGHT = 60;
+            const screenHeight = Dimensions.get('window').height;
+            const headerHeight = insets.top + 40 + spacing.lg * 2; // 여유 padding 포함
+
+// 플랫폼별 가중치 적용
+            const offsetMultiplier = Platform.OS === 'ios' ? 0.5 : 0.1;
+
+            const targetOffset =
+                currentIndex * ITEM_HEIGHT - (screenHeight - headerHeight) * offsetMultiplier + ITEM_HEIGHT / 2;
+
+            flatListRef.current?.scrollToOffset({
+                offset: Math.max(targetOffset, 0),
+                animated: false,
+            });
+        }, 350); // Modal 완전히 열리고 실행
+    };
+    return (
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
             <TouchableOpacity
                 onPress={() => setCategoryModal(true)}
-                style={{ alignItems: 'center', marginBottom: spacing.sm,paddingTop: Platform.OS === 'android' ? '10%': '3%', }}
+                style={{ alignItems: 'center', marginBottom: spacing.sm, paddingTop: Platform.OS === 'android' ? insets.top : '3%' }}
             >
-                <Text style={{ fontSize: font.body, fontWeight: 'bold', color: colors.primary }}>
+                <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.primary }}>
                     {selectedCategory.label} ▾
                 </Text>
             </TouchableOpacity>
 
-            {/* 📌 문항 선택 버튼 */}
             <TouchableOpacity
-                onPress={() => setModalVisible(true)}
-                style={{
-                    backgroundColor: colors.surface,
-                    paddingVertical: spacing.md,
-                    paddingHorizontal: spacing.lg,
-                    alignItems: 'center',
-                    borderBottomWidth: 1,
-                    borderBottomColor: colors.border,
-                }}
+                onPress={openQuestionModal}
+                style={{ backgroundColor: colors.surface, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: colors.border }}
             >
                 <Text style={{ fontSize: font.body, fontWeight: '600', color: colors.primary }}>
                     문항 {currentIndex + 1} ▾
                 </Text>
             </TouchableOpacity>
 
-            {/* 📄 문항 슬라이드 뷰 */}
-            <PagerView
-                ref={pagerRef}
-                initialPage={currentIndex}
-                style={{ flex: 1 }}
-                onPageSelected={handlePageSelected}
-            >
-                {selectedCategory.data.map((item, index) => (
-                    <View key={index} style={{ padding: spacing.lg }}>
-                        <View style={{
-                            backgroundColor: colors.surface,
-                            borderRadius: radius.lg,
-                            padding: spacing.lg,
-                            shadowColor: '#000',
-                            shadowOpacity: 0.05,
-                            shadowRadius: 6,
-                            elevation: 3
-                        }}>
-                            <Text style={{
-                                fontSize: font.heading,
-                                fontWeight: 'bold',
-                                color: colors.primary,
-                                marginBottom: spacing.md,
-                            }}>
-                                Q{item.question_number}. {item.question}
-                            </Text>
-
-                            <Text style={{
-                                fontSize: font.body,
-                                color: colors.text,
-                                lineHeight: 26
-                            }}>
-                                {item.answer}
-                            </Text>
-
-                            {Array.isArray(item.references) && item.references.length > 0 && (
-                                <View style={{ marginTop: spacing.lg }}>
-                                    <Text style={{
-                                        fontSize: font.caption,
-                                        fontWeight: 'bold',
-                                        color: colors.subtext,
-                                        marginBottom: spacing.sm
-                                    }}>
-                                        📖 성경 참고 구절:
-                                    </Text>
-                                    {item.references.map((ref, idx) => (
-                                        <Text key={idx} style={{
-                                            fontSize: font.caption,
-                                            color: colors.subtext,
-                                            marginLeft: spacing.sm
-                                        }}>
-                                            • {ref}
+            {initialized && (
+                <PagerView
+                    key={selectedCategory.key}
+                    ref={pagerRef}
+                    style={{ flex: 1 }}
+                    initialPage={currentIndex}
+                    onPageSelected={handlePageSelected}
+                >
+                    {selectedCategory.data.map((item, index) => (
+                        <View key={index} style={{ padding: spacing.lg }}>
+                            <View style={{ backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 3 }}>
+                                <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.primary, marginBottom: spacing.md }}>
+                                    Q{item.question_number}. {item.question}
+                                </Text>
+                                <Text style={{ fontSize: font.body, color: colors.text, lineHeight: 26 }}>
+                                    {item.answer}
+                                </Text>
+                                {Array.isArray(item.references) && item.references.length > 0 && (
+                                    <View style={{ marginTop: spacing.lg }}>
+                                        <Text style={{ fontSize: font.caption, fontWeight: 'bold', color: colors.subtext, marginBottom: spacing.sm }}>
+                                            📖 성경 참고 구절:
                                         </Text>
-                                    ))}
-                                </View>
-                            )}
+                                        {item.references.map((ref, idx) => (
+                                            <Text key={idx} style={{ fontSize: font.caption, color: colors.subtext, marginLeft: spacing.sm }}>
+                                                • {ref}
+                                            </Text>
+                                        ))}
+                                    </View>
+                                )}
+                            </View>
                         </View>
-                    </View>
-                ))}
-            </PagerView>
+                    ))}
+                </PagerView>
+            )}
 
-            {/* 🧾 문항 선택 모달 */}
             <Modal visible={modalVisible} animationType="slide">
                 <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+                    <View style={{ alignItems: 'center', paddingTop: spacing.lg, marginBottom: spacing.md }}>
+                        <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.primary }}>
+                            {selectedCategory.label}
+                        </Text>
+                    </View>
                     <FlatList
+                        ref={flatListRef}
                         data={selectedCategory.data}
                         keyExtractor={(item) => item.question_number.toString()}
-                        renderItem={({ item }) => (
+                        initialNumToRender={currentIndex + 10}
+                        getItemLayout={(_, index) => ({
+                            length: itemHeightRef.current,
+                            offset: itemHeightRef.current * index,
+                            index,
+                        })}
+                        renderItem={({ item, index }) => (
                             <TouchableOpacity
+                                onLayout={index === 0 ? (e) => {
+                                    const height = e.nativeEvent.layout.height;
+                                    if (height && itemHeightRef.current !== height) {
+                                        itemHeightRef.current = height;
+                                    }
+                                } : undefined}
                                 onPress={() => handleSelect(item.question_number)}
-                                style={{
-                                    paddingVertical: spacing.md,
-                                    borderBottomWidth: 1,
-                                    borderBottomColor: colors.border,
-                                    paddingHorizontal: spacing.md
-                                }}
+                                style={{ paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border, paddingHorizontal: spacing.md }}
                             >
-                                <Text style={{ fontSize: font.body, color: colors.text }}>
+                                <Text style={{ fontSize: font.body + 2, color: colors.text }}>
                                     문 {item.question_number}. {item.question}
                                 </Text>
                             </TouchableOpacity>
                         )}
+                        onScrollToIndexFailed={({ index }) => {
+                            setTimeout(() => {
+                                flatListRef.current?.scrollToIndex({
+                                    index,
+                                    viewPosition: Platform.OS === 'ios' ? 0.45 : 0.25,
+                                    animated: true,
+                                });
+                            }, 500); // 충분한 delay (Android는 느림)
+                        }}
                     />
                     <TouchableOpacity
                         onPress={() => setModalVisible(false)}
-                        style={{
-                            marginTop: spacing.lg,
-                            backgroundColor: colors.primary,
-                            paddingVertical: spacing.md,
-                            borderRadius: radius.md,
-                            alignItems: 'center'
-                        }}
+                        style={{ marginTop: spacing.lg, backgroundColor: colors.primary, paddingVertical: spacing.md, borderRadius: radius.md, alignItems: 'center' }}
                     >
                         <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: font.body }}>
                             닫기
@@ -200,7 +209,6 @@ export default function CatechismPage() {
                 </SafeAreaView>
             </Modal>
 
-            {/* 🧩 카테고리 선택 모달 */}
             <Modal visible={categoryModal} animationType="fade" transparent>
                 <TouchableOpacity
                     style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }}
@@ -210,12 +218,7 @@ export default function CatechismPage() {
                     <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 24, width: '70%' }}>
                         {categories.map((cat) => (
                             <TouchableOpacity key={cat.key} onPress={() => handleCategoryChange(cat)}>
-                                <Text style={{
-                                    color: selectedCategory.key === cat.key ? colors.primary : colors.text,
-                                    fontSize: 20,
-                                    fontWeight: '600',
-                                    paddingVertical: 8
-                                }}>
+                                <Text style={{ color: selectedCategory.key === cat.key ? colors.primary : colors.text, fontSize: 20, fontWeight: '600', paddingVertical: 8 }}>
                                     {cat.label}
                                 </Text>
                             </TouchableOpacity>
