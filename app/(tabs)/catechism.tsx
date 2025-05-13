@@ -4,68 +4,86 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import PagerView from 'react-native-pager-view';
-import catechismData from '@/assets/catechism/catechism.json';
+import largerData from '@/assets/catechism/largerCatechism.json';
+import shorterData from '@/assets/catechism/shorterCatechism.json';
+import sgData from '@/assets/catechism/catechism.json';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useDesign } from '@/context/DesignSystem';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-type CatechismItem = {
-    question_number: number;
-    question: string;
-    answer: string;
-    references?: string[];
-};
+const categories = [
+    { label: '대요리 문답', key: 'larger', data: largerData },
+    { label: '소요리 문답', key: 'shorter', data: shorterData },
+    { label: '시광교리 문답', key: 'sg', data: sgData },
+];
 
-export default function CatechismPager() {
+export default function CatechismPage() {
     const pagerRef = useRef<PagerView>(null);
-    const [data, setData] = useState<CatechismItem[]>([]);
+    const [selectedCategory, setSelectedCategory] = useState(categories[1]); // default: 소요리문답
     const [modalVisible, setModalVisible] = useState(false);
+    const [categoryModal, setCategoryModal] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
 
     const { mode } = useAppTheme();
     const { colors, font, spacing, radius } = useDesign();
     const insets = useSafeAreaInsets();
 
-    const isDark = mode === 'dark';
-
     useEffect(() => {
-        setData(catechismData);
-        loadLastSeen();
+        loadState();
     }, []);
 
-    const loadLastSeen = async () => {
-        const stored = await AsyncStorage.getItem('last_seen_question');
-        if (stored) {
-            const index = Math.max(parseInt(stored) - 1, 0);
-            setCurrentIndex(index);
-        }
+    const loadState = async () => {
+        const storedCate = await AsyncStorage.getItem('last_catechism_category');
+        const storedNum = await AsyncStorage.getItem(`last_seen_${storedCate || 'shorter'}`);
+        const found = categories.find(c => c.key === storedCate);
+        if (found) setSelectedCategory(found);
+        if (storedNum) setCurrentIndex(Math.max(parseInt(storedNum) - 1, 0));
     };
 
-    const saveLastSeen = async (index: number) => {
-        await AsyncStorage.setItem('last_seen_question', (index + 1).toString());
+    const saveState = async (cateKey: string, index: number) => {
+        await AsyncStorage.setItem('last_catechism_category', cateKey);
+        await AsyncStorage.setItem(`last_seen_${cateKey}`, (index + 1).toString());
     };
 
     const handlePageSelected = async (e: any) => {
         const newIndex = e.nativeEvent.position;
         setCurrentIndex(newIndex);
-        await saveLastSeen(newIndex);
+        await saveState(selectedCategory.key, newIndex);
     };
 
     const handleSelect = (num: number) => {
         const index = Math.max(num - 1, 0);
         setCurrentIndex(index);
         pagerRef.current?.setPage(index);
-        saveLastSeen(index);
+        saveState(selectedCategory.key, index);
         setModalVisible(false);
+    };
+
+    const handleCategoryChange = (category: typeof selectedCategory) => {
+        setSelectedCategory(category);
+        setCurrentIndex(0);
+        saveState(category.key, 0);
+        pagerRef.current?.setPage(0);
+        setCategoryModal(false);
     };
 
     return (
         <SafeAreaView style={{
             flex: 1,
             backgroundColor: colors.background,
-            paddingTop: Platform.OS === 'android' ? insets.top : '8%',
+
         }}>
-            {/* 문항 선택 버튼 */}
+            {/* 📌 상단 교리문답 선택 버튼 */}
+            <TouchableOpacity
+                onPress={() => setCategoryModal(true)}
+                style={{ alignItems: 'center', marginBottom: spacing.sm,paddingTop: Platform.OS === 'android' ? '10%': '3%', }}
+            >
+                <Text style={{ fontSize: font.body, fontWeight: 'bold', color: colors.primary }}>
+                    {selectedCategory.label} ▾
+                </Text>
+            </TouchableOpacity>
+
+            {/* 📌 문항 선택 버튼 */}
             <TouchableOpacity
                 onPress={() => setModalVisible(true)}
                 style={{
@@ -82,14 +100,14 @@ export default function CatechismPager() {
                 </Text>
             </TouchableOpacity>
 
-            {/* 문항 슬라이드 뷰 */}
+            {/* 📄 문항 슬라이드 뷰 */}
             <PagerView
                 ref={pagerRef}
                 initialPage={currentIndex}
                 style={{ flex: 1 }}
                 onPageSelected={handlePageSelected}
             >
-                {data.map((item, index) => (
+                {selectedCategory.data.map((item, index) => (
                     <View key={index} style={{ padding: spacing.lg }}>
                         <View style={{
                             backgroundColor: colors.surface,
@@ -143,28 +161,11 @@ export default function CatechismPager() {
                 ))}
             </PagerView>
 
-            {/* 문항 선택 모달 */}
+            {/* 🧾 문항 선택 모달 */}
             <Modal visible={modalVisible} animationType="slide">
-                <SafeAreaView
-                    style={{
-                        flex: 1,
-                        backgroundColor: colors.background,
-                        paddingTop: spacing.md,
-                        paddingBottom: spacing.md,
-                    }}
-                >
-                    <Text style={{
-                        fontSize: font.heading,
-                        fontWeight: 'bold',
-                        color: colors.primary,
-                        marginBottom: spacing.md,
-                        paddingHorizontal: spacing.md
-                    }}>
-                        문항 선택
-                    </Text>
-
+                <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
                     <FlatList
-                        data={data}
+                        data={selectedCategory.data}
                         keyExtractor={(item) => item.question_number.toString()}
                         renderItem={({ item }) => (
                             <TouchableOpacity
@@ -182,7 +183,6 @@ export default function CatechismPager() {
                             </TouchableOpacity>
                         )}
                     />
-
                     <TouchableOpacity
                         onPress={() => setModalVisible(false)}
                         style={{
@@ -198,6 +198,30 @@ export default function CatechismPager() {
                         </Text>
                     </TouchableOpacity>
                 </SafeAreaView>
+            </Modal>
+
+            {/* 🧩 카테고리 선택 모달 */}
+            <Modal visible={categoryModal} animationType="fade" transparent>
+                <TouchableOpacity
+                    style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }}
+                    onPress={() => setCategoryModal(false)}
+                    activeOpacity={1}
+                >
+                    <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 24, width: '70%' }}>
+                        {categories.map((cat) => (
+                            <TouchableOpacity key={cat.key} onPress={() => handleCategoryChange(cat)}>
+                                <Text style={{
+                                    color: selectedCategory.key === cat.key ? colors.primary : colors.text,
+                                    fontSize: 20,
+                                    fontWeight: '600',
+                                    paddingVertical: 8
+                                }}>
+                                    {cat.label}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </TouchableOpacity>
             </Modal>
         </SafeAreaView>
     );
