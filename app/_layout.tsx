@@ -7,10 +7,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { requestNotificationPermission } from '@/utils/notificationPermission';
 import { cleanDuplicateExpoTokens } from '@/services/cleanExpoTokens';
 import * as NavigationBar from 'expo-navigation-bar';
-import { useColorScheme } from 'react-native';
+import { useColorScheme,Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
-
 export default function RootLayout() {
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
@@ -37,7 +36,7 @@ export default function RootLayout() {
         });
 
         return () => subscription.remove();
-    }, []);
+    }, [router]);
 
     useEffect(() => {
         NavigationBar.setBackgroundColorAsync(isDark ? '#1f2937' : '#ffffff');

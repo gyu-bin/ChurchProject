@@ -218,11 +218,12 @@ export default function CreateTeam() {
                     </TouchableOpacity>
 
                     <Text style={{
-                        fontSize: 14,
+                        fontSize: Platform.OS === 'android' ? 12 : 14,
                         color: colors.subtext,
                         textAlign: 'center',
                         marginTop: spacing.lg,
                         lineHeight: 20,
+                        fontWeight: 'bold'
                     }}>
                         ※ 소모임은 정회원 또는 교역자만 생성할 수 있습니다.{'\n'}
                         ※ 모임장은 정회원 이상이어야 하며, 최소 5명 이상이 모여야 합니다.{'\n'}

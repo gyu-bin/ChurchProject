@@ -111,7 +111,7 @@ export default function PushDevotional() {
         const minutes = tempTime.getMinutes();
         setTime(tempTime);
         setShowPicker(false);
-
+        Alert.alert('설정 완료', `${formatAMPM(tempTime)}에 말씀 알림이 설정되었습니다.`);
         await AsyncStorage.setItem('devotionalTime', tempTime.toString());
         await Notifications.cancelAllScheduledNotificationsAsync();
 
