@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    View, Text, TouchableOpacity, Modal, FlatList,
-    SafeAreaView, Animated, PanResponder, Dimensions, Platform
+    View, Text, TouchableOpacity, Modal, FlatList, SafeAreaView, Platform
 } from 'react-native';
-import catechismData from '@/assets/catechism/catechism.json';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useDesign } from '@/context/DesignSystem';
+import PagerView from 'react-native-pager-view';
+import catechismData from '@/assets/catechism/catechism.json';
 import { useAppTheme } from '@/context/ThemeContext';
+import { useDesign } from '@/context/DesignSystem';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type CatechismItem = {
@@ -16,17 +16,17 @@ type CatechismItem = {
     references?: string[];
 };
 
-export default function Catechism() {
-    const [selected, setSelected] = useState<number>(1);
-    const [modalVisible, setModalVisible] = useState(false);
+export default function CatechismPager() {
+    const pagerRef = useRef<PagerView>(null);
     const [data, setData] = useState<CatechismItem[]>([]);
+    const [modalVisible, setModalVisible] = useState(false);
+    const [currentIndex, setCurrentIndex] = useState(0);
 
-    const { colors, font, spacing, radius } = useDesign();
     const { mode } = useAppTheme();
+    const { colors, font, spacing, radius } = useDesign();
     const insets = useSafeAreaInsets();
-    const screenWidth = Dimensions.get('window').width;
 
-    const translateX = useRef(new Animated.Value(0)).current;
+    const isDark = mode === 'dark';
 
     useEffect(() => {
         setData(catechismData);
@@ -35,50 +35,37 @@ export default function Catechism() {
 
     const loadLastSeen = async () => {
         const stored = await AsyncStorage.getItem('last_seen_question');
-        if (stored) setSelected(Number(stored));
+        if (stored) {
+            const index = Math.max(parseInt(stored) - 1, 0);
+            setCurrentIndex(index);
+        }
     };
 
-    const saveLastSeen = async (num: number) => {
-        await AsyncStorage.setItem('last_seen_question', num.toString());
+    const saveLastSeen = async (index: number) => {
+        await AsyncStorage.setItem('last_seen_question', (index + 1).toString());
     };
 
-    const animateTo = (direction: 'left' | 'right') => {
-        const toValue = direction === 'left' ? -screenWidth : screenWidth;
-        Animated.timing(translateX, {
-            toValue,
-            duration: 250,
-            useNativeDriver: true,
-        }).start(() => {
-            const newSelected = direction === 'left' ? selected + 1 : selected - 1;
-            setSelected(newSelected);
-            saveLastSeen(newSelected);
-            translateX.setValue(0); // 초기화
-        });
+    const handlePageSelected = async (e: any) => {
+        const newIndex = e.nativeEvent.position;
+        setCurrentIndex(newIndex);
+        await saveLastSeen(newIndex);
     };
-
-    const panResponder = useRef(
-        PanResponder.create({
-            onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 20,
-            onPanResponderRelease: (_, gesture) => {
-                if (gesture.dx < -50 && selected < data.length) {
-                    animateTo('left');
-                } else if (gesture.dx > 50 && selected > 1) {
-                    animateTo('right');
-                }
-            }
-        })
-    ).current;
 
     const handleSelect = (num: number) => {
-        setSelected(num);
-        saveLastSeen(num);
+        const index = Math.max(num - 1, 0);
+        setCurrentIndex(index);
+        pagerRef.current?.setPage(index);
+        saveLastSeen(index);
         setModalVisible(false);
     };
 
-    const selectedItem = data.find((item) => item.question_number === selected);
-
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? insets.top : '8%',}}>
+        <SafeAreaView style={{
+            flex: 1,
+            backgroundColor: colors.background,
+            paddingTop: Platform.OS === 'android' ? insets.top : '8%',
+        }}>
+            {/* 문항 선택 버튼 */}
             <TouchableOpacity
                 onPress={() => setModalVisible(true)}
                 style={{
@@ -91,9 +78,70 @@ export default function Catechism() {
                 }}
             >
                 <Text style={{ fontSize: font.body, fontWeight: '600', color: colors.primary }}>
-                    문항 {selected} ▾
+                    문항 {currentIndex + 1} ▾
                 </Text>
             </TouchableOpacity>
+
+            {/* 문항 슬라이드 뷰 */}
+            <PagerView
+                ref={pagerRef}
+                initialPage={currentIndex}
+                style={{ flex: 1 }}
+                onPageSelected={handlePageSelected}
+            >
+                {data.map((item, index) => (
+                    <View key={index} style={{ padding: spacing.lg }}>
+                        <View style={{
+                            backgroundColor: colors.surface,
+                            borderRadius: radius.lg,
+                            padding: spacing.lg,
+                            shadowColor: '#000',
+                            shadowOpacity: 0.05,
+                            shadowRadius: 6,
+                            elevation: 3
+                        }}>
+                            <Text style={{
+                                fontSize: font.heading,
+                                fontWeight: 'bold',
+                                color: colors.primary,
+                                marginBottom: spacing.md,
+                            }}>
+                                Q{item.question_number}. {item.question}
+                            </Text>
+
+                            <Text style={{
+                                fontSize: font.body,
+                                color: colors.text,
+                                lineHeight: 26
+                            }}>
+                                {item.answer}
+                            </Text>
+
+                            {Array.isArray(item.references) && item.references.length > 0 && (
+                                <View style={{ marginTop: spacing.lg }}>
+                                    <Text style={{
+                                        fontSize: font.caption,
+                                        fontWeight: 'bold',
+                                        color: colors.subtext,
+                                        marginBottom: spacing.sm
+                                    }}>
+                                        📖 성경 참고 구절:
+                                    </Text>
+                                    {item.references.map((ref, idx) => (
+                                        <Text key={idx} style={{
+                                            fontSize: font.caption,
+                                            color: colors.subtext,
+                                            marginLeft: spacing.sm
+                                        }}>
+                                            • {ref}
+                                        </Text>
+                                    ))}
+                                </View>
+                            )}
+                        </View>
+                    </View>
+                ))}
+            </PagerView>
 
             {/* 문항 선택 모달 */}
             <Modal visible={modalVisible} animationType="slide">
@@ -110,7 +158,7 @@ export default function Catechism() {
                         fontWeight: 'bold',
                         color: colors.primary,
                         marginBottom: spacing.md,
-                        paddingHorizontal: spacing.md // ✅ 아이폰 여백
+                        paddingHorizontal: spacing.md
                     }}>
                         문항 선택
                     </Text>
@@ -125,7 +173,7 @@ export default function Catechism() {
                                     paddingVertical: spacing.md,
                                     borderBottomWidth: 1,
                                     borderBottomColor: colors.border,
-                                    paddingHorizontal: spacing.md // ✅ 아이폰 여백
+                                    paddingHorizontal: spacing.md
                                 }}
                             >
                                 <Text style={{ fontSize: font.body, color: colors.text }}>
@@ -151,67 +199,6 @@ export default function Catechism() {
                     </TouchableOpacity>
                 </SafeAreaView>
             </Modal>
-
-            {/* 선택된 문항 */}
-            {selectedItem && (
-                <View style={{ flex: 1 }} {...panResponder.panHandlers}>
-                    <Animated.View style={{
-                        flex: 1,
-                        padding: spacing.lg,
-                        transform: [{ translateX }],
-                    }}>
-                        <View style={{
-                            backgroundColor: colors.surface,
-                            borderRadius: radius.lg,
-                            padding: spacing.lg,
-                            justifyContent: 'center',
-                            shadowColor: '#000',
-                            shadowOpacity: 0.05,
-                            shadowRadius: 6,
-                            elevation: 3
-                        }}>
-                            <Text style={{
-                                fontSize: font.heading,
-                                fontWeight: 'bold',
-                                color: colors.primary,
-                                marginBottom: spacing.md,
-                            }}>
-                                Q{selectedItem.question_number}. {selectedItem.question}
-                            </Text>
-
-                            <Text style={{
-                                fontSize: font.body,
-                                color: colors.text,
-                                lineHeight: 26
-                            }}>
-                                {selectedItem.answer}
-                            </Text>
-
-                            {Array.isArray(selectedItem.references) && selectedItem.references.length > 0 && (
-                                <View style={{ marginTop: spacing.lg }}>
-                                    <Text style={{
-                                        fontSize: font.caption,
-                                        fontWeight: 'bold',
-                                        color: colors.subtext,
-                                        marginBottom: spacing.sm
-                                    }}>
-                                        📖 성경 참고 구절:
-                                    </Text>
-                                    {selectedItem.references.map((ref, idx) => (
-                                        <Text key={idx} style={{
-                                            fontSize: font.caption,
-                                            color: colors.subtext,
-                                            marginLeft: spacing.sm
-                                        }}>
-                                            • {ref}
-                                        </Text>
-                                    ))}
-                                </View>
-                            )}
-                        </View>
-                    </Animated.View>
-                </View>
-            )}
         </SafeAreaView>
     );
 }
