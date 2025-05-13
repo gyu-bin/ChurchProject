@@ -49,7 +49,7 @@ export default function CreateTeam() {
 
         const max = parseInt(memberCount);
         if (isNaN(max) || max < 2 || max > 99) {
-            Alert.alert('입력 오류', '참여 인원 수는 1명 이상 99명 이하로 설정해주세요.');
+            Alert.alert('입력 오류', '참여 인원 수는 2명 이상 99명 이하로 설정해주세요.');
             return;
         }
 
@@ -218,7 +218,7 @@ export default function CreateTeam() {
                     </TouchableOpacity>
 
                     <Text style={{
-                        fontSize: 12,
+                        fontSize: 14,
                         color: colors.subtext,
                         textAlign: 'center',
                         marginTop: spacing.lg,

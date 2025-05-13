@@ -178,7 +178,6 @@ export default function NotificationsScreen() {
                             elevation: 3,
                         }}
                     >
-                         아이콘
                         <View style={{
                             width: 40, height: 40, borderRadius: 20,
                             backgroundColor: mode === 'dark' ? colors.border : '#f1f5f9',
@@ -188,7 +187,6 @@ export default function NotificationsScreen() {
                             <Text style={{ fontSize: 18 }}>📢</Text>
                         </View>
 
-                         메시지 + 시간
                         <View style={{ flex: 1 }}>
                             <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text }}>
                                 {item.message}

@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import {
-    View, Text, Switch, Button, Platform,
-    Alert, TouchableOpacity, Modal,
+    View, Text, Switch, Button, Platform, Alert,
+    TouchableOpacity, Modal
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { verses } from '@/assets/verses';
 import { useAppTheme } from '@/context/ThemeContext';
-import DateTimePicker from '@react-native-community/datetimepicker';
 
 type Verses = { verse: string; reference: string };
 
@@ -19,51 +19,34 @@ export default function PushDevotional() {
 
     const { mode } = useAppTheme();
     const isDark = mode === 'dark';
-
     const textColor = isDark ? '#f9fafb' : '#111827';
     const subTextColor = isDark ? '#9ca3af' : '#6b7280';
     const cardColor = isDark ? '#374151' : '#ffffff';
 
+    // 📌 최초 실행 시 알림 등록 및 예약 불러오기
     useEffect(() => {
         (async () => {
-            const savedEnabled = await AsyncStorage.getItem('devotionalEnabled');
-            const savedTime = await AsyncStorage.getItem('devotionalTime');
-
-            if (savedEnabled === 'true' && savedTime) {
-                const parsedTime = new Date(savedTime);
-                await scheduleDailyAlarm(parsedTime); // 🔁 매일 앱 실행 시 예약
-            }
-        })();
-    }, []);
-
-    // 🔧 알림 채널 등록 (Android only)
-    useEffect(() => {
-        if (Platform.OS === 'android') {
-            Notifications.setNotificationChannelAsync('default', {
-                name: '기본 알림',
-                importance: Notifications.AndroidImportance.HIGH,
-                sound: 'default',
-            });
-        }
-    }, []);
-
-    // 🔄 앱 실행 시 기존 설정 불러오기 및 재예약
-    useEffect(() => {
-        (async () => {
-            const { status } = await Notifications.getPermissionsAsync();
-            if (status !== 'granted') {
+            const permission = await Notifications.getPermissionsAsync();
+            if (permission.status !== 'granted') {
                 await Notifications.requestPermissionsAsync();
             }
 
+            if (Platform.OS === 'android') {
+                await Notifications.setNotificationChannelAsync('default', {
+                    name: '기본 알림',
+                    importance: Notifications.AndroidImportance.HIGH,
+                    sound: 'default',
+                });
+            }
+
             const savedEnabled = await AsyncStorage.getItem('devotionalEnabled');
             const savedTime = await AsyncStorage.getItem('devotionalTime');
-
-            if (savedEnabled === 'true') setEnabled(true);
-            if (savedTime) {
-                const parsedTime = new Date(savedTime);
-                setTime(parsedTime);
-                setTempTime(parsedTime);
-                if (savedEnabled === 'true') await scheduleDailyAlarm(parsedTime);
+            if (savedEnabled === 'true' && savedTime) {
+                const parsed = new Date(savedTime);
+                setEnabled(true);
+                setTime(parsed);
+                setTempTime(parsed);
+                await scheduleDailyAlarm(parsed);
             }
         })();
     }, []);
@@ -100,7 +83,7 @@ export default function PushDevotional() {
         });
     };
 
-    // ✅ 알림 ON/OFF
+    // 📌 알림 설정 스위치 토글
     const toggleSwitch = async (value: boolean) => {
         setEnabled(value);
         await AsyncStorage.setItem('devotionalEnabled', value.toString());
@@ -113,7 +96,7 @@ export default function PushDevotional() {
         }
     };
 
-    // ✅ 시간 포맷
+    // 📌 시간 포맷
     const formatAMPM = (date: Date) => {
         let hours = date.getHours();
         const minutes = date.getMinutes();
@@ -122,26 +105,12 @@ export default function PushDevotional() {
         return `${ampm} ${hours.toString().padStart(2, '0')}시 ${minutes.toString().padStart(2, '0')}분`;
     };
 
-    // ✅ 알림 확인 (iOS용)
-    const handleConfirmIOS = async () => {
-        setTime(tempTime);
-        setShowPicker(false);
-        await AsyncStorage.setItem('devotionalTime', tempTime.toString());
-        await scheduleDailyAlarm(tempTime);
-        Alert.alert('설정 완료', `${formatAMPM(tempTime)}에 랜덤 말씀 알림이 설정되었습니다.`);
-    };
-
-    // ✅ Android용 시간 변경 처리
-    const handleAndroidTimeChange = async (event: any, selectedTime?: Date) => {
+    // 📌 시간 확정 시
+    const confirmTime = async () => {
         const hours = tempTime.getHours();
         const minutes = tempTime.getMinutes();
         setTime(tempTime);
         setShowPicker(false);
-
-        Alert.alert(
-            '설정 완료',
-            `${formatAMPM(tempTime)}에 랜덤 말씀 알림이 설정되었습니다.`
-        );
 
         await AsyncStorage.setItem('devotionalTime', tempTime.toString());
         await Notifications.cancelAllScheduledNotificationsAsync();
@@ -160,8 +129,20 @@ export default function PushDevotional() {
                 repeats: true,
             } as Notifications.CalendarTriggerInput,
         });
+    };
 
-
+    // ✅ Android용 시간 변경 처리
+    const handleAndroidTimeChange = async (event: any, selectedTime?: Date) => {
+        if (event.type === 'set' && selectedTime) {
+            setTempTime(selectedTime);
+            setTime(selectedTime);
+            setShowPicker(false);
+            await AsyncStorage.setItem('devotionalTime', selectedTime.toString());
+            await scheduleDailyAlarm(selectedTime);
+            Alert.alert('설정 완료', `${formatAMPM(selectedTime)}에 말씀 알림이 설정되었습니다.`);
+        } else {
+            setShowPicker(false);
+        }
     };
 
     return (
@@ -199,13 +180,13 @@ export default function PushDevotional() {
             {showPicker && (
                 Platform.OS === 'ios' ? (
                     <Modal visible={showPicker} transparent animationType="slide">
-                        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}>
+                        <View style={{
+                            flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
+                            justifyContent: 'center', alignItems: 'center'
+                        }}>
                             <View style={{
                                 backgroundColor: isDark ? '#1f2937' : '#fff',
-                                padding: 24,
-                                borderRadius: 16,
-                                width: '80%',
-                                alignItems: 'center',
+                                padding: 24, borderRadius: 16, width: '80%', alignItems: 'center'
                             }}>
                                 <Text style={{ fontSize: 16, marginBottom: 12, color: textColor }}>시간 선택</Text>
                                 <DateTimePicker
@@ -221,7 +202,7 @@ export default function PushDevotional() {
                                 <View style={{ flexDirection: 'row', marginTop: 20 }}>
                                     <Button title="취소" onPress={() => setShowPicker(false)} />
                                     <View style={{ width: 20 }} />
-                                    <Button title="확인" onPress={handleConfirmIOS} />
+                                    <Button title="확인" onPress={confirmTime} />
                                 </View>
                             </View>
                         </View>
