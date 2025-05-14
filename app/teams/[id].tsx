@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import {
     View, Text, SafeAreaView, TouchableOpacity, Alert, Image,
-    ActivityIndicator, ScrollView, Platform,RefreshControl
+    ActivityIndicator, ScrollView, Platform, RefreshControl, Modal, TextInput
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { doc, getDoc, query, collection, where, getDocs, updateDoc, increment, arrayRemove, deleteDoc } from 'firebase/firestore';
@@ -38,6 +38,46 @@ export default function TeamDetail() {
     const isCreator = team?.leaderEmail === user?.email;
     const insets = useSafeAreaInsets();
     const [refreshing, setRefreshing] = useState(false); // 추가
+
+    //수정
+    const [editModalVisible, setEditModalVisible] = useState(false);
+    const [editName, setEditName] = useState('');
+    const [editDescription, setEditDescription] = useState('');
+    const [editCapacity, setEditCapacity] = useState('');
+
+    const openEditModal = () => {
+        if (!team) return;
+        setEditName(team.name);
+        setEditDescription(team.description || '');
+        setEditCapacity(String(team.maxMembers ?? ''));
+        setEditModalVisible(true);
+    };
+
+    const handleUpdateTeam = async () => {
+        if (!team) return;
+
+        try {
+            const teamRef = doc(db, 'teams', team.id);
+            await updateDoc(teamRef, {
+                name: editName,
+                description: editDescription,
+                maxMembers: Number(editCapacity),
+            });
+
+            setTeam(prev => prev && {
+                ...prev,
+                name: editName,
+                description: editDescription,
+                maxMembers: Number(editCapacity),
+            });
+
+            setEditModalVisible(false);
+            Alert.alert('수정 완료', '모임 정보가 수정되었습니다.');
+        } catch (e) {
+            console.error('❌ 모임 정보 수정 실패:', e);
+            Alert.alert('에러', '모임 수정 중 문제가 발생했습니다.');
+        }
+    };
 
     useEffect(() => {
         getCurrentUser().then(setCurrentUser);
@@ -318,20 +358,39 @@ export default function TeamDetail() {
                 )}
 
                 {isCreator && (
-                    <TouchableOpacity
-                        onPress={() => deleteTeam(team.id)}
-                        style={{
-                            backgroundColor: colors.error,
-                            paddingVertical: spacing.md,
-                            borderRadius: radius.md,
-                            alignItems: 'center',
-                            marginTop: spacing.md,
-                        }}
-                    >
-                        <Text style={{ color: '#fff', fontSize: font.body, fontWeight: 'bold' }}>
-                            🗑️ 모임 삭제하기
-                        </Text>
-                    </TouchableOpacity>
+                    <View>
+                        <TouchableOpacity
+                            onPress={openEditModal}
+                            style={{
+                                backgroundColor: colors.primary,
+                                paddingVertical: spacing.md,
+                                borderRadius: radius.md,
+                                alignItems: 'center',
+                                marginBottom: spacing.sm,
+                            }}
+                        >
+                            <Text style={{ color: '#fff', fontSize: font.body, fontWeight: 'bold' }}>
+                                ✏️ 모임 정보 수정
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => deleteTeam(team.id)}
+                            style={{
+                                backgroundColor: colors.error,
+                                paddingVertical: spacing.md,
+                                borderRadius: radius.md,
+                                alignItems: 'center',
+                                marginTop: spacing.md,
+                            }}
+                        >
+                            <Text style={{ color: '#fff', fontSize: font.body, fontWeight: 'bold' }}>
+                                🗑️ 모임 삭제하기
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+
+
                 )}
 
                 {!isFull && !isCreator && !team.membersList?.includes(user.email) && (
@@ -352,6 +411,82 @@ export default function TeamDetail() {
                     </TouchableOpacity>
                 )}
             </ScrollView>
+
+            <Modal visible={editModalVisible} animationType="slide" transparent>
+                <View style={{
+                    flex: 1,
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    justifyContent: 'center',
+                    padding: 20,
+                }}>
+                    <View style={{
+                        backgroundColor: colors.surface,
+                        padding: spacing.lg,
+                        borderRadius: radius.lg,
+                    }}>
+                        <Text style={{ fontSize: font.body, color: colors.text, marginBottom: spacing.sm }}>모임명</Text>
+                        <TextInput
+                            value={editName}
+                            onChangeText={setEditName}
+                            style={{
+                                borderColor: colors.border,
+                                borderWidth: 1,
+                                borderRadius: radius.sm,
+                                padding: spacing.sm,
+                                marginBottom: spacing.md,
+                                color: colors.text
+                            }}
+                        />
+
+                        <Text style={{ fontSize: font.body, color: colors.text, marginBottom: spacing.sm }}>모임 소개</Text>
+                        <TextInput
+                            value={editDescription}
+                            onChangeText={setEditDescription}
+                            multiline
+                            style={{
+                                borderColor: colors.border,
+                                borderWidth: 1,
+                                borderRadius: radius.sm,
+                                padding: spacing.sm,
+                                height: 100,
+                                marginBottom: spacing.md,
+                                color: colors.text
+                            }}
+                        />
+
+                        <Text style={{ fontSize: font.body, color: colors.text, marginBottom: spacing.sm }}>최대 인원수</Text>
+                        <TextInput
+                            value={editCapacity}
+                            onChangeText={setEditCapacity}
+                            keyboardType="number-pad"
+                            style={{
+                                borderColor: colors.border,
+                                borderWidth: 1,
+                                borderRadius: radius.sm,
+                                padding: spacing.sm,
+                                marginBottom: spacing.lg,
+                                color: colors.text
+                            }}
+                        />
+
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                            <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                                <Text style={{ color: colors.subtext }}>취소</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={handleUpdateTeam}>
+                                <Text style={{ color: colors.primary, fontWeight: 'bold' }}>저장</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
+
+//    const [messages, setMessages] = useState([
+//         {
+//             role: 'assistant',
+//             content: '안녕하세요! 신앙에 대한 어떤 질문이든 편하게 말씀해주세요 😊',
+//         },
+//     ]);

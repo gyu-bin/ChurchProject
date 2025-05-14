@@ -1,0 +1,3 @@
+// app/hooks/device.ts
+import { getUniqueId } from 'react-native-device-info';
+export const getDeviceId = () => getUniqueId(); // ex) a1b2c3d4-...

@@ -7,6 +7,9 @@ import {
     where,
     doc,
     updateDoc,
+    arrayUnion,
+    arrayRemove,
+    deleteDoc,
 } from 'firebase/firestore';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
@@ -17,71 +20,68 @@ export async function registerPushToken() {
     try {
         console.log('🔧 [registerPushToken] 시작');
 
-        if (!Device.isDevice) {
-            console.warn('❌ 실제 디바이스에서만 작동합니다.');
-            return;
+        // 1. 알림 권한 확인
+        const { status } = await Notifications.getPermissionsAsync();
+        if (status !== 'granted') {
+            const { status: newStatus } = await Notifications.requestPermissionsAsync();
+            if (newStatus !== 'granted') return;
         }
 
-        const { status: existingStatus } = await Notifications.getPermissionsAsync();
-        let finalStatus = existingStatus;
-
-        if (existingStatus !== 'granted') {
-            const { status } = await Notifications.requestPermissionsAsync();
-            finalStatus = status;
-        }
-
-        if (finalStatus !== 'granted') {
-            console.warn('❌ 알림 권한 거부됨');
-            return;
-        }
-
-        const tokenData = await Notifications.getExpoPushTokenAsync();
-        const token = tokenData.data;
+        // 2. 토큰 획득
+        const token = (await Notifications.getExpoPushTokenAsync()).data;
         console.log('✅ Expo Push Token:', token);
 
+        // 3. 현재 로그인 유저 가져오기
         const raw = await AsyncStorage.getItem('currentUser');
-        if (!raw) {
-            console.warn('❌ 사용자 정보 없음');
-            return;
-        }
-
+        if (!raw) return;
         const user = JSON.parse(raw);
-        console.log('📌 사용자 이메일:', user.email);
+        const email = user.email;
 
-        // ✅ expoTokens: 같은 토큰이 없을 경우에만 저장
-        const q = query(collection(db, 'expoTokens'), where('token', '==', token));
-        const snap = await getDocs(q);
+        const userRef = doc(db, 'users', email);
 
-        if (snap.empty) {
-            await addDoc(collection(db, 'expoTokens'), {
-                email: user.email,
-                token,
-                createdAt: serverTimestamp(),
-            });
-            console.log('✅ expoTokens에 새 토큰 저장 완료');
-        } else {
-            console.log('ℹ️ 이미 등록된 토큰입니다');
-        }
-
-        // ✅ users 문서의 expoPushTokens 배열에 추가
-        const userRef = doc(db, 'users', user.email);
+        // 4. Firestore에 토큰 저장 (배열에 중복 없이 추가)
         await updateDoc(userRef, {
-            expoPushTokens: updateArrayField(token),
+            expoPushTokens: arrayUnion(token),
             updatedAt: serverTimestamp(),
         });
 
-        console.log('✅ users 문서에 토큰 배열 업데이트 완료');
+        // 5. expoTokens 컬렉션에 중복 없을 경우만 저장
+        const q = query(collection(db, 'expoTokens'), where('token', '==', token));
+        const snap = await getDocs(q);
+        if (snap.empty) {
+            await addDoc(collection(db, 'expoTokens'), {
+                email,
+                token,
+                createdAt: serverTimestamp(),
+            });
+        }
     } catch (err) {
-        console.log('❌ Expo push token 등록 에러:', err);
+        console.error('❌ registerPushToken 에러:', err);
     }
 }
 
-// 🔁 Firebase arrayUnion 대응 (비동기 배열 처리)
-function updateArrayField(newToken: string) {
-    return (prev: any[] = []) => {
-        if (!prev.includes(newToken)) {
-            return [...prev, newToken];
+export async function removeDeviceToken() {
+    try {
+        const token = (await Notifications.getExpoPushTokenAsync()).data;
+        const raw = await AsyncStorage.getItem('currentUser');
+        if (!raw) return;
+        const user = JSON.parse(raw);
+        const userRef = doc(db, 'users', user.email);
+
+        // 1. Firestore에서 해당 토큰만 배열에서 제거
+        await updateDoc(userRef, {
+            expoPushTokens: arrayRemove(token),
+        });
+
+        // 2. expoTokens 컬렉션에서 해당 문서 삭제
+        const q = query(collection(db, 'expoTokens'), where('token', '==', token));
+        const snap = await getDocs(q);
+        for (const docSnap of snap.docs) {
+            await deleteDoc(doc(db, 'expoTokens', docSnap.id));
         }
-        return prev;
-    };
+
+        console.log('✅ 푸시 토큰 제거 완료');
+    } catch (err) {
+        console.error('❌ removeDeviceToken 에러:', err);
+    }
 }

@@ -53,6 +53,9 @@ export default function RootLayoutInner() {
           <Stack.Screen name="intro" options={{ headerShown: false }} />
           <Stack.Screen name="teams" options={{ headerShown: false }} />
           <Stack.Screen name="department/[campus]/[division]/index" options={{ headerShown: false }} />
+          <Stack.Screen name="notifications" options={{ headerShown: false }} />
+          <Stack.Screen name="prayerPage/DailyBible" options={{ headerShown: false }} />
+          <Stack.Screen name="AiChatPage" options={{ headerShown: false }} />
         </Stack>
         <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
       </ThemeProvider>

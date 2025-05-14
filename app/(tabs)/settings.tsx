@@ -11,6 +11,7 @@ import PushSettings from "@/components/VerseNotificationSettings";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { doc, updateDoc,getDoc,onSnapshot } from 'firebase/firestore';
 import { db } from '@/firebase/config';
+import {removeDeviceToken} from "@/services/registerPushToken";
 
 export default function SettingsScreen() {
     const [user, setUser] = useState<any>(null);
@@ -70,6 +71,7 @@ export default function SettingsScreen() {
     }, []);
 
     const handleLogout = async () => {
+        await removeDeviceToken();
         await AsyncStorage.removeItem('currentUser');
         router.replace('/auth/login');
     };

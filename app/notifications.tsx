@@ -14,7 +14,9 @@ import { useRouter } from 'expo-router';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useDesign } from '@/context/DesignSystem';
-import Toast from 'react-native-root-toast'; // 🔹 꼭 설치되어 있어야 함
+import Toast from 'react-native-root-toast';
+import {Ionicons} from "@expo/vector-icons";
+import {useSafeAreaInsets} from "react-native-safe-area-context"; // 🔹 꼭 설치되어 있어야 함
 // ✅ 타입 선언
 interface NotificationItem {
     id: string;
@@ -37,7 +39,7 @@ export default function NotificationsScreen() {
     const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
-
+    const insets = useSafeAreaInsets();
     const router = useRouter();
     const { colors, spacing, font, radius } = useDesign();
     const { mode } = useAppTheme();
@@ -158,6 +160,21 @@ export default function NotificationsScreen() {
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, padding: spacing.lg }}>
+            <View
+                style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    // paddingHorizontal: spacing.lg,
+                    marginTop: Platform.OS === 'android' ? insets.top : spacing.md,
+                }}
+            >
+                <TouchableOpacity onPress={() => router.back()}>
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={{ fontSize: font.body, fontWeight: '600', color: colors.text, marginLeft: 8 }}>
+                    알림
+                </Text>
+            </View>
             <FlatList
                 data={notifications}
                 keyExtractor={(item) => item.id}
@@ -181,6 +198,7 @@ export default function NotificationsScreen() {
                         <View style={{
                             width: 40, height: 40, borderRadius: 20,
                             backgroundColor: mode === 'dark' ? colors.border : '#f1f5f9',
+                            paddingTop: '5%',
                             justifyContent: 'center', alignItems: 'center',
                             marginRight: spacing.md,
                         }}>
@@ -202,7 +220,7 @@ export default function NotificationsScreen() {
                 ListEmptyComponent={
                     <Text style={{
                         textAlign: 'center', color: colors.subtext,
-                        paddingTop: Platform.OS === 'android' ? 0 : 20,
+                        paddingTop: Platform.OS === 'android' ? 20 : 10,
                         fontSize: 20
                     }}>
                         알림이 없습니다.

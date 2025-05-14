@@ -19,7 +19,6 @@ import { useAppTheme } from '@/context/ThemeContext';
 import { useDesign } from '@/context/DesignSystem';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PrayerListModal from '@/app/prayerPage/allPrayer';
-
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SIDE_MARGIN = 16;
 const ITEM_WIDTH = SCREEN_WIDTH - SIDE_MARGIN * 2;
@@ -203,7 +202,7 @@ export default function HomeScreen() {
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: Platform.OS === 'android' ? insets.top+10 : 0 }}>
             <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
             <FlatList
                 ListHeaderComponent={(<View style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
@@ -267,7 +266,19 @@ export default function HomeScreen() {
                             <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15 }}>📃 기도제목 보기</Text>
                         </TouchableOpacity>
                     </View>
-                </View>)}
+
+                    <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
+                        <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>📝 매일묵상</Text>
+                        <TouchableOpacity onPress={()=>router.push('/prayerPage/DailyBible')} style={{ backgroundColor: theme.colors.primary, padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 }}>
+                            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15 }}>🙏 매일묵상 나누기</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={()=>router.push('/AiChatPage')} style={{ backgroundColor: theme.colors.primary, padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 }}>
+                            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15 }}>AI 신앙상담</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                </View>
+                )}
                 data={prayers}
                 keyExtractor={(item) => item.id}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -295,6 +306,8 @@ export default function HomeScreen() {
                 onClose={() => setViewModalVisible(false)}
                 onDelete={deletePrayer}
             />
+
+
         </SafeAreaView>
     );
 }
