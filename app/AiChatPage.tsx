@@ -9,7 +9,7 @@ import {
     KeyboardAvoidingView,
     Platform,
     SafeAreaView, Keyboard,
-    TouchableWithoutFeedback,
+    TouchableWithoutFeedback, Alert,
 } from 'react-native';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useDesign } from '@/context/DesignSystem';
@@ -92,6 +92,11 @@ export default function FaithChatPage() {
     useEffect(() => {
         loadMessages();
     }, []);
+
+    if (!apiKey) {
+        Alert.alert('API Key 오류', 'API 키가 설정되지 않았습니다.');
+        return;
+    }
 
     const handleAsk = async () => {
         if (!question.trim()) return;
