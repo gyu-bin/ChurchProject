@@ -24,8 +24,10 @@ const SIDE_MARGIN = 16;
 const ITEM_WIDTH = SCREEN_WIDTH - SIDE_MARGIN * 2;
 const SIDE_SPACING = (SCREEN_WIDTH - ITEM_WIDTH) / 2;
 
-const youtubeIds = ["hWvJdJ3Da6o", "GLWyi7KAh4U", "nEHLIu4rs58","E3jJ02NDYCY","mKjkCjbMaNk"];
-// 🔁 무한 슬라이딩 처리를 위한 확장된 배열 생성 (ID를 고유하게 덧붙임)
+// 🔁 기존 youtubeIds 유지
+const youtubeIds = ["hWvJdJ3Da6o", "GLWyi7KAh4U", "nEHLIu4rs58", "E3jJ02NDYCY", "mKjkCjbMaNk"];
+
+// 🔁 FlatList에 쓰일 영상 배열 생성
 const originalVideoData = youtubeIds.map((id, index) => ({
     id: `${id}-${index}`,
     videoId: id,
@@ -69,6 +71,16 @@ export default function HomeScreen() {
     const [currentUser, setCurrentUser] = useState<any>(null);
     const flatListRef = useRef<FlatList>(null);
     const [currentIndex, setCurrentIndex] = useState(1); // 첫 번째 실 데이터 인덱스
+    const [initialIndex, setInitialIndex] = useState<number | null>(null);
+    const [listKey, setListKey] = useState(Date.now());
+
+    useEffect(() => {
+        const random = Math.floor(Math.random() * originalVideoData.length);
+        setInitialIndex(random + 1); // 앞 dummy 1칸 고려
+        setCurrentIndex(random + 1);
+        setVerse(verses[Math.floor(Math.random() * verses.length)]);
+        fetchPrayers();
+    }, []);
 
     const scrollToIndex = (index: number, animated = true) => {
         flatListRef.current?.scrollToIndex({ index, animated });
@@ -152,6 +164,13 @@ export default function HomeScreen() {
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
         setVerse(verses[Math.floor(Math.random() * verses.length)]);
+
+        const random = Math.floor(Math.random() * originalVideoData.length);
+        setInitialIndex(random + 1);
+        setCurrentIndex(random + 1);
+
+        setListKey(Date.now()); // 🔁 FlatList 재생성
+
         await fetchPrayers();
         setRefreshing(false);
     }, []);
@@ -228,26 +247,42 @@ export default function HomeScreen() {
                     <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, shadowColor: '#000', shadowOpacity: 0.08, shadowOffset: { width: 0, height: 2 }, elevation: 3 }}>
                         <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, paddingLeft: '3%', paddingTop: '3%' }}>📺 추천 설교</Text>
                         <View style={{ position: 'relative', paddingTop: '3%', paddingBottom: '2%' }}>
-                            <FlatList
-                                ref={flatListRef}
-                                data={videoData}
-                                horizontal
-                                pagingEnabled
-                                initialScrollIndex={1}
-                                decelerationRate="fast"
-                                snapToInterval={ITEM_WIDTH}
-                                getItemLayout={(data, index) => ({ length: ITEM_WIDTH, offset: ITEM_WIDTH * index, index })}
-                                contentContainerStyle={{ paddingHorizontal: SIDE_SPACING }}
-                                showsHorizontalScrollIndicator={false}
-                                onMomentumScrollEnd={handleScrollEnd}
-                                renderItem={({ item }) => (
-                                    <View style={{ width: ITEM_WIDTH }}>
-                                        <TouchableOpacity onPress={() => Linking.openURL(item.url)}>
-                                            <Image source={{ uri: item.thumbnail }} style={{ width: '92%', aspectRatio: 16 / 9, borderRadius: 14, backgroundColor: '#ccc' }} resizeMode="cover" />
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
-                            />
+                            {initialIndex !== null && (
+                                <FlatList
+                                    key={listKey} // ✅ 핵심
+                                    ref={flatListRef}
+                                    data={videoData}
+                                    horizontal
+                                    pagingEnabled
+                                    initialScrollIndex={initialIndex}
+                                    decelerationRate="fast"
+                                    snapToInterval={ITEM_WIDTH}
+                                    getItemLayout={(data, index) => ({
+                                        length: ITEM_WIDTH,
+                                        offset: ITEM_WIDTH * index,
+                                        index,
+                                    })}
+                                    contentContainerStyle={{ paddingHorizontal: SIDE_SPACING }}
+                                    showsHorizontalScrollIndicator={false}
+                                    onMomentumScrollEnd={handleScrollEnd}
+                                    renderItem={({ item }) => (
+                                        <View style={{ width: ITEM_WIDTH }}>
+                                            <TouchableOpacity onPress={() => Linking.openURL(item.url)}>
+                                                <Image
+                                                    source={{ uri: item.thumbnail }}
+                                                    style={{
+                                                        width: '92%',
+                                                        aspectRatio: 16 / 9,
+                                                        borderRadius: 14,
+                                                        backgroundColor: '#ccc',
+                                                    }}
+                                                    resizeMode="cover"
+                                                />
+                                            </TouchableOpacity>
+                                        </View>
+                                    )}
+                                />
+                            )}
                             <TouchableOpacity onPress={goToPrev} style={{ position: 'absolute', top: '40%', left: 4, zIndex: 10, backgroundColor: '#00000055', padding: 8, borderRadius: 20 }}>
                                 <Ionicons name="chevron-back" size={20} color="#fff" />
                             </TouchableOpacity>
@@ -272,10 +307,14 @@ export default function HomeScreen() {
                         <TouchableOpacity onPress={()=>router.push('/prayerPage/DailyBible')} style={{ backgroundColor: theme.colors.primary, padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 }}>
                             <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15 }}>🙏 매일묵상 나누기</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={()=>router.push('/AiChatPage')} style={{ backgroundColor: theme.colors.primary, padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 }}>
-                            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15 }}>AI 신앙상담</Text>
-                        </TouchableOpacity>
                     </View>
+
+                        <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
+                            <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>AI 신앙상담</Text>
+                            <TouchableOpacity onPress={()=>router.push('/AiChatPage')} style={{ backgroundColor: theme.colors.primary, padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 }}>
+                                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15 }}>💬 AI 신앙상담</Text>
+                            </TouchableOpacity>
+                        </View>
 
                 </View>
                 )}

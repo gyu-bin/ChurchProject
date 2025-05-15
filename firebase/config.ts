@@ -1,5 +1,5 @@
 // firebase/config.ts
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
 
@@ -12,7 +12,7 @@ const firebaseConfig = {
     appId: "1:650084657232:web:a772970ae7b4154ff14955",
     measurementId: "G-Z6F6G7BG5T"
 };
-const app = initializeApp(firebaseConfig);
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app); // ✅ 추가
 
 // ✅ Analytics 지원 여부 확인 후 초기화

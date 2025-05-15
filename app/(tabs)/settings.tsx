@@ -234,6 +234,26 @@ export default function SettingsScreen() {
                         </>
                     )}
 
+                    {/* ✅ 기기관리 버튼 */}
+                    {/*<View style={{ flex: 1, padding: 20 }}>
+
+                         ✅ 기기관리 버튼
+                        <TouchableOpacity
+                            onPress={() => setModalVisible(true)}
+                            style={{
+                                marginTop: 20,
+                                padding: 14,
+                                backgroundColor: '#007aff',
+                                borderRadius: 10,
+                            }}
+                        >
+                            <Text style={{ color: '#fff', fontSize: 16, textAlign: 'center' }}>📱 기기관리</Text>
+                        </TouchableOpacity>
+
+                         ✅ DeviceManager 모달
+                        <DeviceManager visible={modalVisible} onClose={() => setModalVisible(false)} />
+                    </View>*/}
+
                     <TouchableOpacity
                         onPress={handleLogout}
                         style={{

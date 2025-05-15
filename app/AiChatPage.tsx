@@ -42,7 +42,16 @@ export default function FaithChatPage() {
     const [currentLottie, setCurrentLottie] = useState<any>(loading1); // 초기값 아무거나
 
     const STORAGE_KEY = 'faithChatMessages';
-    const apiKey = Constants.expoConfig?.extra?.OPENAI_API_KEY;
+    // const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey =
+        Constants?.expoConfig?.extra?.OPENAI_API_KEY ??
+        Constants?.manifest?.extra?.OPENAI_API_KEY ??
+        null;
+
+    if (!apiKey) {
+        console.warn("❌ OPENAI_API_KEY not found.");
+    }
+
     const scrollRef = useRef<ScrollView>(null);
     // 메시지 업데이트 시 자동 스크롤
     useEffect(() => {
@@ -52,6 +61,17 @@ export default function FaithChatPage() {
         return () => clearTimeout(timeout);
     }, [messages]);
 
+    useEffect(() => {
+        loadMessages();
+    }, []);
+
+    if (!apiKey) {
+        return (
+            <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' }}>
+                <Text style={{ color: 'black' }}>🚨 API 키 누락 - 관리자에게 문의하세요</Text>
+            </SafeAreaView>
+        );
+    }
 // 화면 아무데나 터치하면 키보드 내리기
     const dismissKeyboard = () => {
         Keyboard.dismiss();
@@ -89,14 +109,6 @@ export default function FaithChatPage() {
         }, 100); // 100ms 정도가 가장 안정적
     };
 
-    useEffect(() => {
-        loadMessages();
-    }, []);
-
-    if (!apiKey) {
-        Alert.alert('API Key 오류', 'API 키가 설정되지 않았습니다.');
-        return;
-    }
 
     const handleAsk = async () => {
         if (!question.trim()) return;
@@ -165,73 +177,72 @@ export default function FaithChatPage() {
             setShowOverlay(false); // ✅ 반드시 필요
         }
     };
-
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderBottomWidth: 0.5, borderColor: colors.border, backgroundColor: colors.background }}>
                 <TouchableOpacity onPress={() => router.back()}>
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={{ fontSize: font.body, fontWeight: '600', color: colors.text, marginLeft: 8 }}>AI 신앙상담</Text>
+                <Text style={{ fontSize: font.body, fontWeight: '600', color: colors.text, marginLeft: 8 }}>💬 AI 신앙상담</Text>
             </View>
 
             <TouchableWithoutFeedback onPress={dismissKeyboard}>
-            <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-                <View style={{ flex: 1 }}>
-                    <ScrollView
-                        ref={scrollRef}
-                        contentContainerStyle={{ flexGrow: 1, paddingVertical: spacing.md, paddingHorizontal: spacing.md }}
-                        keyboardShouldPersistTaps="handled"
-                        showsVerticalScrollIndicator={false}
-                    >
-                        {messages.map((msg, index) => (
-                            <View
-                                key={index}
-                                style={{
-                                    alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                                    backgroundColor: msg.role === 'user' ? '#fcdc3c' : '#2f2f2f',
-                                    padding: spacing.sm,
-                                    borderRadius: 18,
-                                    borderTopRightRadius: msg.role === 'user' ? 0 : 18,
-                                    borderTopLeftRadius: msg.role === 'user' ? 18 : 0,
-                                    marginBottom: 10,
-                                    maxWidth: '80%',
-                                }}
-                            >
-                                <Text style={{ color: msg.role === 'user' ? '#000' : '#fff', fontSize: font.body }}>{msg.content}</Text>
-                            </View>
-                        ))}
-                        {loading && <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: spacing.sm }} />}
-                    </ScrollView>
-
-
-                    <View style={{ flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.sm, paddingVertical: spacing.sm, backgroundColor: colors.background }}>
-                        <TextInput
-                            value={question}
-                            onChangeText={setQuestion}
-                            placeholder="메시지 입력"
-                            placeholderTextColor={colors.subtext}
-                            style={{
-                                flex: 1,
-                                backgroundColor: colors.surface,
-                                borderRadius: 20,
-                                paddingHorizontal: spacing.md,
-                                paddingVertical: Platform.OS === 'ios' ? spacing.sm : 8,
-                                fontSize: font.body,
-                                color: colors.text,
-                                height: 40,
-                            }}
-                        />
-                        <TouchableOpacity
-                            onPress={handleAsk}
-                            disabled={loading || !question.trim()}
-                            style={{ marginLeft: spacing.sm }}
+                <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                    <View style={{ flex: 1 }}>
+                        <ScrollView
+                            ref={scrollRef}
+                            contentContainerStyle={{ flexGrow: 1, paddingVertical: spacing.md, paddingHorizontal: spacing.md }}
+                            keyboardShouldPersistTaps="handled"
+                            showsVerticalScrollIndicator={false}
                         >
-                            <Ionicons name="send" size={24} color={question.trim() ? colors.primary : colors.border} />
-                        </TouchableOpacity>
+                            {messages.map((msg, index) => (
+                                <View
+                                    key={index}
+                                    style={{
+                                        alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                                        backgroundColor: msg.role === 'user' ? '#fcdc3c' : '#2f2f2f',
+                                        padding: spacing.sm,
+                                        borderRadius: 18,
+                                        borderTopRightRadius: msg.role === 'user' ? 0 : 18,
+                                        borderTopLeftRadius: msg.role === 'user' ? 18 : 0,
+                                        marginBottom: 10,
+                                        maxWidth: '80%',
+                                    }}
+                                >
+                                    <Text style={{ color: msg.role === 'user' ? '#000' : '#fff', fontSize: font.body }}>{msg.content}</Text>
+                                </View>
+                            ))}
+                            {loading && <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: spacing.sm }} />}
+                        </ScrollView>
+
+
+                        <View style={{ flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.sm, paddingVertical: spacing.sm, backgroundColor: colors.background }}>
+                            <TextInput
+                                value={question}
+                                onChangeText={setQuestion}
+                                placeholder="메시지 입력"
+                                placeholderTextColor={colors.subtext}
+                                style={{
+                                    flex: 1,
+                                    backgroundColor: colors.surface,
+                                    borderRadius: 20,
+                                    paddingHorizontal: spacing.md,
+                                    paddingVertical: Platform.OS === 'ios' ? spacing.sm : 8,
+                                    fontSize: font.body,
+                                    color: colors.text,
+                                    height: 40,
+                                }}
+                            />
+                            <TouchableOpacity
+                                onPress={handleAsk}
+                                disabled={loading || !question.trim() || !apiKey}  // 키 없으면 비활성화
+                                style={{ marginLeft: spacing.sm }}
+                            >
+                                <Ionicons name="send" size={24} color={question.trim() ? colors.primary : colors.border} />
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                </View>
-            </KeyboardAvoidingView>
+                </KeyboardAvoidingView>
             </TouchableWithoutFeedback>
 
             {showOverlay && (
@@ -265,3 +276,4 @@ export default function FaithChatPage() {
         </SafeAreaView>
     );
 }
+

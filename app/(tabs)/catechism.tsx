@@ -172,6 +172,9 @@ export default function CatechismPage() {
                             offset: itemHeightRef.current * index,
                             index,
                         })}
+                        contentContainerStyle={{
+                            paddingBottom: Platform.OS === 'android' ? 80 : 40,
+                        }}
                         renderItem={({ item, index }) => (
                             <TouchableOpacity
                                 onLayout={index === 0 ? (e) => {
@@ -181,7 +184,12 @@ export default function CatechismPage() {
                                     }
                                 } : undefined}
                                 onPress={() => handleSelect(item.question_number)}
-                                style={{ paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border, paddingHorizontal: spacing.md }}
+                                style={{
+                                    paddingVertical: spacing.md,
+                                    borderBottomWidth: 1,
+                                    borderBottomColor: colors.border,
+                                    paddingHorizontal: spacing.md,
+                                }}
                             >
                                 <Text style={{ fontSize: font.body + 2, color: colors.text }}>
                                     문 {item.question_number}. {item.question}
@@ -195,7 +203,7 @@ export default function CatechismPage() {
                                     viewPosition: Platform.OS === 'ios' ? 0.45 : 0.25,
                                     animated: true,
                                 });
-                            }, 500); // 충분한 delay (Android는 느림)
+                            }, 500);
                         }}
                     />
                     <TouchableOpacity

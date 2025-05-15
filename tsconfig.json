@@ -6,10 +6,16 @@
       "@/*": [
         "./*"
       ]
-    }
+    },
+    "typeRoots": [
+      "./node_modules/@types",
+      "./env.d.ts"
+    ]
   },
   "include": [
     "**/*.ts",
-    "**/*.tsx"
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
   ]
 }

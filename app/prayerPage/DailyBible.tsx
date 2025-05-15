@@ -117,17 +117,29 @@ export default function DevotionPage() {
 
     const loadRanking = async () => {
         const now = new Date();
-        const weekAgo = new Date();
-        weekAgo.setDate(now.getDate() - 7);
 
+        // 1. 이번 주 월요일 00:00 계산
+        const monday = new Date(now);
+        const day = monday.getDay(); // 일: 0, 월: 1, ..., 토: 6
+        const diffToMonday = (day === 0 ? -6 : 1 - day); // 일요일이면 -6, 그 외는 1 - day
+        monday.setDate(monday.getDate() + diffToMonday);
+        monday.setHours(0, 0, 0, 0); // 00:00:00.000
+
+        // 2. 이번 주 토요일 23:59:59 계산
+        const saturday = new Date(monday);
+        saturday.setDate(monday.getDate() + 5);
+        saturday.setHours(23, 59, 59, 999);
+
+        // 3. Firestore 쿼리
         const q = query(
             collection(db, 'devotions'),
-            where('createdAt', '>=', weekAgo),
-            where('createdAt', '<=', now)
+            where('createdAt', '>=', monday),
+            where('createdAt', '<=', saturday)
         );
         const snap = await getDocs(q);
         const data = snap.docs.map(doc => doc.data());
 
+        // 4. 사용자별 개수 세기
         const countMap: Record<string, { count: number, name: string }> = {};
         for (const item of data) {
             const email = item.authorEmail;
@@ -137,6 +149,7 @@ export default function DevotionPage() {
             countMap[email].count++;
         }
 
+        // 5. 랭킹 정렬 및 상위 5명 선택
         const sorted = Object.entries(countMap)
             .sort((a, b) => b[1].count - a[1].count)
             .slice(0, 5)
@@ -145,6 +158,7 @@ export default function DevotionPage() {
         setRankingData(sorted);
         setRankingVisible(true);
     };
+
     return (
         <View style={{ flex: 1, backgroundColor: colors.background, paddingTop:Platform.OS === 'android' ? insets.top : insets.top-10}}>
             <View
