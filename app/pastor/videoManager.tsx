@@ -47,12 +47,20 @@ export default function VideoManager() {
         if (!newUrl.trim()) return;
         const match = newUrl.match(/v=([^&]+)/);
         const id = match ? match[1] : '';
+
         try {
+            // ✅ 현재 영상 수 가져오기
+            const snapshot = await getDocs(collection(db, 'videos'));
+            const currentCount = snapshot.size;
+
+            // ✅ Firestore에 새 영상 추가 (order 포함)
             await addDoc(collection(db, 'videos'), {
                 url: newUrl.trim(),
                 thumbnail: `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
                 createdAt: new Date(),
+                order: currentCount + 1, // ← 여기서 사용
             });
+
             setNewUrl('');
             fetchVideos();
         } catch (err) {
