@@ -11,7 +11,7 @@ import {
     RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import {collection, getDocs, onSnapshot, query, where} from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import { useRouter } from 'expo-router';
 import SkeletonBox from '@/components/Skeleton';
@@ -35,15 +35,23 @@ export default function TeamsScreen() {
         setTeams(fetched);
     }, []);
 
+    useEffect(() => {
+        const q = query(collection(db, 'teams'), where('approved', '==', true));
+
+        const unsubscribe = onSnapshot(q, (snap) => {
+            const fetched = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setTeams(fetched);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
     const onRefresh = async () => {
         setRefreshing(true);
         await fetchTeams();
         setRefreshing(false);
     };
-
-    useEffect(() => {
-        fetchTeams().then(() => setLoading(false));
-    }, []);
 
     const handlePress = (id: string) => {
         router.push(`/teams/${id}`);

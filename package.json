@@ -13,7 +13,7 @@
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
     "@react-native-async-storage/async-storage": "^2.1.2",
-    "@react-native-community/datetimepicker": "8.3.0",
+    "@react-native-community/datetimepicker": "^8.3.0",
     "@react-native-firebase/app": "^22.2.0",
     "@react-native-firebase/auth": "^22.2.0",
     "@react-native-firebase/firestore": "^22.2.0",
@@ -43,7 +43,8 @@
     "expo-system-ui": "~5.0.7",
     "expo-updates": "~0.28.12",
     "expo-web-browser": "~14.1.6",
-    "firebase": "^11.7.1",
+    "firebase": "^11.7.3",
+    "lottie-react-native": "7.2.2",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.2",
@@ -58,13 +59,13 @@
     "react-native-screens": "~4.10.0",
     "react-native-snap-carousel": "^3.9.1",
     "react-native-svg": "15.11.2",
+    "react-native-swipe-list-view": "^3.2.9",
     "react-native-tab-view": "^4.0.12",
     "react-native-uuid": "^2.0.3",
     "react-native-web": "~0.20.0",
     "react-native-webview": "13.13.5",
     "react-native-youtube-iframe": "^2.3.0",
-    "styled-components": "^6.1.17",
-    "lottie-react-native": "7.2.2"
+    "styled-components": "^6.1.17"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

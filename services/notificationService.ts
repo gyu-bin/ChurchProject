@@ -18,7 +18,8 @@ type NotificationType =
     | 'team_join_request'
     | 'team_join_approved'     // ✅ 신규
     | 'team_create_approved'   // ✅ 신규
-    | 'prayer_private';
+    | 'prayer_private'
+    | 'open_meditation_ranking'; // ✅ 여기 추가
 
 export async function sendNotification({
                                            to,
@@ -65,10 +66,12 @@ export async function sendPushNotification({
                                                to,
                                                title,
                                                body,
+                                               data, // ✅ 유동적 데이터 전달
                                            }: {
     to: string | string[];
     title: string;
     body: string;
+    data?: Record<string, any>; // ✅ 선택적, 자유 구조
 }) {
     try {
         const tokens = Array.isArray(to) ? to : [to];
@@ -79,9 +82,7 @@ export async function sendPushNotification({
             sound: 'default',
             title,
             body,
-            data: {
-                screen: 'notifications', // ✅ 알림 클릭 시 이동할 화면
-            },
+            data: data || {}, // ✅ 기본값 빈 객체
         }));
 
         const response = await fetch('https://exp.host/--/api/v2/push/send', {
@@ -94,13 +95,13 @@ export async function sendPushNotification({
             body: JSON.stringify(messages),
         });
 
-        const data = await response.json();
-        console.log('📡 응답:', data);
+        const responseData = await response.json();
+        console.log('📡 응답:', responseData);
 
-        // DeviceNotRegistered 토큰 삭제
-        if (Array.isArray(data?.data)) {
-            for (let i = 0; i < data.data.length; i++) {
-                const item = data.data[i];
+        // ✅ 만료된 토큰 삭제
+        if (Array.isArray(responseData?.data)) {
+            for (let i = 0; i < responseData.data.length; i++) {
+                const item = responseData.data[i];
                 if (item.status === 'error' && item.details?.error === 'DeviceNotRegistered') {
                     const tokenToDelete = tokens[i];
                     console.warn('🗑️ 만료된 토큰 삭제:', tokenToDelete);
@@ -119,4 +120,3 @@ export async function sendPushNotification({
         console.error('❌ sendPushNotification 에러:', err);
     }
 }
-

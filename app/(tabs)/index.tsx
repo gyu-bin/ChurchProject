@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { verses } from '@/assets/verses';
 import {
-    collection, addDoc, getDocs, query, where, onSnapshot, deleteDoc, doc
+    collection, addDoc, getDocs, query, where, onSnapshot, deleteDoc, doc, orderBy
 } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -19,27 +19,11 @@ import { useAppTheme } from '@/context/ThemeContext';
 import { useDesign } from '@/context/DesignSystem';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PrayerListModal from '@/app/prayerPage/allPrayer';
+
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SIDE_MARGIN = 16;
 const ITEM_WIDTH = SCREEN_WIDTH - SIDE_MARGIN * 2;
 const SIDE_SPACING = (SCREEN_WIDTH - ITEM_WIDTH) / 2;
-
-// 🔁 기존 youtubeIds 유지
-const youtubeIds = ["hWvJdJ3Da6o", "GLWyi7KAh4U", "nEHLIu4rs58", "E3jJ02NDYCY", "mKjkCjbMaNk"];
-
-// 🔁 FlatList에 쓰일 영상 배열 생성
-const originalVideoData = youtubeIds.map((id, index) => ({
-    id: `${id}-${index}`,
-    videoId: id,
-    thumbnail: `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
-    url: `https://www.youtube.com/watch?v=${id}`,
-}));
-
-const videoData = [
-    { ...originalVideoData[originalVideoData.length - 1], id: `left-${originalVideoData[originalVideoData.length - 1].id}` },
-    ...originalVideoData,
-    { ...originalVideoData[0], id: `right-${originalVideoData[0].id}` },
-];
 
 type Prayer = {
     id: string;
@@ -74,13 +58,59 @@ export default function HomeScreen() {
     const [initialIndex, setInitialIndex] = useState<number | null>(null);
     const [listKey, setListKey] = useState(Date.now());
 
+    const [videoData, setVideoData] = useState<any[]>([]);
+
     useEffect(() => {
-        const random = Math.floor(Math.random() * originalVideoData.length);
-        setInitialIndex(random + 1); // 앞 dummy 1칸 고려
-        setCurrentIndex(random + 1);
+        const fetchVideos = async () => {
+            const snapshot = await getDocs(collection(db, 'videos'));
+
+            const data = snapshot.docs.map((doc, index) => {
+                const raw = doc.data();
+                const url = raw.url;
+                const match = url.match(/v=([^&]+)/);
+                const id = match ? match[1] : '';
+
+                return {
+                    id: doc.id,
+                    videoId: id,
+                    thumbnail: `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
+                    url,
+                    order: raw.order ?? index, // ✅ order 없으면 index 사용
+                };
+            });
+
+            // ✅ order 기준 정렬
+            const sorted = data.sort((a, b) => a.order - b.order);
+
+            // ✅ 무한 슬라이딩용 dummy 추가
+            let withDummy: any[] = [];
+
+            if (sorted.length >= 2) {
+                withDummy = [
+                    { ...sorted[sorted.length - 1], id: `left-${sorted[sorted.length - 1].id}` },
+                    ...sorted,
+                    { ...sorted[0], id: `right-${sorted[0].id}` },
+                ];
+            } else {
+                withDummy = [...sorted];
+            }
+
+            setVideoData(withDummy);
+        };
+
+        fetchVideos();
+    }, []);
+
+    useEffect(() => {
+        if (videoData.length > 2) {
+            const random = Math.floor(Math.random() * (videoData.length - 2));
+            setInitialIndex(random + 1); // 앞 dummy 때문에 +1
+            setCurrentIndex(random + 1);
+        }
+
         setVerse(verses[Math.floor(Math.random() * verses.length)]);
         fetchPrayers();
-    }, []);
+    }, [videoData]); // ✅ videoData가 로딩된 후 실행되도록 의존성 추가
 
     const scrollToIndex = (index: number, animated = true) => {
         flatListRef.current?.scrollToIndex({ index, animated });
@@ -165,15 +195,16 @@ export default function HomeScreen() {
         setRefreshing(true);
         setVerse(verses[Math.floor(Math.random() * verses.length)]);
 
-        const random = Math.floor(Math.random() * originalVideoData.length);
-        setInitialIndex(random + 1);
-        setCurrentIndex(random + 1);
-
-        setListKey(Date.now()); // 🔁 FlatList 재생성
+        if (videoData.length > 2) {
+            const random = Math.floor(Math.random() * (videoData.length - 2));
+            setInitialIndex(random + 1);
+            setCurrentIndex(random + 1);
+            setListKey(Date.now()); // 🔁 FlatList 재생성
+        }
 
         await fetchPrayers();
         setRefreshing(false);
-    }, []);
+    }, [videoData]); // ✅ 의존성 추가
 
     const fetchPublicPrayers = async () => {
         const q = query(collection(db, 'prayer_requests'), where('visibility', '==', 'all'));
@@ -295,24 +326,24 @@ export default function HomeScreen() {
                     <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
                         <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>📝 기도제목</Text>
                         <TouchableOpacity onPress={() => setModalVisible(true)} style={{ backgroundColor: theme.colors.primary, padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 }}>
-                            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15 }}>🙏 기도제목 나누기</Text>
+                            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>🙏 기도제목 나누기</Text>
                         </TouchableOpacity>
                         <TouchableOpacity onPress={fetchPublicPrayers} style={{ backgroundColor: theme.colors.primary, padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 }}>
-                            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15 }}>📃 기도제목 보기</Text>
+                            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>📃 기도제목 보기</Text>
                         </TouchableOpacity>
                     </View>
 
                     <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
                         <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>📝 매일묵상</Text>
                         <TouchableOpacity onPress={()=>router.push('/prayerPage/DailyBible')} style={{ backgroundColor: theme.colors.primary, padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 }}>
-                            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15 }}>🙏 매일묵상 나누기</Text>
+                            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>🤝 매일묵상 나누기</Text>
                         </TouchableOpacity>
                     </View>
 
                         <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
-                            <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>AI 신앙상담</Text>
-                            <TouchableOpacity onPress={()=>router.push('/AiChatPage')} style={{ backgroundColor: theme.colors.primary, padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 }}>
-                                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15 }}>💬 AI 신앙상담</Text>
+                            <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>💬 AI에게 신앙 질문하기</Text>
+                            <TouchableOpacity onPress={() => router.push('/AiChatPage')} style={{ backgroundColor: theme.colors.primary, padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 }}>
+                                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>🤖 질문하러 가기</Text>
                             </TouchableOpacity>
                         </View>
 

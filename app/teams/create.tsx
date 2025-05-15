@@ -5,7 +5,7 @@ import {
     Platform, ScrollView
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { addDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import {addDoc, collection, getDocs, query, updateDoc, where} from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
@@ -68,10 +68,18 @@ export default function CreateTeam() {
             if (role === '교역자' || role === '정회원') {
                 const teamRef = await addDoc(collection(db, 'teams'), {
                     ...baseData,
-                    approved: true, // ✅ 자동 승인
+                    approved: true,
+                    id: '',       // 초기값
+                    teamId: '',   // 추가!
                 });
 
-                const newTeamId = teamRef.id;
+// ✅ 생성 후 teamId, id 동시에 설정
+                await updateDoc(teamRef, {
+                    id: teamRef.id,
+                    teamId: teamRef.id,
+                });
+
+                // const newTeamId = teamRef.id;
 
                 // 🔔 알림 전송 로직은 필요시 주석 해제
                 /*

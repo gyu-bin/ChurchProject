@@ -77,7 +77,7 @@ export default function SettingsScreen() {
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background,paddingTop: Platform.OS === 'android' ? insets.top+10 : 0 }}>
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -151,23 +151,6 @@ export default function SettingsScreen() {
                     {/*말씀알림*/}
                     <PushSettings/>
 
-                    {/*{user?.role === '교역자' && (
-                        <TouchableOpacity
-                            onPress={() => router.push('/pastor/pastor')}
-                            style={{
-                                backgroundColor: colors.primary,
-                                paddingVertical: spacing.md,
-                                borderRadius: radius.md,
-                                alignItems: 'center',
-                                marginBottom: spacing.md,
-                            }}
-                        >
-                            <Text style={{ color: '#fff', fontSize: font.body, fontWeight: '600' }}>
-                                📌 교역자 전용 페이지
-                            </Text>
-                        </TouchableOpacity>
-                    )}*/}
-
                     {user?.role === '새가족' && (
                         <>
                             <TouchableOpacity
@@ -234,25 +217,19 @@ export default function SettingsScreen() {
                         </>
                     )}
 
-                    {/* ✅ 기기관리 버튼 */}
-                    {/*<View style={{ flex: 1, padding: 20 }}>
-
-                         ✅ 기기관리 버튼
+                    {user?.role === '교역자' && (
                         <TouchableOpacity
-                            onPress={() => setModalVisible(true)}
+                            onPress={() => router.push('/pastor/videoManager')}
                             style={{
-                                marginTop: 20,
-                                padding: 14,
-                                backgroundColor: '#007aff',
-                                borderRadius: 10,
+                                backgroundColor: colors.primary,
+                                paddingVertical: spacing.md,
+                                borderRadius: radius.md,
+                                alignItems: 'center',
                             }}
                         >
-                            <Text style={{ color: '#fff', fontSize: 16, textAlign: 'center' }}>📱 기기관리</Text>
+                            <Text style={{ color: '#fff', fontSize: font.body, fontWeight: 'bold'  }}>📺 홈화면 유튜브 영상 관리</Text>
                         </TouchableOpacity>
-
-                         ✅ DeviceManager 모달
-                        <DeviceManager visible={modalVisible} onClose={() => setModalVisible(false)} />
-                    </View>*/}
+                    )}
 
                     <TouchableOpacity
                         onPress={handleLogout}
@@ -272,3 +249,40 @@ export default function SettingsScreen() {
         </SafeAreaView>
     );
 }
+
+{/*{user?.role === '교역자' && (
+                        <TouchableOpacity
+                            onPress={() => router.push('/pastor/pastor')}
+                            style={{
+                                backgroundColor: colors.primary,
+                                paddingVertical: spacing.md,
+                                borderRadius: radius.md,
+                                alignItems: 'center',
+                                marginBottom: spacing.md,
+                            }}
+                        >
+                            <Text style={{ color: '#fff', fontSize: font.body, fontWeight: '600' }}>
+                                📌 교역자 전용 페이지
+                            </Text>
+                        </TouchableOpacity>
+                    )}*/}
+
+{/* ✅ 기기관리 버튼 */}
+{/*<View style={{ flex: 1, padding: 20 }}>
+
+                         ✅ 기기관리 버튼
+                        <TouchableOpacity
+                            onPress={() => setModalVisible(true)}
+                            style={{
+                                marginTop: 20,
+                                padding: 14,
+                                backgroundColor: '#007aff',
+                                borderRadius: 10,
+                            }}
+                        >
+                            <Text style={{ color: '#fff', fontSize: 16, textAlign: 'center' }}>📱 기기관리</Text>
+                        </TouchableOpacity>
+
+                         ✅ DeviceManager 모달
+                        <DeviceManager visible={modalVisible} onClose={() => setModalVisible(false)} />
+                    </View>*/}

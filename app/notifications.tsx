@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
-    View, Text, FlatList, TouchableOpacity, Modal, Alert, SafeAreaView,
-    Platform, RefreshControl
+    View, Text, TouchableOpacity, Modal, Alert,
+    SafeAreaView, Platform, RefreshControl, Keyboard, TouchableWithoutFeedback,KeyboardAvoidingView
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -15,9 +15,10 @@ import { sendNotification, sendPushNotification } from '@/services/notificationS
 import { useAppTheme } from '@/context/ThemeContext';
 import { useDesign } from '@/context/DesignSystem';
 import Toast from 'react-native-root-toast';
-import {Ionicons} from "@expo/vector-icons";
-import {useSafeAreaInsets} from "react-native-safe-area-context"; // 🔹 꼭 설치되어 있어야 함
-// ✅ 타입 선언
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SwipeListView } from 'react-native-swipe-list-view';
+
 interface NotificationItem {
     id: string;
     message: string;
@@ -39,12 +40,13 @@ export default function NotificationsScreen() {
     const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+    const openedRowRef = useRef<any>(null); // ✅ 열린 row 추적
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const { colors, spacing, font, radius } = useDesign();
     const { mode } = useAppTheme();
+    const horizontalPadding = 20;
 
-    // ✅ 유저 정보 로딩
     useEffect(() => {
         const loadUser = async () => {
             const raw = await AsyncStorage.getItem('currentUser');
@@ -53,7 +55,6 @@ export default function NotificationsScreen() {
         loadUser();
     }, []);
 
-    // ✅ 실시간 알림 구독
     useEffect(() => {
         if (!user) return;
         const q = query(collection(db, 'notifications'), where('to', '==', user.email));
@@ -66,56 +67,45 @@ export default function NotificationsScreen() {
         return () => unsubscribe();
     }, [user]);
 
-    // ✅ 수동 새로고침
     const onRefresh = useCallback(async () => {
         if (!user) return;
-        try {
-            setRefreshing(true);
-            const q = query(collection(db, 'notifications'), where('to', '==', user.email));
-            const snap = await getDocs(q);
-            const list: NotificationItem[] = snap.docs
-                .map(doc => ({ id: doc.id, ...doc.data() } as NotificationItem))
-                .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
-            setNotifications(list);
-        } catch (e) {
-            console.error('🔄 알림 새로고침 실패:', e);
-        } finally {
-            setRefreshing(false);
-        }
+        setRefreshing(true);
+        const q = query(collection(db, 'notifications'), where('to', '==', user.email));
+        const snap = await getDocs(q);
+        const list: NotificationItem[] = snap.docs
+            .map(doc => ({ id: doc.id, ...doc.data() } as NotificationItem))
+            .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
+        setNotifications(list);
+        setRefreshing(false);
     }, [user]);
 
-    // ✅ 알림 클릭 시 이동 또는 모달
     const handleNotificationPress = async (notification: NotificationItem) => {
-        if (notification.type === 'team_join_request') {
-            setSelectedNotification(notification);
-            setModalVisible(true);
-            return;
-        }
-
         try {
-            if (notification.type === 'team_create') {
-                router.push({ pathname: '/pastor/pastor', params: { tab: 'teams' } });
+            if (notification.type === 'team_join_request') {
+                setSelectedNotification(notification);
+                setModalVisible(true);
                 return;
             }
-
-            if (notification.link === '/pastor/pastor') {
-                router.push({ pathname: '/pastor/pastor', params: { tab: 'prayers' } });
+            if (notification.type === 'team_join_approved' && notification.teamId) {
+                router.push(`/teams/${notification.teamId}`);
+                await deleteDoc(doc(db, 'notifications', notification.id));
                 return;
             }
-
-            await deleteDoc(doc(db, 'notifications', notification.id));
+            if (notification.type === 'open_meditation_ranking') {
+                router.push('/prayerPage/DailyBible?showRanking=true');
+                await deleteDoc(doc(db, 'notifications', notification.id));
+                return;
+            }
         } catch (e) {
-            console.error('❌ 라우팅 에러:', e);
+            console.error('❌ 알림 처리 오류:', e);
         }
     };
 
-    // ✅ 가입 승인 처리
     const handleApproval = async (approve: boolean) => {
         if (!selectedNotification?.teamId || !selectedNotification?.applicantEmail) {
             Alert.alert('오류', '알림 데이터가 올바르지 않습니다.');
             return;
         }
-
         try {
             if (approve) {
                 const teamRef = doc(db, 'teams', selectedNotification.teamId);
@@ -128,7 +118,11 @@ export default function NotificationsScreen() {
                     to: selectedNotification.applicantEmail,
                     message: `"${selectedNotification.teamName}" 모임에 가입이 승인되었습니다.`,
                     type: 'team_join_approved',
-                    link: '/teams',
+                    link: `/teams/${selectedNotification.teamId}`,
+                    teamId: selectedNotification.teamId,
+                    teamName: selectedNotification.teamName,
+                    applicantEmail: selectedNotification.applicantEmail,
+                    applicantName: selectedNotification.applicantName,
                 });
 
                 const tokenSnap = await getDocs(query(
@@ -158,97 +152,166 @@ export default function NotificationsScreen() {
         }
     };
 
-    return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, padding: spacing.lg }}>
-            <View
+    const renderItem = ({ item }: { item: NotificationItem }) => (
+        <TouchableOpacity
+            onPress={() => handleNotificationPress(item)}
+            style={{
+                backgroundColor: colors.surface,
+                padding: spacing.md,
+                borderRadius: radius.lg,
+                marginBottom: spacing.md,
+                flexDirection: 'row',
+                alignItems: 'center',
+                shadowColor: mode === 'light' ? '#000' : 'transparent',
+                shadowOpacity: 0.05,
+                shadowRadius: 6,
+                elevation: 3,
+            }}
+        >
+            <View style={{
+                width: 40, height: 40, borderRadius: 20,
+                backgroundColor: mode === 'dark' ? colors.border : '#f1f5f9',
+                justifyContent: 'center', alignItems: 'center',
+                marginRight: spacing.md,
+            }}>
+                <Text style={{ fontSize: 18 }}>📢</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: font.body, fontWeight: '600', color: colors.text }}>
+                    {item.message}
+                </Text>
+                {item.createdAt?.seconds && (
+                    <Text style={{
+                        fontSize: font.caption,
+                        color: colors.subtext,
+                        marginTop: 4
+                    }}>
+                        {format(new Date(item.createdAt.seconds * 1000), 'yyyy-MM-dd HH:mm')}
+                    </Text>
+                )}
+            </View>
+        </TouchableOpacity>
+    );
+
+    const renderHiddenItem = ({ item }: { item: NotificationItem }) => (
+        <View style={{ alignItems: 'flex-end', flex: 1, marginBottom: spacing.md }}>
+            <TouchableOpacity
+                onPress={async () => {
+                    try {
+                        await deleteDoc(doc(db, 'notifications', item.id));
+                        Toast.show('🗑️ 삭제 완료', {
+                            duration: Toast.durations.SHORT,
+                            position: Toast.positions.BOTTOM,
+                            backgroundColor: colors.error,
+                            textColor: '#fff',
+                        });
+                    } catch (e) {
+                        console.error('❌ 삭제 실패:', e);
+                        Alert.alert('오류', '삭제에 실패했습니다.');
+                    }
+                }}
                 style={{
-                    flexDirection: 'row',
+                    backgroundColor: colors.error,
+                    justifyContent: 'center',
                     alignItems: 'center',
-                    // paddingHorizontal: spacing.lg,
-                    marginTop: Platform.OS === 'android' ? insets.top : spacing.md,
+                    width: 80,
+                    height: '100%',
+                    borderRadius: radius.lg,
                 }}
             >
-                <TouchableOpacity onPress={() => router.back()}>
+                <Text style={{ color: '#fff', fontWeight: 'bold' }}>삭제</Text>
+            </TouchableOpacity>
+        </View>
+    );
+
+    return (
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+            <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                height: 56,
+                justifyContent: 'center',
+                position: 'relative',
+                paddingHorizontal: horizontalPadding,
+                marginTop: Platform.OS === 'android' ? insets.top : 0,
+            }}>
+                <TouchableOpacity
+                    onPress={() => router.back()}
+                    style={{ position: 'absolute', left: horizontalPadding, zIndex: 10 }}
+                >
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={{ fontSize: font.body, fontWeight: '600', color: colors.text, marginLeft: 8 }}>
+                <Text style={{ fontSize: font.heading, fontWeight: '600', color: colors.text }}>
                     알림
                 </Text>
             </View>
-            <FlatList
-                data={notifications}
-                keyExtractor={(item) => item.id}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-                renderItem={({ item }) => (
-                    <TouchableOpacity
-                        onPress={() => handleNotificationPress(item)}
-                        style={{
-                            backgroundColor: colors.surface,
-                            padding: spacing.md,
-                            borderRadius: 12,
-                            marginBottom: spacing.md,
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            shadowColor: mode === 'light' ? '#000' : 'transparent',
-                            shadowOpacity: 0.05,
-                            shadowRadius: 6,
-                            elevation: 3,
-                        }}
-                    >
-                        <View style={{
-                            width: 40, height: 40, borderRadius: 20,
-                            backgroundColor: mode === 'dark' ? colors.border : '#f1f5f9',
-                            paddingTop: '5%',
-                            justifyContent: 'center', alignItems: 'center',
-                            marginRight: spacing.md,
-                        }}>
-                            <Text style={{ fontSize: 18 }}>📢</Text>
-                        </View>
 
-                        <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text }}>
-                                {item.message}
-                            </Text>
-                            {item.createdAt?.seconds && (
-                                <Text style={{ fontSize: 13, color: colors.subtext, marginTop: 4 }}>
-                                    {format(new Date(item.createdAt.seconds * 1000), 'yyyy-MM-dd HH:mm')}
-                                </Text>
-                            )}
-                        </View>
-                    </TouchableOpacity>
-                )}
-                ListEmptyComponent={
-                    <Text style={{
-                        textAlign: 'center', color: colors.subtext,
-                        paddingTop: Platform.OS === 'android' ? 20 : 10,
-                        fontSize: 20
-                    }}>
-                        알림이 없습니다.
-                    </Text>
-                }
-            />
-
-            {/* 가입 승인 모달 */}
-            <Modal visible={modalVisible} animationType="fade" transparent>
-                <View
-                    style={{
-                        flex: 1,
-                        backgroundColor: 'rgba(0,0,0,0.25)',
-                        justifyContent: 'center',
-                        alignItems: 'center',
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                style={{ flex: 1 }}
+            >
+            <TouchableWithoutFeedback onPress={() => {
+                openedRowRef.current?.closeRow();
+                Keyboard.dismiss();
+            }}>
+                <SwipeListView
+                    data={notifications}
+                    keyExtractor={(item) => item.id}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                    onRowOpen={(rowKey, rowMap) => {
+                        if (openedRowRef.current && openedRowRef.current !== rowMap[rowKey]) {
+                            openedRowRef.current.closeRow();
+                        }
+                        openedRowRef.current = rowMap[rowKey]; // 🔥 이걸 안 쓰면 row를 추적 못함
                     }}
-                >
-                    <View
-                        style={{
-                            width: '85%',
-                            backgroundColor: colors.surface,
-                            padding: spacing.lg,
-                            borderRadius: radius.lg,
-                            elevation: 5,
-                        }}
-                    >
-                        {/* ✅ 제목 + 닫기 버튼 가로정렬 */}
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    onTouchStart={() => {
+                        if (openedRowRef.current) {
+                            openedRowRef.current.closeRow();
+                            openedRowRef.current = null;
+                        }
+                    }}
+                    renderItem={renderItem}
+                    renderHiddenItem={renderHiddenItem}
+                    leftOpenValue={0}
+                    rightOpenValue={-80}
+                    disableRightSwipe
+                    closeOnRowBeginSwipe={false}
+                    closeOnRowPress={true}
+                    keyboardShouldPersistTaps="handled" // ✅ 꼭 추가
+                    ListEmptyComponent={
+                        <Text style={{
+                            textAlign: 'center',
+                            color: colors.subtext,
+                            paddingTop: Platform.OS === 'android' ? 20 : 10,
+                            fontSize: 20,
+                        }}>
+                            알림이 없습니다.
+                        </Text>
+                    }
+                />
+            </TouchableWithoutFeedback>
+            </KeyboardAvoidingView>
+
+            {/* 승인 모달 */}
+            <Modal visible={modalVisible} animationType="fade" transparent>
+                <View style={{
+                    flex: 1,
+                    backgroundColor: 'rgba(0,0,0,0.25)',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                }}>
+                    <View style={{
+                        width: '85%',
+                        backgroundColor: colors.surface,
+                        padding: spacing.lg,
+                        borderRadius: radius.lg,
+                        elevation: 5,
+                    }}>
+                        <View style={{
+                            flexDirection: 'row',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                        }}>
                             <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.text }}>
                                 가입 승인 요청
                             </Text>
@@ -257,7 +320,12 @@ export default function NotificationsScreen() {
                             </TouchableOpacity>
                         </View>
 
-                        <Text style={{ color: colors.text, marginTop: spacing.md, marginBottom: spacing.md }}>
+                        <Text style={{
+                            color: colors.text,
+                            marginTop: spacing.md,
+                            marginBottom: spacing.md,
+                            fontSize: font.body
+                        }}>
                             {selectedNotification?.applicantName}님이 &#34;{selectedNotification?.teamName}&#34; 모임에 가입을 신청했습니다.
                         </Text>
 

@@ -11,7 +11,9 @@ import { useDesign } from '@/context/DesignSystem';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {router} from "expo-router";
+import {router,useLocalSearchParams} from "expo-router";
+import { format } from 'date-fns';// 위치에 맞게 경로 수정
+
 const { height } = Dimensions.get('window');
 
 export default function DevotionPage() {
@@ -24,6 +26,7 @@ export default function DevotionPage() {
     const [writeModalVisible, setWriteModalVisible] = useState(false);
     const [filterDate, setFilterDate] = useState<Date | null>(new Date());
     const [showDatePicker, setShowDatePicker] = useState(false);
+    const { showRanking } = useLocalSearchParams<{ showRanking?: string }>();
     const [rankingVisible, setRankingVisible] = useState(false);
     const [rankingData, setRankingData] = useState<any[]>([]);
     const [filterUserName, setFilterUserName] = useState<string | null>(null);
@@ -32,9 +35,25 @@ export default function DevotionPage() {
     const { mode } = useAppTheme();
     const isDark = mode === 'dark';
     const insets = useSafeAreaInsets();
+    const [rankingRangeText, setRankingRangeText] = useState<string>(''); // 📅 날짜 표시용 추가
+
     useEffect(() => {
         getCurrentUser().then(setUser);
     }, []);
+
+    useEffect(() => {
+        if (showRanking === 'true') {
+            setRankingVisible(true);
+        }
+    }, [showRanking]);
+
+    useEffect(() => {
+        if (showRanking === 'true') {
+            loadRanking();
+            setRankingVisible(true);
+        }
+    }, [showRanking]);
+
 
     useEffect(() => {
         const q = query(collection(db, 'devotions'), orderBy('createdAt', 'desc'));
@@ -118,19 +137,23 @@ export default function DevotionPage() {
     const loadRanking = async () => {
         const now = new Date();
 
-        // 1. 이번 주 월요일 00:00 계산
+        // ✅ 이번 주 월요일 계산 (일요일이면 지난 월요일로)
         const monday = new Date(now);
-        const day = monday.getDay(); // 일: 0, 월: 1, ..., 토: 6
-        const diffToMonday = (day === 0 ? -6 : 1 - day); // 일요일이면 -6, 그 외는 1 - day
+        const day = monday.getDay(); // 0(일) ~ 6(토)
+        const diffToMonday = (day === 0 ? -6 : 1 - day); // 일요일(-6), 월요일(0), 화(-1) ...
         monday.setDate(monday.getDate() + diffToMonday);
-        monday.setHours(0, 0, 0, 0); // 00:00:00.000
+        monday.setHours(0, 0, 0, 0);
 
-        // 2. 이번 주 토요일 23:59:59 계산
+        // ✅ 이번 주 토요일 계산
         const saturday = new Date(monday);
         saturday.setDate(monday.getDate() + 5);
         saturday.setHours(23, 59, 59, 999);
 
-        // 3. Firestore 쿼리
+        // 📅 날짜 범위 문자열 저장 (ex. 2025-05-13 ~ 2025-05-18)
+        const formattedRange = `${format(monday, 'yyyy-MM-dd')} ~ ${format(saturday, 'yyyy-MM-dd')}`;
+        setRankingRangeText(formattedRange);
+
+        // ✅ 월~토 데이터만 집계
         const q = query(
             collection(db, 'devotions'),
             where('createdAt', '>=', monday),
@@ -139,7 +162,7 @@ export default function DevotionPage() {
         const snap = await getDocs(q);
         const data = snap.docs.map(doc => doc.data());
 
-        // 4. 사용자별 개수 세기
+        // ✅ 사용자별 묵상 횟수 계산
         const countMap: Record<string, { count: number, name: string }> = {};
         for (const item of data) {
             const email = item.authorEmail;
@@ -149,7 +172,7 @@ export default function DevotionPage() {
             countMap[email].count++;
         }
 
-        // 5. 랭킹 정렬 및 상위 5명 선택
+        // ✅ 상위 5명 추출
         const sorted = Object.entries(countMap)
             .sort((a, b) => b[1].count - a[1].count)
             .slice(0, 5)
@@ -183,15 +206,23 @@ export default function DevotionPage() {
                 </View>
 
                 {/* 오른쪽 아이콘들 */}
-                <View style={{ flexDirection: 'row', gap: spacing.md }}>
-                    <TouchableOpacity onPress={loadRanking}>
+                <View style={{ flexDirection: 'row', gap: spacing.lg }}>
+                    {/* 랭킹 */}
+                    <TouchableOpacity onPress={loadRanking} style={{ alignItems: 'center' }}>
                         <Ionicons name="trophy-outline" size={24} color={colors.primary} />
+                        <Text style={{ fontSize: 12, color: colors.primary, marginTop: 4 }}>랭킹</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setShowDatePicker(true)}>
+
+                    {/* 날짜 */}
+                    <TouchableOpacity onPress={() => setShowDatePicker(true)} style={{ alignItems: 'center' }}>
                         <Ionicons name="calendar-outline" size={24} color={colors.primary} />
+                        <Text style={{ fontSize: 12, color: colors.primary, marginTop: 4 }}>날짜</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setWriteModalVisible(true)}>
+
+                    {/* 작성 */}
+                    <TouchableOpacity onPress={() => setWriteModalVisible(true)} style={{ alignItems: 'center' }}>
                         <Ionicons name="create-outline" size={24} color={colors.primary} />
+                        <Text style={{ fontSize: 12, color: colors.primary, marginTop: 4 }}>작성</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -232,15 +263,58 @@ export default function DevotionPage() {
                 </TouchableOpacity>
             )}
 
-            <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+
+
+            <ScrollView contentContainerStyle={{ paddingLeft: spacing.lg,paddingRight: spacing.lg,paddingBottom: spacing.lg }}>
+                <View style={{ alignItems: 'center', marginVertical: 16 }}>
+                    <Text style={{ fontSize: 18, fontWeight: '600', color: colors.text }}>
+                        {`<${filterDate ? format(filterDate, 'yyyy-MM-dd') : ''}>`}
+                    </Text>
+                </View>
+
                 {posts.length === 0 && (
                     <Text style={{ color: colors.subtext, textAlign: 'center', marginVertical: spacing.xl }}>오늘은 아직 묵상이 없어요</Text>
                 )}
 
                 {posts.map(post => (
-                    <View key={post.id} style={{ marginBottom: spacing.xl, backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, maxHeight: 200, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3
-                    }}>
-                        <Text style={{ color: colors.subtext, marginBottom: 4 }}>{post.authorName} ・ {new Date(post.createdAt.seconds * 1000).toLocaleDateString()}</Text>
+                    <View
+                        key={post.id}
+                        style={{
+                            marginBottom: spacing.xl,
+                            backgroundColor: theme.colors.surface,
+                            borderRadius: theme.radius.lg,
+                            padding: theme.spacing.md,
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.08,
+                            shadowRadius: 6,
+                            elevation: 3,
+                        }}
+                    >
+                        {/* 상단 헤더: 이름 + 날짜 + 수정/삭제 */}
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                            {/* 작성자 · 날짜 */}
+                            <Text style={{ color: colors.subtext }}>
+                                {post.authorName} ・ {new Date(post.createdAt.seconds * 1000).toLocaleDateString()}
+                            </Text>
+
+                            {/* 수정/삭제 버튼 (본인 글만 노출) */}
+                            {user?.email === post.authorEmail && editingId !== post.id && (
+                                <View style={{ flexDirection: 'row', gap: 12 }}>
+                                    <TouchableOpacity onPress={() => {
+                                        setEditingId(post.id);
+                                        setEditingContent(post.content);
+                                    }}>
+                                        <Text style={{ color: colors.primary }}>수정</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity onPress={() => handleDelete(post.id)}>
+                                        <Text style={{ color: colors.error }}>삭제</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                        </View>
+
+                        {/* 본문 or 수정 중 */}
                         {editingId === post.id ? (
                             <>
                                 <TextInput
@@ -267,24 +341,7 @@ export default function DevotionPage() {
                                 </View>
                             </>
                         ) : (
-                            <>
-                                <Text style={{ color: colors.text, lineHeight: 20, marginBottom: spacing.sm }}>{post.content}</Text>
-                                {user?.email === post.authorEmail && (
-                                    <View style={{ flexDirection: 'row',
-                                        justifyContent: 'flex-end',
-                                        gap: spacing.sm,}}>
-                                        <TouchableOpacity onPress={() => {
-                                            setEditingId(post.id);
-                                            setEditingContent(post.content);
-                                        }}>
-                                            <Text style={{ color: colors.primary }}>수정</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity onPress={() => handleDelete(post.id)}>
-                                            <Text style={{ color: colors.error }}>삭제</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
-                            </>
+                            <Text style={{ color: colors.text, lineHeight: 20 }}>{post.content}</Text>
                         )}
                     </View>
                 ))}
@@ -326,8 +383,11 @@ export default function DevotionPage() {
 
 
             <Modal visible={rankingVisible} animationType="slide" transparent>
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-                    <View style={{ width: '85%', maxHeight: height * 0.6, backgroundColor: colors.background, padding: spacing.lg, borderRadius: radius.lg }}>
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.7)' }}>
+                    <View style={{ width: '85%', maxHeight: height * 0.85, backgroundColor: colors.background, padding: spacing.lg, borderRadius: radius.lg }}>
+                        <Text style={{ color: colors.subtext, fontSize: 14, marginBottom: spacing.sm }}>
+                            📅 집계 기간: {rankingRangeText}
+                        </Text>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg }}>
                             <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.text }}>🏆 묵상 랭킹 (최근 7일)</Text>
                             <TouchableOpacity onPress={() => setRankingVisible(false)}>
@@ -346,7 +406,9 @@ export default function DevotionPage() {
                                     }}
                                     style={{ marginBottom: spacing.md }}
                                 >
-                                    <Text style={{ color: colors.text }}>{index + 1}. {item.name} - {item.count}회</Text>
+                                    <Text key={item.name} style={{ fontSize:font.heading, color: 'white', marginBottom: 4 }}>
+                                        {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`} {item.name} - {item.count}회
+                                    </Text>
                                 </TouchableOpacity>
                             ))
                         )}

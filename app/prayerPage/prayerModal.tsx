@@ -121,13 +121,14 @@ export default function PrayerModal({
                                             borderRadius: 999,
                                             paddingVertical: spacing.sm,
                                             paddingHorizontal: spacing.md,
-                                            marginRight: spacing.sm,
+                                            // marginRight: spacing.sm,
                                         }}
                                     >
                                         <Text
                                             style={{
                                                 fontSize: font.caption,
-                                                fontWeight: visibility === 'all' ? 'bold' : 'normal',
+                                                fontWeight: 'bold',
+                                                // fontWeight: visibility === 'all' ? 'bold' : 'normal',
                                                 color: visibility === 'all' ? '#fff' : colors.text,
                                             }}
                                         >
