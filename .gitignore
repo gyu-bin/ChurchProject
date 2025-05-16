@@ -40,3 +40,4 @@ app-example
 /.env
 
 .env
+/credentials.json

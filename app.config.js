@@ -17,6 +17,7 @@ export default {
             bundleIdentifier: 'com.rbqls6651.churchappexpo',
         },
         android: {
+            googleServicesFile: './google-services.json',
             package: 'com.rbqls6651.churchappexpo',
             versionCode: 1,
             adaptiveIcon: {

@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "650084657232",
+    "project_id": "churchappexpo",
+    "storage_bucket": "churchappexpo.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:650084657232:android:8fc04a0b086ffddcf14955",
+        "android_client_info": {
+          "package_name": "com.rbqls6651.churchappexpo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "650084657232-pgd3idjpkvi879ortpj3o0a02vou7gah.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBVTNCR6eLMIPtDv9QuVub4k5FpMceONGo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "650084657232-pgd3idjpkvi879ortpj3o0a02vou7gah.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
