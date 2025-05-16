@@ -112,6 +112,14 @@ export async function removeDeviceToken() {
             await deleteDoc(doc(db, 'expoTokens', docSnap.id));
         }
 
+        // debugLogs 컬렉션에서 해당 이메일 관련 로그 삭제 (선택적)
+        const logQuery = query(collection(db, 'debugLogs'), where('email', '==', email));
+        const logSnap = await getDocs(logQuery);
+        for (const docSnap of logSnap.docs) {
+            await deleteDoc(doc(db, 'debugLogs', docSnap.id));
+        }
+
     } catch (err) {
+        console.error('❌ removeDeviceToken 에러:', err);
     }
 }
