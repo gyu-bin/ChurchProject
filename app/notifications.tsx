@@ -18,6 +18,7 @@ import Toast from 'react-native-root-toast';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SwipeListView } from 'react-native-swipe-list-view';
+import {showToast} from "@/utils/toast";
 
 interface NotificationItem {
     id: string;
@@ -139,7 +140,7 @@ export default function NotificationsScreen() {
                     });
                 }
 
-                Alert.alert('✅ 승인 완료', `${selectedNotification.applicantName}님이 소모임에 가입되었습니다.`);
+                showToast(`✅ 승인 완료: ${selectedNotification.applicantName}님이 소모임에 가입되었습니다.`);
                 router.replace('/');
             }
 

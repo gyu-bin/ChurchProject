@@ -155,7 +155,7 @@ export default function TeamDetail() {
             });
         }
 
-        showToast('가입 신청 완료: 모임장에게 신청 메시지를 보냈습니다.');
+        showToast('✅가입 신청 완료: 모임장에게 신청 메시지를 보냈습니다.');
         fetchTeam();  // ✅ 추가된 부분
         router.back();
     };
@@ -266,7 +266,7 @@ export default function TeamDetail() {
                     try {
                         await deleteDoc(doc(db, 'teams', id));
                         setTeam(null); // ❗단일 객체니까 이렇게 처리
-                        showToast('삭제 완료: 소모임이 삭제되었습니다.');
+                        showToast('✅삭제 완료: 소모임이 삭제되었습니다.');
                         router.replace('/teams'); // 삭제 후 소모임 목록으로 이동
                     } catch (e) {
                         Alert.alert('오류', '삭제에 실패했습니다.');

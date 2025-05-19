@@ -134,7 +134,9 @@ export default function TeamsScreen() {
             >
                 <View style={styles.textContainer}>
                     <Text style={[styles.name, { color: colors.text }]}>{item.name}</Text>
-                    <Text style={[styles.meta, { color: colors.subtext }]}>👤 모임장: {item.leader}</Text>
+                    <Text style={[styles.meta, { color: colors.subtext, fontWeight: 'bold' }]}>
+                        👤 모임장: {item.leader}
+                    </Text>
                     <Text
                         style={[
                             styles.meta,
@@ -165,7 +167,8 @@ export default function TeamsScreen() {
     );
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background,paddingTop: Platform.OS === 'android' ? insets.top+10 : 0 }}>
+        {/*<SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>*/}
             <View style={styles.header}>
                 <Text style={[styles.title, { color: colors.text }]}>📋 소모임 목록</Text>
                 <View style={styles.actions}>

@@ -28,8 +28,7 @@ export default function TabLayout() {
                         backgroundColor: tabBarBackgroundColor,
                         borderTopColor: tabBarBorderColor,
                         borderTopWidth: 1,
-                        // paddingBottom: Platform.OS === 'android' ? '15%' : 0, // iOS에서만 padding 적용
-                        height: Platform.OS === 'android' ? 0 : baseHeight, // ✅ 안전 여백 포함
+                        height: Platform.OS === 'android' ? baseHeight + insets.bottom : baseHeight, // ✅ 안전 여백 포함
                         paddingBottom: Platform.OS === 'android' ? 0 : insets.bottom, // iOS에서만 padding 적용
                         paddingTop: 4,
                     },

@@ -14,6 +14,7 @@ import { useAppTheme } from '@/context/ThemeContext';
 import { useDesign } from '@/context/DesignSystem';
 import { getCurrentUser } from '@/services/authService';
 import { format } from 'date-fns';
+import {showToast} from "@/utils/toast";
 
 const initialLayout = { width: Dimensions.get('window').width };
 
@@ -143,7 +144,7 @@ export default function PastorPage() {
 
             await deleteRelatedNotifications(teamId); // ✅ 알림 삭제
 
-            Alert.alert('승인 완료', '소모임이 승인되었습니다.');
+            showToast('✅승인 완료: 소모임이 승인되었습니다.');
             setPendingTeams(prev => prev.filter(team => team.id !== teamId));
         } catch (e) {
             console.error(e);
@@ -162,7 +163,7 @@ export default function PastorPage() {
                         await deleteDoc(doc(db, 'teams', teamId));
                         await deleteRelatedNotifications(teamId);
                         setPendingTeams(prev => prev.filter(team => team.id !== teamId));
-                        Alert.alert('삭제 완료', '소모임 요청이 삭제되었습니다.');
+                        Alert.alert('✅삭제 완료', '소모임 요청이 삭제되었습니다.');
                     } catch (e) {
                         console.error('❌ 삭제 실패:', e);
                         Alert.alert('오류', '삭제에 실패했습니다.');
