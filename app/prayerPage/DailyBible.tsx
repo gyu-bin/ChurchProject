@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {
     View, Text, TextInput, TouchableOpacity,
-    ScrollView, Alert, Platform, Modal, Dimensions
+    ScrollView, Alert, Platform, Modal, Dimensions,PanResponder,
+    KeyboardAvoidingView
 } from 'react-native';
 import { db } from '@/firebase/config';
 import { collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc, updateDoc, where, getDocs } from 'firebase/firestore';
@@ -12,7 +13,9 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {router,useLocalSearchParams} from "expo-router";
-import { format } from 'date-fns';// 위치에 맞게 경로 수정
+import { format } from 'date-fns';
+import Toast from "react-native-root-toast";
+// 위치에 맞게 경로 수정
 
 const { height } = Dimensions.get('window');
 
@@ -36,6 +39,31 @@ export default function DevotionPage() {
     const isDark = mode === 'dark';
     const insets = useSafeAreaInsets();
     const [rankingRangeText, setRankingRangeText] = useState<string>(''); // 📅 날짜 표시용 추가
+
+    const panResponder = useRef(
+        PanResponder.create({
+            onMoveShouldSetPanResponder: (_, gestureState) => {
+                return Math.abs(gestureState.dx) > 20;
+            },
+            onPanResponderRelease: (_, gestureState) => {
+                if (gestureState.dx > 50) {
+                    // ➡️ 오른쪽 → 전날
+                    setFilterDate(prev => {
+                        const newDate = new Date(prev ?? new Date());
+                        newDate.setDate(newDate.getDate() - 1);
+                        return newDate;
+                    });
+                } else if (gestureState.dx < -50) {
+                    // ⬅️ 왼쪽 → 다음날
+                    setFilterDate(prev => {
+                        const newDate = new Date(prev ?? new Date());
+                        newDate.setDate(newDate.getDate() + 1);
+                        return newDate;
+                    });
+                }
+            },
+        })
+    ).current;
 
     useEffect(() => {
         getCurrentUser().then(setUser);
@@ -129,6 +157,11 @@ export default function DevotionPage() {
                 content: editingContent
             });
             setEditingId(null);
+            Toast.show('✅ 수정되었습니다.', {
+                duration: Toast.durations.SHORT,
+                position: Toast.positions.BOTTOM,
+            });
+
         } catch (e) {
             Alert.alert('오류', '수정에 실패했습니다.');
         }
@@ -264,7 +297,7 @@ export default function DevotionPage() {
             )}
 
 
-
+            <View {...panResponder.panHandlers} style={{ flex: 1 }}>
             <ScrollView contentContainerStyle={{ paddingLeft: spacing.lg,paddingRight: spacing.lg,paddingBottom: spacing.lg }}>
                 <View style={{ alignItems: 'center', marginVertical: 16 }}>
                     <Text style={{ fontSize: 18, fontWeight: '600', color: colors.text }}>
@@ -315,38 +348,49 @@ export default function DevotionPage() {
                         </View>
 
                         {/* 본문 or 수정 중 */}
-                        {editingId === post.id ? (
-                            <>
-                                <TextInput
-                                    value={editingContent}
-                                    onChangeText={setEditingContent}
-                                    multiline
-                                    style={{
-                                        borderColor: colors.border,
-                                        borderWidth: 1,
-                                        borderRadius: radius.sm,
-                                        padding: spacing.sm,
-                                        minHeight: 100,
-                                        color: colors.text,
-                                        marginBottom: spacing.sm
-                                    }}
-                                />
-                                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm }}>
-                                    <TouchableOpacity onPress={() => setEditingId(null)}>
-                                        <Text style={{ color: colors.subtext }}>취소</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity onPress={() => handleUpdate(post.id)}>
-                                        <Text style={{ color: colors.primary, fontWeight: 'bold' }}>저장</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </>
-                        ) : (
-                            <Text style={{ color: colors.text, lineHeight: 20 }}>{post.content}</Text>
-                        )}
+                        <KeyboardAvoidingView
+                            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                            style={{ flex: 1 }}
+                        >
+                            <ScrollView
+                                contentContainerStyle={{ padding: spacing.md }}
+                                keyboardShouldPersistTaps="handled"
+                            >
+                                {editingId === post.id ? (
+                                    <>
+                                        <TextInput
+                                            value={editingContent}
+                                            onChangeText={setEditingContent}
+                                            multiline
+                                            style={{
+                                                borderColor: colors.border,
+                                                borderWidth: 1,
+                                                borderRadius: radius.sm,
+                                                padding: spacing.sm,
+                                                minHeight: 100,
+                                                color: colors.text,
+                                                marginBottom: spacing.sm,
+                                                textAlignVertical: 'top', // ✅ 멀티라인 입력 시 위 정렬
+                                            }}
+                                        />
+                                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm }}>
+                                            <TouchableOpacity onPress={() => setEditingId(null)}>
+                                                <Text style={{ color: colors.subtext }}>취소</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity onPress={() => handleUpdate(post.id)}>
+                                                <Text style={{ color: colors.primary, fontWeight: 'bold' }}>저장</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </>
+                                ) : (
+                                    <Text style={{ color: colors.text, lineHeight: 20 }}>{post.content}</Text>
+                                )}
+                            </ScrollView>
+                        </KeyboardAvoidingView>
                     </View>
                 ))}
             </ScrollView>
-
+        </View>
             <Modal visible={writeModalVisible} animationType="slide">
                 <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 40 : 150, paddingHorizontal: spacing.lg }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg }}>
@@ -406,7 +450,7 @@ export default function DevotionPage() {
                                     }}
                                     style={{ marginBottom: spacing.md }}
                                 >
-                                    <Text key={item.name} style={{ fontSize:font.heading, color: 'white', marginBottom: 4 }}>
+                                    <Text key={item.name} style={{ fontSize: font.heading, color: colors.text, marginBottom: 4 }}>
                                         {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`} {item.name} - {item.count}회
                                     </Text>
                                 </TouchableOpacity>

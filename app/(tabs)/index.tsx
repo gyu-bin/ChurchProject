@@ -19,6 +19,7 @@ import { useAppTheme } from '@/context/ThemeContext';
 import { useDesign } from '@/context/DesignSystem';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PrayerListModal from '@/app/prayerPage/allPrayer';
+import {showToast} from "@/utils/toast";
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SIDE_MARGIN = 16;
@@ -63,8 +64,7 @@ export default function HomeScreen() {
     useEffect(() => {
         const fetchVideos = async () => {
             const snapshot = await getDocs(collection(db, 'videos'));
-
-            const data = snapshot.docs.map((doc, index) => {
+            const data = snapshot.docs.map((doc) => {
                 const raw = doc.data();
                 const url = raw.url;
                 const match = url.match(/v=([^&]+)/);
@@ -75,30 +75,24 @@ export default function HomeScreen() {
                     videoId: id,
                     thumbnail: `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
                     url,
-                    order: raw.order ?? index, // ✅ order 없으면 index 사용
+                    order: raw.order ?? 0,
                 };
             });
 
-            // ✅ order 기준 정렬
             const sorted = data.sort((a, b) => a.order - b.order);
 
-            // ✅ 무한 슬라이딩용 dummy 추가
-            let withDummy: any[] = [];
-
-            if (sorted.length >= 2) {
-                withDummy = [
+            const withDummy = sorted.length >= 2
+                ? [
                     { ...sorted[sorted.length - 1], id: `left-${sorted[sorted.length - 1].id}` },
                     ...sorted,
                     { ...sorted[0], id: `right-${sorted[0].id}` },
-                ];
-            } else {
-                withDummy = [...sorted];
-            }
+                ]
+                : [...sorted];
 
             setVideoData(withDummy);
         };
 
-        fetchVideos();
+        fetchVideos(); // ✅ 함수 호출 필요
     }, []);
 
     useEffect(() => {
@@ -227,7 +221,7 @@ export default function HomeScreen() {
                 visibility,
                 createdAt: new Date(),
             });
-            Alert.alert('제출 완료', '기도제목이 제출되었습니다.');
+            showToast('🙏 기도제목이 제출되었습니다.');
             setModalVisible(false);
             setTitle('');
             setContent('');
@@ -275,53 +269,77 @@ export default function HomeScreen() {
                         <Text style={{ fontSize: 14, color: theme.colors.subtext }}>({verse.reference})</Text>
                     </View>
 
-                    <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, shadowColor: '#000', shadowOpacity: 0.08, shadowOffset: { width: 0, height: 2 }, elevation: 3 }}>
-                        <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, paddingLeft: '3%', paddingTop: '3%' }}>📺 추천 설교</Text>
-                        <View style={{ position: 'relative', paddingTop: '3%', paddingBottom: '2%' }}>
-                            {initialIndex !== null && (
-                                <FlatList
-                                    key={listKey} // ✅ 핵심
-                                    ref={flatListRef}
-                                    data={videoData}
-                                    horizontal
-                                    pagingEnabled
-                                    initialScrollIndex={initialIndex}
-                                    decelerationRate="fast"
-                                    snapToInterval={ITEM_WIDTH}
-                                    getItemLayout={(data, index) => ({
-                                        length: ITEM_WIDTH,
-                                        offset: ITEM_WIDTH * index,
-                                        index,
+                        <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, shadowColor: '#000', shadowOpacity: 0.08, shadowOffset: { width: 0, height: 2 }, elevation: 3 }}>
+                            <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, paddingLeft: '3%', paddingTop: '3%' }}>📺 추천 설교</Text>
+
+                            <View style={{ position: 'relative', paddingTop: '3%', paddingBottom: '2%' }}>
+                                {initialIndex !== null && (
+                                    <FlatList
+                                        key={listKey}
+                                        ref={flatListRef}
+                                        data={videoData}
+                                        horizontal
+                                        pagingEnabled
+                                        initialScrollIndex={initialIndex}
+                                        decelerationRate="fast"
+                                        snapToInterval={ITEM_WIDTH}
+                                        getItemLayout={(data, index) => ({
+                                            length: ITEM_WIDTH,
+                                            offset: ITEM_WIDTH * index,
+                                            index,
+                                        })}
+                                        contentContainerStyle={{ paddingHorizontal: SIDE_SPACING }}
+                                        showsHorizontalScrollIndicator={false}
+                                        onMomentumScrollEnd={handleScrollEnd}
+                                        renderItem={({ item }) => (
+                                            <View style={{ width: ITEM_WIDTH }}>
+                                                <TouchableOpacity onPress={() => Linking.openURL(item.url)}>
+                                                    <Image
+                                                        source={{ uri: item.thumbnail }}
+                                                        style={{
+                                                            width: '92%',
+                                                            aspectRatio: 16 / 9,
+                                                            borderRadius: 14,
+                                                            backgroundColor: '#ccc',
+                                                        }}
+                                                        resizeMode="cover"
+                                                    />
+                                                </TouchableOpacity>
+                                            </View>
+                                        )}
+                                    />
+                                )}
+
+                                {/* 좌우 버튼 */}
+                                <TouchableOpacity onPress={goToPrev} style={{ position: 'absolute', top: '40%', left: 4, zIndex: 10, backgroundColor: '#00000055', padding: 8, borderRadius: 20 }}>
+                                    <Ionicons name="chevron-back" size={20} color="#fff" />
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={goToNext} style={{ position: 'absolute', top: '40%', right: 4, zIndex: 10, backgroundColor: '#00000055', padding: 8, borderRadius: 20 }}>
+                                    <Ionicons name="chevron-forward" size={20} color="#fff" />
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* 🔘 인디케이터 추가 위치 */}
+                            {videoData.length > 2 && (
+                                <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 6, marginBottom: 8 }}>
+                                    {videoData.slice(1, videoData.length - 1).map((_, i) => {
+                                        const isActive = i + 1 === currentIndex;
+                                        return (
+                                            <View
+                                                key={i}
+                                                style={{
+                                                    width: 8,
+                                                    height: 8,
+                                                    borderRadius: 4,
+                                                    marginHorizontal: 4,
+                                                    backgroundColor: isActive ? theme.colors.primary : theme.colors.border,
+                                                }}
+                                            />
+                                        );
                                     })}
-                                    contentContainerStyle={{ paddingHorizontal: SIDE_SPACING }}
-                                    showsHorizontalScrollIndicator={false}
-                                    onMomentumScrollEnd={handleScrollEnd}
-                                    renderItem={({ item }) => (
-                                        <View style={{ width: ITEM_WIDTH }}>
-                                            <TouchableOpacity onPress={() => Linking.openURL(item.url)}>
-                                                <Image
-                                                    source={{ uri: item.thumbnail }}
-                                                    style={{
-                                                        width: '92%',
-                                                        aspectRatio: 16 / 9,
-                                                        borderRadius: 14,
-                                                        backgroundColor: '#ccc',
-                                                    }}
-                                                    resizeMode="cover"
-                                                />
-                                            </TouchableOpacity>
-                                        </View>
-                                    )}
-                                />
+                                </View>
                             )}
-                            <TouchableOpacity onPress={goToPrev} style={{ position: 'absolute', top: '40%', left: 4, zIndex: 10, backgroundColor: '#00000055', padding: 8, borderRadius: 20 }}>
-                                <Ionicons name="chevron-back" size={20} color="#fff" />
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={goToNext} style={{ position: 'absolute', top: '40%', right: 4, zIndex: 10, backgroundColor: '#00000055', padding: 8, borderRadius: 20 }}>
-                                <Ionicons name="chevron-forward" size={20} color="#fff" />
-                            </TouchableOpacity>
                         </View>
-                    </View>
 
                     <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
                         <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>📝 기도제목</Text>

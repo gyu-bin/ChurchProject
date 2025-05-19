@@ -13,6 +13,9 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {sendWeeklyRankingPush} from "@/services/sendWeeklyRankingPush";
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import {store} from "@/redux/store";
+import { Provider } from 'react-redux';
+import { RootSiblingParent } from 'react-native-root-siblings';
 
 export default function RootLayout() {
     const colorScheme = useColorScheme();
@@ -76,14 +79,18 @@ export default function RootLayout() {
     }, []);
 
     return (
-        <GestureHandlerRootView style={{ flex: 1 }}>
-        <ThemeProvider>
-            <DesignSystemProvider>
-                <SafeAreaProvider>
-                    <RootLayoutInner />
-                </SafeAreaProvider>
-            </DesignSystemProvider>
-        </ThemeProvider>
-        </GestureHandlerRootView>
+        <Provider store={store}>
+            <GestureHandlerRootView style={{ flex: 1 }}>
+                <RootSiblingParent>
+                    <ThemeProvider>
+                        <DesignSystemProvider>
+                            <SafeAreaProvider>
+                                <RootLayoutInner />
+                            </SafeAreaProvider>
+                        </DesignSystemProvider>
+                    </ThemeProvider>
+                </RootSiblingParent>
+            </GestureHandlerRootView>
+        </Provider>
     );
 }

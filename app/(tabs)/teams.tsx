@@ -11,9 +11,9 @@ import {
     RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import {collection, getDocs, onSnapshot, query, where} from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, startAfter, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '@/firebase/config';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import SkeletonBox from '@/components/Skeleton';
 import { useDesign } from '@/context/DesignSystem';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,25 +23,85 @@ export default function TeamsScreen() {
     const [loading, setLoading] = useState(true);
     const [isGrid, setIsGrid] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [lastDoc, setLastDoc] = useState<any>(null);
+    const [hasMore, setHasMore] = useState(true);
 
     const router = useRouter();
-    const { colors, spacing, font, radius } = useDesign();
+    const { colors } = useDesign();
     const insets = useSafeAreaInsets();
 
-    const fetchTeams = useCallback(async () => {
-        const q = query(collection(db, 'teams'), where('approved', '==', true));
-        const snap = await getDocs(q);
-        const fetched = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setTeams(fetched);
-    }, []);
+    const fetchTeams = useCallback(async (isInitial = false) => {
+        if (!hasMore && !isInitial) return;
+
+        try {
+            if (isInitial) {
+                setLoading(true);
+                setLastDoc(null);
+                setHasMore(true);
+            }
+
+            const baseQuery = query(
+                collection(db, 'teams'),
+                where('approved', '==', true),
+                orderBy('createdAt', 'desc'),
+                ...(isInitial || !lastDoc ? [] : [startAfter(lastDoc)]),
+                limit(10)
+            );
+
+            const snap = await getDocs(baseQuery);
+            const fetched = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            if (isInitial) {
+                setTeams(fetched);
+            } else {
+                setTeams(prev => [...prev, ...fetched]);
+            }
+
+            setLastDoc(snap.docs[snap.docs.length - 1] ?? null);
+            setHasMore(snap.size === 10);
+        } catch (e) {
+            console.error('🔥 fetchTeams error:', e);
+        } finally {
+            if (isInitial) setLoading(false);
+        }
+    }, [lastDoc, hasMore]);
 
     useEffect(() => {
-        const q = query(collection(db, 'teams'), where('approved', '==', true));
+        fetchTeams(true);
+    }, []);
 
-        const unsubscribe = onSnapshot(q, (snap) => {
-            const fetched = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setTeams(fetched);
-            setLoading(false);
+    useFocusEffect(
+        useCallback(() => {
+            fetchTeams(true);
+        }, [])
+    );
+
+    useEffect(() => {
+        const q = query(
+            collection(db, 'teams'),
+            where('approved', '==', true),
+            orderBy('createdAt', 'desc'),
+            limit(2)
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const newDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            setTeams(prev => {
+                const updated = [...prev];
+                const ids = new Set(prev.map(item => item.id));
+
+                newDocs.forEach(doc => {
+                    const index = updated.findIndex(item => item.id === doc.id);
+                    if (index >= 0) {
+                        updated[index] = doc; // 업데이트
+                    } else {
+                        updated.unshift(doc); // 새로 추가
+                    }
+                });
+
+                return updated;
+            });
         });
 
         return () => unsubscribe();
@@ -49,7 +109,7 @@ export default function TeamsScreen() {
 
     const onRefresh = async () => {
         setRefreshing(true);
-        await fetchTeams();
+        await fetchTeams(true);
         setRefreshing(false);
     };
 
@@ -58,15 +118,19 @@ export default function TeamsScreen() {
     };
 
     const renderItem = ({ item }: { item: any }) => {
-        const members = item.members ?? 0;
+        const members = item.membersList?.length ?? 0;
         const max = item.maxMembers ?? null;
         const isFull = typeof max === 'number' && members >= max;
 
         return (
             <TouchableOpacity
-                style={isGrid ? [styles.gridItem, { backgroundColor: colors.card, borderColor: colors.border }] : [styles.listItem, { backgroundColor: colors.card, borderColor: colors.border }]}
+                key={item.id}
+                style={
+                    isGrid
+                        ? [styles.gridItem, { backgroundColor: colors.card, borderColor: colors.border }]
+                        : [styles.listItem, { backgroundColor: colors.card, borderColor: colors.border }]
+                }
                 onPress={() => handlePress(item.id)}
-                disabled={isFull}
             >
                 <View style={styles.textContainer}>
                     <Text style={[styles.name, { color: colors.text }]}>{item.name}</Text>
@@ -74,12 +138,14 @@ export default function TeamsScreen() {
                     <Text
                         style={[
                             styles.meta,
-                            item.membersList?.length >= item.maxMembers && styles.fullText,
-                            { color: item.membersList?.length >= item.maxMembers ? colors.error : colors.subtext },
+                            isFull && styles.fullText,
+                            {
+                                color: isFull ? colors.error : colors.subtext,
+                            },
                         ]}
                     >
-                        👥 인원: {item.membersList?.length ?? 0} / {item.maxMembers ?? '명'}
-                        {item.membersList?.length >= item.maxMembers ? ' (모집마감)' : ''}
+                        👥 인원: {members} / {max ?? '명'}
+                        {isFull ? ' (모집마감)' : ''}
                     </Text>
                 </View>
             </TouchableOpacity>
@@ -87,13 +153,15 @@ export default function TeamsScreen() {
     };
 
     const renderSkeletons = () => (
-        Array.from({ length: 4 }).map((_, i) => (
-            <View key={i} style={isGrid ? styles.gridItem : styles.listItem}>
-                <SkeletonBox height={18} width="70%" />
-                <SkeletonBox height={16} width="50%" />
-                <SkeletonBox height={16} width="40%" />
-            </View>
-        ))
+        <View style={{ flexDirection: isGrid ? 'row' : 'column', flexWrap: 'wrap', gap: 16 }}>
+            {Array.from({ length: 4 }).map((_, i) => (
+                <View key={i} style={isGrid ? styles.gridItem : styles.listItem}>
+                    <SkeletonBox width={180} height={18} />
+                    <SkeletonBox width={120} height={16} />
+                    <SkeletonBox width={100} height={16} />
+                </View>
+            ))}
+        </View>
     );
 
     return (
@@ -110,9 +178,11 @@ export default function TeamsScreen() {
                 </View>
             </View>
 
-            {loading ? (
-                <View style={{ flexDirection: isGrid ? 'row' : 'column', flexWrap: 'wrap', gap: 16 }}>
-                    {renderSkeletons()}
+            {loading && !refreshing ? (
+                renderSkeletons()
+            ) : teams.length === 0 ? (
+                <View style={{ alignItems: 'center', marginTop: 40 }}>
+                    <Text style={{ color: colors.subtext }}>등록된 소모임이 없습니다.</Text>
                 </View>
             ) : (
                 <FlatList
@@ -124,6 +194,8 @@ export default function TeamsScreen() {
                     contentContainerStyle={styles.listContent}
                     columnWrapperStyle={isGrid && { gap: 16 }}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                    onEndReachedThreshold={0.3}
+                    onEndReached={() => fetchTeams()}
                 />
             )}
         </SafeAreaView>
@@ -133,12 +205,6 @@ export default function TeamsScreen() {
 const screenWidth = Dimensions.get('window').width;
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        paddingHorizontal: Platform.OS === 'ios' ? 15 : 10,
-        paddingTop: 20,
-        alignItems: 'center',
-    },
     header: {
         width: '100%',
         flexDirection: 'row',
@@ -146,7 +212,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 20,
         paddingTop: Platform.OS === 'ios' ? 15 : 10,
-        paddingHorizontal: Platform.OS === 'ios' ? 15 : 10,
+        paddingHorizontal: 15,
     },
     title: {
         fontSize: 24,

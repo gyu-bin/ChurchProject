@@ -1,31 +1,31 @@
+// ✅ 드래그 정렬 + 순서 저장 + 순서 표시 + NaN 방지 VideoManager
 import React, { useEffect, useState } from 'react';
 import {
-    View,
-    Text,
-    TextInput,
-    FlatList,
-    Image,
-    TouchableOpacity,
-    Alert,
-    SafeAreaView,
-    KeyboardAvoidingView,
-    Platform, Keyboard
+    View, Text, TextInput, Image, TouchableOpacity, Alert,
+    SafeAreaView, KeyboardAvoidingView, Platform, Keyboard
 } from 'react-native';
+import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
 import { db } from '@/firebase/config';
 import {
-    collection,
-    addDoc,
-    getDocs,
-    deleteDoc,doc
+    collection, addDoc, getDocs, deleteDoc, doc, updateDoc
 } from 'firebase/firestore';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useDesign } from '@/context/DesignSystem';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import {Ionicons} from "@expo/vector-icons";
+import { Ionicons } from '@expo/vector-icons';
+import Toast from 'react-native-root-toast';
+
+// ✅ 영상 타입 정의
+type VideoItem = {
+    id: string;
+    url: string;
+    thumbnail: string;
+    order: number;
+};
 
 export default function VideoManager() {
-    const [videos, setVideos] = useState<any[]>([]);
+    const [videos, setVideos] = useState<VideoItem[]>([]);
     const [newUrl, setNewUrl] = useState('');
     const { colors, spacing, font } = useDesign();
     const { mode } = useAppTheme();
@@ -35,10 +35,11 @@ export default function VideoManager() {
 
     const fetchVideos = async () => {
         const snapshot = await getDocs(collection(db, 'videos'));
-        const list = snapshot.docs.map(doc => ({
+        const list: VideoItem[] = snapshot.docs.map(doc => ({
             id: doc.id,
-            ...doc.data(),
+            ...(doc.data() as Omit<VideoItem, 'id'>),
         }));
+        list.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
         setVideos(list);
     };
 
@@ -47,22 +48,18 @@ export default function VideoManager() {
         if (!newUrl.trim()) return;
         const match = newUrl.match(/v=([^&]+)/);
         const id = match ? match[1] : '';
-
         try {
-            // ✅ 현재 영상 수 가져오기
             const snapshot = await getDocs(collection(db, 'videos'));
             const currentCount = snapshot.size;
-
-            // ✅ Firestore에 새 영상 추가 (order 포함)
             await addDoc(collection(db, 'videos'), {
                 url: newUrl.trim(),
                 thumbnail: `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
                 createdAt: new Date(),
-                order: currentCount + 1, // ← 여기서 사용
+                order: currentCount,
             });
-
             setNewUrl('');
             fetchVideos();
+            Toast.show('✅ 영상이 추가되었습니다', { duration: 1500 });
         } catch (err) {
             Alert.alert('오류', '영상 추가에 실패했습니다.');
         }
@@ -70,47 +67,44 @@ export default function VideoManager() {
 
     const deleteVideo = async (id: string) => {
         try {
-            const ref = doc(db, 'videos', id); // ✅ 'videos/id' 경로의 문서 참조
-            await deleteDoc(ref);
-            fetchVideos(); // 다시 목록 불러오기
+            await deleteDoc(doc(db, 'videos', id));
+            fetchVideos();
+            Toast.show('🗑 삭제 완료', { duration: 1500 });
         } catch (err) {
             Alert.alert('삭제 실패', '영상을 삭제할 수 없습니다.');
         }
     };
 
-    const handleSave = () => {
+    const updateOrder = async (data: VideoItem[]) => {
+        await Promise.all(
+            data.map((item, index) =>
+                updateDoc(doc(db, 'videos', item.id), { order: index })
+            )
+        );
+        Toast.show('💾 순서가 저장되었습니다', { duration: 1500 });
+    };
+
+    const handleSave = async () => {
+        await updateOrder(videos); // 저장 완료 후
+        Toast.show('✅ 순서가 저장되었습니다', { duration: 1500 });
         router.replace('/settings');
     };
 
     useEffect(() => {
         fetchVideos();
     }, []);
-// 📺 홈화면 영상 관리
+
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#111827' : '#fff' }}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                style={{ flex: 1 }}
-            >
+        <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#111827' : '#fff', marginTop: Platform.OS === 'android' ? insets.top + 20 : 0 }}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
                 <View style={{ padding: spacing.md }}>
-                    <View
-                        style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            paddingHorizontal: spacing.lg,
-                            marginTop: Platform.OS === 'android' ? insets.top+20 : insets.top,
-                            paddingBottom: 30
-                        }}
-                    >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingBottom: 30 }}>
                         <TouchableOpacity onPress={() => router.back()}>
                             <Ionicons name="arrow-back" size={24} color={colors.text} />
                         </TouchableOpacity>
-                        <Text style={{ fontSize: font.heading, fontWeight: '600', color: colors.text, textAlign: 'center', flex: 1,}}>
-                            홈화면 영상 관리
-                        </Text>
+                        <Text style={{ fontSize: font.heading, fontWeight: '600', color: colors.text, textAlign: 'center', flex: 1 }}>홈화면 영상 관리</Text>
                     </View>
 
-                    {/* 입력창 + 추가 버튼 */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
                         <TextInput
                             value={newUrl}
@@ -142,48 +136,55 @@ export default function VideoManager() {
                         </TouchableOpacity>
                     </View>
 
-                    {/* 영상 리스트 */}
-                    <FlatList
+                    <DraggableFlatList<VideoItem>
                         data={videos}
                         keyExtractor={(item) => item.id}
+                        onDragEnd={({ data }) => setVideos(data)}
                         contentContainerStyle={{ paddingBottom: 100 }}
-                        renderItem={({ item }) => (
-                            <View
-                                style={{
-                                    flexDirection: 'row',
-                                    alignItems: 'center',
-                                    borderWidth: 1,
-                                    borderColor: isDark ? '#374151' : '#ccc',
-                                    backgroundColor: isDark ? '#1f2937' : '#f9f9f9',
-                                    borderRadius: 10,
-                                    padding: spacing.sm,
-                                    marginBottom: spacing.sm,
-                                }}
-                            >
-                                <Image
-                                    source={{ uri: item.thumbnail }}
+                        renderItem={(params: RenderItemParams<VideoItem>) => {
+                            const { item, drag } = params;
+                            const index = videos.findIndex(v => v.id === item.id); // ✅ index 직접 계산
+
+                            return (
+                                <TouchableOpacity
+                                    onLongPress={drag}
                                     style={{
-                                        width: 80,
-                                        height: 50,
-                                        borderRadius: 8,
-                                        marginRight: spacing.md,
-                                        backgroundColor: '#ccc',
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        borderWidth: 1,
+                                        borderColor: isDark ? '#374151' : '#ccc',
+                                        backgroundColor: isDark ? '#1f2937' : '#f9f9f9',
+                                        borderRadius: 10,
+                                        padding: spacing.sm,
+                                        marginBottom: spacing.sm,
                                     }}
-                                />
-                                <Text
-                                    numberOfLines={1}
-                                    style={{ flex: 1, color: isDark ? '#f3f4f6' : '#111827' }}
                                 >
-                                    {item.url}
-                                </Text>
-                                <TouchableOpacity onPress={() => deleteVideo(item.id)}>
-                                    <Text style={{ color: 'red', marginLeft: 8 }}>삭제</Text>
+                                    {/* 🔢 순서 숫자 표시 */}
+                                    <Text style={{ width: 24, textAlign: 'center', marginRight: spacing.sm, color: colors.primary }}>
+                                        {index !== -1 ? `${index + 1}.` : '-'}
+                                    </Text>
+
+                                    <Image
+                                        source={{ uri: item.thumbnail }}
+                                        style={{
+                                            width: 80,
+                                            height: 50,
+                                            borderRadius: 8,
+                                            marginRight: spacing.md,
+                                            backgroundColor: '#ccc',
+                                        }}
+                                    />
+                                    <Text numberOfLines={1} style={{ flex: 1, color: isDark ? '#f3f4f6' : '#111827' }}>
+                                        {item.url}
+                                    </Text>
+                                    <TouchableOpacity onPress={() => deleteVideo(item.id)} style={{ marginLeft: 8 }}>
+                                        <Ionicons name="trash" size={20} color={colors.error} />
+                                    </TouchableOpacity>
                                 </TouchableOpacity>
-                            </View>
-                        )}
+                            );
+                        }}
                     />
 
-                    {/* 저장 버튼 */}
                     <TouchableOpacity
                         onPress={handleSave}
                         style={{
@@ -197,7 +198,7 @@ export default function VideoManager() {
                             alignItems: 'center',
                         }}
                     >
-                        <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>💾 저장</Text>
+                        <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>💾 순서 저장</Text>
                     </TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>

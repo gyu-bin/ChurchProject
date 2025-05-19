@@ -1,10 +1,10 @@
 //app/teams/[id].tsx
-import React, { useEffect, useState } from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {
     View, Text, SafeAreaView, TouchableOpacity, Alert, Image,
-    ActivityIndicator, ScrollView, Platform, RefreshControl, Modal, TextInput
+    ActivityIndicator, ScrollView, Platform, RefreshControl, Modal, TextInput,KeyboardAvoidingView
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter,useFocusEffect} from 'expo-router';
 import { doc, getDoc, query, collection, where, getDocs, updateDoc, increment, arrayRemove, deleteDoc } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import { getCurrentUser } from '@/services/authService';
@@ -14,7 +14,9 @@ import { useAppTheme } from '@/context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {Ionicons} from "@expo/vector-icons";
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
-import { onSnapshot } from 'firebase/firestore'; // ✅ 추가
+import { onSnapshot } from 'firebase/firestore';
+import Toast from "react-native-root-toast";
+import {showToast} from "@/utils/toast"; // ✅ 추가
 
 type Team = {
     id: string;
@@ -54,44 +56,9 @@ export default function TeamDetail() {
     const [scheduleDate, setScheduleDate] = useState(team?.scheduleDate || '');
     const [isDatePickerVisible, setDatePickerVisible] = useState(false);
 
-    const openEditModal = () => {
-        if (!team) return;
-        setEditName(team.name);
-        setEditDescription(team.description || '');
-        setAnnouncement(team.announcement || '');
-        setEditCapacity(String(team.maxMembers ?? ''));
-        setEditModalVisible(true);
-    };
+    const { refresh } = useLocalSearchParams();
 
-    const handleUpdateTeam = async () => {
-        if (!team) return;
 
-        try {
-            const teamRef = doc(db, 'teams', team.id);
-            await updateDoc(teamRef, {
-                name: editName,
-                description: editDescription,
-                maxMembers: Number(editCapacity),
-                announcement,      // ✅ 추가 필요
-                scheduleDate,      // ✅ 추가 필요
-            });
-
-            setTeam(prev => prev && {
-                ...prev,
-                name: editName,
-                description: editDescription,
-                maxMembers: Number(editCapacity),
-                announcement,
-                scheduleDate,
-            });
-
-            setEditModalVisible(false);
-            Alert.alert('수정 완료', '모임 정보가 수정되었습니다.');
-        } catch (e) {
-            console.error('❌ 모임 정보 수정 실패:', e);
-            Alert.alert('에러', '모임 수정 중 문제가 발생했습니다.');
-        }
-    };
 
     useEffect(() => {
         getCurrentUser().then(setCurrentUser);
@@ -157,7 +124,7 @@ export default function TeamDetail() {
             return;
         }
 
-        if ((team.members ?? 0) >= (team.maxMembers ?? 99)) {
+        if ((team.membersList?.length ?? 0) >= (team.maxMembers ?? 99)) {
             Alert.alert('인원 초과', '모집이 마감되었습니다.');
             return;
         }
@@ -188,9 +155,60 @@ export default function TeamDetail() {
             });
         }
 
-        Alert.alert('가입 신청 완료', '모임장에게 신청 메시지를 보냈습니다.');
+        showToast('가입 신청 완료: 모임장에게 신청 메시지를 보냈습니다.');
         fetchTeam();  // ✅ 추가된 부분
         router.back();
+    };
+
+    const openEditModal = () => {
+        if (!team) return;
+        setEditName(team.name);
+        setEditDescription(team.description || '');
+        setAnnouncement(team.announcement || '');
+        setEditCapacity(String(team.maxMembers ?? ''));
+        setEditModalVisible(true);
+    };
+
+    const handleUpdateTeam = async () => {
+        if (!team) return;
+
+        const currentCount = team.membersList?.length ?? 0;
+        const newMax = Number(editCapacity);
+
+        if (isNaN(newMax) || newMax < currentCount) {
+            Alert.alert(
+                '유효하지 않은 최대 인원',
+                `현재 모임 인원(${currentCount}명)보다 작을 수 없습니다.`
+            );
+            return;
+        }
+
+        try {
+            const teamRef = doc(db, 'teams', team.id);
+            await updateDoc(teamRef, {
+                name: editName,
+                description: editDescription,
+                maxMembers: Number(editCapacity),
+                announcement,      // ✅ 추가 필요
+                scheduleDate,      // ✅ 추가 필요
+            });
+
+            setTeam(prev => prev && {
+                ...prev,
+                name: editName,
+                description: editDescription,
+                maxMembers: Number(editCapacity),
+                announcement,
+                scheduleDate,
+            });
+
+            setEditModalVisible(false);
+            Toast.show('✅ 수정 완료', { duration: 1500 });
+            fetchTeam();  // ← 🔥 명시적으로 새로고침
+        } catch (e) {
+            console.error('❌ 모임 정보 수정 실패:', e);
+            Alert.alert('에러', '모임 수정 중 문제가 발생했습니다.');
+        }
     };
 
     const handleKick = async (email: string) => {
@@ -248,7 +266,7 @@ export default function TeamDetail() {
                     try {
                         await deleteDoc(doc(db, 'teams', id));
                         setTeam(null); // ❗단일 객체니까 이렇게 처리
-                        Alert.alert('삭제 완료', '소모임이 삭제되었습니다.');
+                        showToast('삭제 완료: 소모임이 삭제되었습니다.');
                         router.replace('/teams'); // 삭제 후 소모임 목록으로 이동
                     } catch (e) {
                         Alert.alert('오류', '삭제에 실패했습니다.');
@@ -265,9 +283,36 @@ export default function TeamDetail() {
         setDatePickerVisible(false);
 
         if (!team) return;
+
         try {
             const teamRef = doc(db, 'teams', team.id);
             await updateDoc(teamRef, { scheduleDate: newDate });
+
+            // ✅ 푸시 알림 전송
+            const emails = team.membersList?.filter(email => email !== team.leaderEmail);
+            if (!emails || emails.length === 0) return;
+
+            const batches = [];
+            const cloned = [...emails];
+            while (cloned.length) {
+                const batch = cloned.splice(0, 10); // Firestore where-in 최대 10개
+                batches.push(query(collection(db, 'expoTokens'), where('email', 'in', batch)));
+            }
+
+            const results = await Promise.all(batches.map(q => getDocs(q)));
+            const tokens = results.flatMap(snap =>
+                snap.docs.map(doc => doc.data().token).filter(Boolean)
+            );
+
+            if (tokens.length > 0) {
+                await sendPushNotification({
+                    to: tokens,
+                    title: `📅 ${team.name} 모임 일정 안내`,
+                    body: `모임 일정이 ${newDate} 로 정해졌어요!`,
+                });
+            }
+
+            Toast.show('📢 일정 알림을 모임원에게 전송했어요!', { duration: 1500 });
         } catch (e) {
             console.error('❌ 일정 저장 실패:', e);
             Alert.alert('오류', '일정 저장 중 문제가 발생했습니다.');
@@ -405,6 +450,15 @@ export default function TeamDetail() {
 
 
                 <Modal visible={editModalVisible} animationType="slide" transparent>
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                        style={{
+                            flex: 1,
+                            justifyContent: 'center',
+                            padding: 20,
+                            backgroundColor: 'rgba(0,0,0,0.5)',
+                        }}
+                    >
                     <View style={{
                         flex: 1,
                         backgroundColor: 'rgba(0,0,0,0.5)',
@@ -487,6 +541,7 @@ export default function TeamDetail() {
                             </View>
                         </View>
                     </View>
+                    </KeyboardAvoidingView>
                 </Modal>
 
 

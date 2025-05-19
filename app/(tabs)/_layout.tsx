@@ -18,16 +18,18 @@ export default function TabLayout() {
     return (
         <Tabs
             screenOptions={({ route }) => {
-                const baseHeight = Platform.OS === 'android' ? 60 : 65;
+                const baseHeight = Platform.OS === 'android' ? 60 : 75;
                 return {
                     headerShown: false,
+                    tabBarShowLabel: true, // 꼭 label 표시 설정
                     tabBarActiveTintColor: tabBarTextActive,
                     tabBarInactiveTintColor: tabBarTextInactive,
                     tabBarStyle: {
                         backgroundColor: tabBarBackgroundColor,
                         borderTopColor: tabBarBorderColor,
                         borderTopWidth: 1,
-                        height: baseHeight + insets.bottom, // ✅ 안전 여백 포함
+                        // paddingBottom: Platform.OS === 'android' ? '15%' : 0, // iOS에서만 padding 적용
+                        height: Platform.OS === 'android' ? 0 : baseHeight, // ✅ 안전 여백 포함
                         paddingBottom: Platform.OS === 'android' ? 0 : insets.bottom, // iOS에서만 padding 적용
                         paddingTop: 4,
                     },

@@ -8,10 +8,11 @@ import { useRouter } from 'expo-router';
 import {addDoc, collection, getDocs, query, updateDoc, where} from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { sendNotification, sendPushNotification } from '@/services/notificationService';
+// import { sendNotification, sendPushNotification } from '@/services/notificationService';
 import { useDesign } from '@/context/DesignSystem';
 import {Ionicons} from "@expo/vector-icons";
 import {useSafeAreaInsets} from "react-native-safe-area-context";
+import {showToast} from "@/utils/toast";
 // import { useAppTheme } from '@/context/ThemeContext';
 
 export default function CreateTeam() {
@@ -59,7 +60,7 @@ export default function CreateTeam() {
                 leader,
                 leaderEmail: creatorEmail,
                 description,
-                members: 1,
+                // members: 1,
                 membersList: [creatorEmail],
                 createdAt: new Date(),
                 maxMembers: max,
@@ -117,7 +118,7 @@ export default function CreateTeam() {
                 */
             }
 
-            Alert.alert('완료', '모임이 성공적으로 생성되었습니다.');
+            showToast('✅ 모임이 성공적으로 생성되었습니다.');
             router.replace('/teams');
         } catch (error: any) {
             Alert.alert('생성 실패', error.message);

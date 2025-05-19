@@ -1,16 +1,47 @@
-// components/Skeleton.tsx
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, StyleSheet, ViewStyle, Dimensions } from 'react-native';
 
-export default function SkeletonBox({ height = 20, width = '100%', radius = 6 }) {
-    // @ts-ignore
-    return <View style={[styles.skeleton, { height, width, borderRadius: radius }]} />;
+interface SkeletonBoxProps {
+    width?: number;
+    height?: number;
+    borderRadius?: number;
 }
 
-const styles = StyleSheet.create({
-    skeleton: {
-        backgroundColor: '#e5e7eb',
-        marginBottom: 10,
-        opacity: 0.7,
-    },
-});
+export default function SkeletonBox({
+                                        width = Dimensions.get('window').width - 40, // default 값은 화면 너비
+                                        height = 16,
+                                        borderRadius = 8,
+                                    }: SkeletonBoxProps) {
+    const opacity = useRef(new Animated.Value(0.4)).current;
+
+    useEffect(() => {
+        const loop = Animated.loop(
+            Animated.sequence([
+                Animated.timing(opacity, {
+                    toValue: 1,
+                    duration: 800,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(opacity, {
+                    toValue: 0.4,
+                    duration: 800,
+                    useNativeDriver: true,
+                }),
+            ])
+        );
+        loop.start();
+
+        return () => loop.stop(); // cleanup
+    }, []);
+
+    const animatedStyle: Animated.WithAnimatedObject<ViewStyle> = {
+        width,
+        height,
+        borderRadius,
+        opacity,
+        backgroundColor: '#e0e0e0',
+        marginBottom: 8,
+    };
+
+    return <Animated.View style={animatedStyle} />;
+}

@@ -12,7 +12,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { doc, updateDoc,getDoc,onSnapshot } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import {removeDeviceToken} from "@/services/registerPushToken";
-
+import {logoutUser} from "@/redux/slices/userSlice";
+import {clearPrayers} from "@/redux/slices/prayerSlice";
+import {clearTeams} from "@/redux/slices/teamSlice";
+import { useAppDispatch } from '@/hooks/useRedux';
+import Toast from 'react-native-root-toast';
 export default function SettingsScreen() {
     const [user, setUser] = useState<any>(null);
     const router = useRouter();
@@ -23,6 +27,8 @@ export default function SettingsScreen() {
     const horizontalMargin = Platform.OS === 'ios' ? 20 : 16;
 
     const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+    const dispatch = useAppDispatch(); // ✅ 이걸 먼저 선언해야 함
 
     // 유저 정보 불러오기
     useEffect(() => {
@@ -59,7 +65,10 @@ export default function SettingsScreen() {
         await AsyncStorage.setItem('currentUser', JSON.stringify(updatedUser));
         setUser(updatedUser); // ✅ 상태도 즉시 반영
         setShowUpgradeModal(false);
-        Alert.alert('업데이트 완료', '정회원으로 전환되었습니다.');
+        Toast.show('✅ 정회원으로 전환되었습니다.', {
+            duration: Toast.durations.SHORT,
+            position: Toast.positions.BOTTOM,
+        });
     };
 
     useEffect(() => {
@@ -73,6 +82,11 @@ export default function SettingsScreen() {
     const handleLogout = async () => {
         await removeDeviceToken();
         await AsyncStorage.removeItem('currentUser');
+
+        // 로그아웃 버튼 누르면
+        dispatch(logoutUser());
+        dispatch(clearPrayers());
+        dispatch(clearTeams());
         router.replace('/auth/login');
     };
 
