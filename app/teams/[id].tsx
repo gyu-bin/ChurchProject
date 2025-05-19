@@ -2,10 +2,22 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {
     View, Text, SafeAreaView, TouchableOpacity, Alert, Image,
-    ActivityIndicator, ScrollView, Platform, RefreshControl, Modal, TextInput,KeyboardAvoidingView
+    ActivityIndicator, ScrollView, Platform, RefreshControl, Modal, TextInput, KeyboardAvoidingView, FlatList
 } from 'react-native';
 import { useLocalSearchParams, useRouter,useFocusEffect} from 'expo-router';
-import { doc, getDoc, query, collection, where, getDocs, updateDoc, increment, arrayRemove, deleteDoc } from 'firebase/firestore';
+import {
+    doc,
+    getDoc,
+    query,
+    collection,
+    where,
+    getDocs,
+    updateDoc,
+    increment,
+    arrayRemove,
+    deleteDoc,
+    setDoc,onSnapshot
+} from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import { getCurrentUser } from '@/services/authService';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
@@ -14,7 +26,6 @@ import { useAppTheme } from '@/context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {Ionicons} from "@expo/vector-icons";
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
-import { onSnapshot } from 'firebase/firestore';
 import Toast from "react-native-root-toast";
 import {showToast} from "@/utils/toast"; // ✅ 추가
 
@@ -30,6 +41,13 @@ type Team = {
     scheduleDate?: string; // YYYY-MM-DD
     [key: string]: any; // 기타 필드를 허용하는 경우
 };
+
+export type VoteChoice = '가능' | '어려움' | '미정';
+
+export type VoteStats = {
+    [key in VoteChoice]: number;
+};
+
 
 export default function TeamDetail() {
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -56,19 +74,22 @@ export default function TeamDetail() {
     const [scheduleDate, setScheduleDate] = useState(team?.scheduleDate || '');
     const [isDatePickerVisible, setDatePickerVisible] = useState(false);
 
+    const [scheduleVote, setScheduleVote] = useState<any>(null);
+    const [voteLoading, setVoteLoading] = useState(false);
+    const [voteStats, setVoteStats] = useState<VoteStats>({ 가능: 0, 어려움: 0, 미정: 0 });
     const { refresh } = useLocalSearchParams();
 
-
+    const [voteModalVisible, setVoteModalVisible] = useState(false);
+    const [voters, setVoters] = useState<{ name: string; vote: VoteChoice }[]>([]);
 
     useEffect(() => {
         getCurrentUser().then(setCurrentUser);
     }, []);
 
     useEffect(() => {
-        if (team?.scheduleDate) {
-            setScheduleDate(team.scheduleDate);
-        }
-    }, [team]);
+        const unsubscribe = fetchTeam();
+        return () => unsubscribe && unsubscribe();
+    }, []);
 
 // 🔄 API 호출 로직 분리
     const fetchTeam = () => {
@@ -278,29 +299,43 @@ export default function TeamDetail() {
     };
 
     const handleDateConfirm = async (date: Date) => {
+        if (!team) return;
+
         const newDate = date.toISOString().slice(0, 10); // YYYY-MM-DD
+
+        // 동일한 날짜면 업데이트/알림 스킵
+        if (team.scheduleDate === newDate) {
+            setDatePickerVisible(false);
+            return;
+        }
+
         setScheduleDate(newDate);
         setDatePickerVisible(false);
 
-        if (!team) return;
-
         try {
+            // 일정 Firestore 업데이트
             const teamRef = doc(db, 'teams', team.id);
             await updateDoc(teamRef, { scheduleDate: newDate });
+            setScheduleDate(newDate);
 
-            // ✅ 푸시 알림 전송
-            const emails = team.membersList?.filter(email => email !== team.leaderEmail);
-            if (!emails || emails.length === 0) return;
+            // ✅ 참여자 이메일 목록 (리더 제외)
+            const emails = (team.membersList ?? []).filter(email => email !== team.leaderEmail);
 
-            const batches = [];
-            const cloned = [...emails];
-            while (cloned.length) {
-                const batch = cloned.splice(0, 10); // Firestore where-in 최대 10개
-                batches.push(query(collection(db, 'expoTokens'), where('email', 'in', batch)));
+            if (emails.length === 0) return;
+
+            // ✅ 10개씩 나눠서 expoTokens 조회
+            const tokenQueryBatches = [];
+            const emailClone = [...emails];
+
+            while (emailClone.length) {
+                const batch = emailClone.splice(0, 10);
+                tokenQueryBatches.push(
+                    query(collection(db, 'expoTokens'), where('email', 'in', batch))
+                );
             }
 
-            const results = await Promise.all(batches.map(q => getDocs(q)));
-            const tokens = results.flatMap(snap =>
+            const tokenSnapshots = await Promise.all(tokenQueryBatches.map(q => getDocs(q)));
+            const tokens = tokenSnapshots.flatMap(snap =>
                 snap.docs.map(doc => doc.data().token).filter(Boolean)
             );
 
@@ -308,11 +343,11 @@ export default function TeamDetail() {
                 await sendPushNotification({
                     to: tokens,
                     title: `📅 ${team.name} 모임 일정 안내`,
-                    body: `모임 일정이 ${newDate} 로 정해졌어요!`,
+                    body: `모임 일정이 ${newDate}로 정해졌어요!`,
                 });
-            }
 
-            Toast.show('📢 일정 알림을 모임원에게 전송했어요!', { duration: 1500 });
+                Toast.show('📢 일정 알림을 모임원에게 전송했어요!', { duration: 1500 });
+            }
         } catch (e) {
             console.error('❌ 일정 저장 실패:', e);
             Alert.alert('오류', '일정 저장 중 문제가 발생했습니다.');
@@ -334,7 +369,6 @@ export default function TeamDetail() {
             </SafeAreaView>
         );
     }
-
 
 
     const isFull = (team?.members ?? 0) >= (team?.capacity ?? 99);
@@ -361,6 +395,19 @@ export default function TeamDetail() {
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
                 <Text style={{ fontSize: font.heading, fontWeight: '600', color: colors.text }}>{team.name}</Text>
+
+                <TouchableOpacity
+                    onPress={() => router.push(`/teams/${team.id}/chat?name=${encodeURIComponent(team.name)}`)}
+                    style={{
+                        position: 'absolute',
+                        right: spacing.lg,
+                        zIndex: 10,
+                        alignItems: 'center',
+                    }}
+                >
+                    <Ionicons name="chatbubble-outline" size={22} color={colors.text} />
+                    <Text style={{ fontSize: 10, color: colors.text, marginTop: 2 }}>팀 채팅방</Text>
+                </TouchableOpacity>
             </View>
 
             <ScrollView contentContainerStyle={{ paddingLeft: spacing.lg, paddingRight: spacing.lg, paddingBottom: '15%' ,gap: spacing.lg}}
@@ -447,7 +494,6 @@ export default function TeamDetail() {
                     <Text style={{ fontSize: font.body, fontWeight: '600', color: colors.text, marginBottom: spacing.sm }}>공지사항</Text>
                     <Text style={{ fontSize: font.body, color: colors.text, lineHeight: 22 }}>{team.announcement}</Text>
                 </View>
-
 
                 <Modal visible={editModalVisible} animationType="slide" transparent>
                     <KeyboardAvoidingView
@@ -595,6 +641,8 @@ export default function TeamDetail() {
                             ))}
                     </View>
                 )}
+
+
 
                 {isCreator && (
                     <View>
