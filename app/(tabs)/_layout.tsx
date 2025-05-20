@@ -100,23 +100,19 @@ export default function TabLayout() {
                 name="teams"
                 options={{ title: '소모임' }}
                 listeners={{
-                             tabPress: () => {
-                                 if (pathname === '/') {
-                                     const cb = getScrollCallback('index');
-                                     cb?.();
-                                 }
-                             },
+                    tabPress: () => {
+                        const cb = getScrollCallback('teams');
+                        cb?.(); // 👈 이 부분이 핵심입니다
+                    },
                 }}/>
             <Tabs.Screen
                 name="settings"
                 options={{ title: '설정' }}
                 listeners={{
-                             tabPress: () => {
-                                 if (pathname === '/') {
-                                     const cb = getScrollCallback('index');
-                                     cb?.();
-                                 }
-                             },
+                    tabPress: () => {
+                        const cb = getScrollCallback('settings');
+                        cb?.(); // 👈 이 부분이 핵심입니다
+                    },
                 }}/>
         </Tabs>
     );

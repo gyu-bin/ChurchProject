@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import {
     View,
     Text,
@@ -16,6 +16,9 @@ import { login } from '@/services/authService';
 import { registerPushToken } from '@/services/registerPushToken';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@/hooks/useAuth';
+import { registerDevice } from '@/services/registerDevice';
+import {tryBiometricLogin} from "@/utils/biometricLogin";
+import Toast from "react-native-root-toast"; // 경로는 실제 위치에 맞게
 
 export default function LoginScreen() {
     const [email, setEmail] = useState('');
@@ -23,11 +26,45 @@ export default function LoginScreen() {
     const router = useRouter();
     const { reload } = useAuth();
 
+    // 로그인 화면 useEffect에서 자동 시도
+    useEffect(() => {
+        const attemptBiometric = async () => {
+            const user = await tryBiometricLogin();
+            if (user) {
+                await registerPushToken(); // 자동 로그인 처리
+                router.replace('/');
+            }
+        };
+
+        attemptBiometric();
+    }, []);
+
     const handleLogin = async () => {
         try {
             const user = await login(email.trim(), password.trim());
             await AsyncStorage.setItem('currentUser', JSON.stringify(user));
+
+            const saved = await AsyncStorage.getItem(`useBiometric:${user.email}`);
+            if (saved !== 'true') {
+                console.log('face id')
+                Alert.alert(
+                    'Face ID 등록',
+                    '다음 로그인부터 Face ID를 사용하시겠습니까?',
+                    [
+                        { text: '아니오', style: 'cancel' },
+                        {
+                            text: '예',
+                            onPress: async () => {
+                                await AsyncStorage.setItem(`useBiometric:${user.email}`, 'true');
+                                Toast.show('✅ Face ID가 등록되었습니다.');
+                            },
+                        },
+                    ]
+                );
+            }
+
             await registerPushToken();
+            await registerDevice();    // ✅ 기기 등록 추가
             await reload();
             router.replace('/');
         } catch (error: any) {

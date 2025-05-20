@@ -122,3 +122,53 @@ export async function sendPushNotification({
         console.error('❌ sendPushNotification 에러:', err);
     }
 }
+export const sendPushNotificationToTeam = async (
+    teamId: string,
+    senderEmail: string,
+    payload: {
+        title: string;
+        body: string;
+        data?: any;
+    }
+) => {
+    const snapshot = await getDocs(collection(db, 'teams', teamId, 'members'));
+
+    const tokens: string[] = [];
+
+    snapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.email !== senderEmail && data.pushToken) {
+            tokens.push(data.pushToken);
+        }
+    });
+
+    if (tokens.length === 0) {
+        console.log('🔕 보낼 토큰 없음');
+        return;
+    }
+
+    await sendPushNotification({
+        to: tokens,
+        title: payload.title,
+        body: payload.body,
+        data: payload.data,
+    });
+};
+
+export const logReceivableTeamMembers = async (teamId: string, senderEmail: string) => {
+    const snapshot = await getDocs(collection(db, 'teams', teamId, 'members'));
+
+    const recipients: { email: string; tokens: string[] }[] = [];
+
+    snapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.email !== senderEmail && Array.isArray(data.expoPushTokens)) {
+            recipients.push({
+                email: data.email,
+                tokens: data.expoPushTokens,
+            });
+        }
+    });
+
+    console.log('📤 전송 대상 목록:', recipients);
+};

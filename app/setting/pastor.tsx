@@ -1,4 +1,4 @@
-// ✅ 전체수정된 pastor/pastor 코드 (Empty 상태 UI 추가 반영)
+// ✅ 전체수정된 setting/setting 코드 (Empty 상태 UI 추가 반영)
 import React, {useCallback, useEffect, useState} from 'react';
 import {
     View, Text, SafeAreaView, FlatList, TouchableOpacity, Dimensions, Alert, RefreshControl
@@ -208,7 +208,7 @@ export default function PastorPage() {
                         <Text style={{ fontSize: font.body, fontWeight: 'bold', color: colors.text }}>{item.title}</Text>
                         <Text style={{ fontSize: font.caption, color: colors.subtext }}>🙋 {item.name}</Text>
                         <Text style={{ fontSize: font.body, color: colors.text, marginVertical: spacing.sm }}>{item.content}</Text>
-                        <Text style={{ fontSize: font.caption, color: colors.subtext }}>📢 공개: {item.visibility === 'pastor' ? '교역자만' : '전체'}</Text>
+                        <Text style={{ fontSize: font.caption, color: colors.subtext }}>📢 공개: {item.visibility === 'setting' ? '교역자만' : '전체'}</Text>
                         {item.createdAt?.toDate && (
                             <Text style={{ fontSize: font.caption, color: colors.subtext }}>🕒 {format(item.createdAt.toDate(), 'yy-MM-dd HH:mm')}</Text>
                         )}

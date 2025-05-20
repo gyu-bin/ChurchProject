@@ -91,22 +91,22 @@ export default function CreateTeam() {
                 const pushPromises: Promise<void>[] = [];
 
                 snapshot.docs.forEach((docSnap) => {
-                    const pastor = docSnap.data();
-                    if (pastor.email === creatorEmail || notified.has(pastor.email)) return;
-                    notified.add(pastor.email);
+                    const setting = docSnap.data();
+                    if (setting.email === creatorEmail || notified.has(setting.email)) return;
+                    notified.add(setting.email);
 
                     firestorePromises.push(sendNotification({
-                        to: pastor.email,
+                        to: setting.email,
                         message: `${leader}님이 "${name}" 소모임을 생성했습니다.`,
                         type: 'team_create',
-                        link: '/pastor?tab=teams',
+                        link: '/setting?tab=teams',
                         teamId: newTeamId,
                         teamName: name,
                     }));
 
-                    if (pastor.expoPushToken) {
+                    if (setting.expoPushToken) {
                         pushPromises.push(sendPushNotification({
-                            to: pastor.expoPushToken,
+                            to: setting.expoPushToken,
                             title: '📌 소모임 생성 알림',
                             body: `${leader}님의 소모임이 생성되었습니다.`,
                         }));

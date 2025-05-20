@@ -1,4 +1,4 @@
-// 📁 app/pastor/stats.tsx
+// 📁 app/setting/stats.tsx
 import React, { useEffect, useState } from 'react';
 import { View, Text, SafeAreaView, Dimensions, ScrollView } from 'react-native';
 import { collection, getDocs, query, where } from 'firebase/firestore';

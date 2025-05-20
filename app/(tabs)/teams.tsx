@@ -33,7 +33,7 @@ export default function TeamsScreen() {
 
 
     useEffect(() => {
-        setScrollCallback('index', () => {
+        setScrollCallback('teams', () => {
             mainListRef.current?.scrollToOffset({ offset: 0, animated: true });
         });
     }, []);
@@ -176,7 +176,6 @@ export default function TeamsScreen() {
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background,paddingTop: Platform.OS === 'android' ? insets.top+10 : 0 }}>
-        {/*<SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>*/}
             <View style={styles.header}>
                 <Text style={[styles.title, { color: colors.text }]}>📋 소모임 목록</Text>
                 <View style={styles.actions}>
@@ -197,6 +196,7 @@ export default function TeamsScreen() {
                 </View>
             ) : (
                 <FlatList
+                    ref={mainListRef}
                     data={teams}
                     key={isGrid ? 'grid' : 'list'}
                     numColumns={isGrid ? 2 : 1}

@@ -1,22 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity, FlatList,
-    SafeAreaView, StyleSheet, Keyboard, KeyboardEvent,
-    TouchableWithoutFeedback, Platform, Alert, UIManager, LayoutAnimation, InteractionManager
+    SafeAreaView, StyleSheet, Keyboard, KeyboardAvoidingView,
+    Platform, Alert, TouchableWithoutFeedback, Modal, Pressable
 } from 'react-native';
-import { useLocalSearchParams, useRouter,usePathname } from 'expo-router';
+import {useRouter, useLocalSearchParams, usePathname, useFocusEffect} from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import * as Clipboard from 'expo-clipboard';
-import Modal from 'react-native-modal';
 import {
     collection, addDoc, query, orderBy, onSnapshot,
-    serverTimestamp, doc, deleteDoc, getDocs, setDoc, increment, getDoc, where
+    serverTimestamp, doc, deleteDoc, getDoc, where, getDocs, setDoc, increment
 } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import { getCurrentUser } from '@/services/authService';
-import { showToast } from '@/utils/toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDesign } from '@/context/DesignSystem';
+import * as Clipboard from 'expo-clipboard';
 import {sendPushNotification} from "@/services/notificationService";
 
 export default function TeamChat() {
@@ -27,108 +25,109 @@ export default function TeamChat() {
     const [input, setInput] = useState('');
     const [messages, setMessages] = useState<any[]>([]);
     const [userEmail, setUserEmail] = useState('');
-    const [keyboardHeight, setKeyboardHeight] = useState(0);
+    const [userName, setUserName] = useState('');
     const [selectedMessage, setSelectedMessage] = useState<any | null>(null);
     const [isActionSheetVisible, setActionSheetVisible] = useState(false);
+    const [replyTo, setReplyTo] = useState<any | null>(null); // 🔥 답글 대상
     const flatListRef = useRef<FlatList>(null);
-    const insets = useSafeAreaInsets();
+    const [justDeleted, setJustDeleted] = useState(false);
     const { colors } = useDesign();
-    const [inputHeight, setInputHeight] = useState(40); // 초기 높이
-
-    const [newMessageBannerVisible, setNewMessageBannerVisible] = useState(false);
-    const isScrolledToBottom = useRef(true); // 하단 여부 추적
     const pathname = usePathname();
-
-    useEffect(() => {
-        if (Platform.OS === 'android') {
-            UIManager.setLayoutAnimationEnabledExperimental?.(true);
-        }
-
-        const onKeyboardShow = (e: KeyboardEvent) => {
-            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-            setKeyboardHeight(e.endCoordinates.height);
-        };
-
-        const onKeyboardHide = () => {
-            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-            setKeyboardHeight(0);
-
-            // ✅ 키보드가 내려가면 자동으로 제일 하단으로 스크롤
-            setTimeout(() => {
-                flatListRef.current?.scrollToOffset({ offset: 100000, animated: true });
-            }, 100); // 타이밍 조절 가능
-        };
-
-        const showSub = Keyboard.addListener(
-            Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-            onKeyboardShow
-        );
-        const hideSub = Keyboard.addListener(
-            Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-            onKeyboardHide
-        );
-
-        return () => {
-            showSub.remove();
-            hideSub.remove();
-        };
-    }, []);
-
+    const [isAtBottom, setIsAtBottom] = useState(true);
+    const [showNewMessageBanner, setShowNewMessageBanner] = useState(false);
     useEffect(() => {
         getCurrentUser().then(user => {
             if (user?.email) setUserEmail(user.email);
+            if (user?.name) setUserName(user.name);
         });
     }, []);
 
     useEffect(() => {
-        if (keyboardHeight > 0 && inputHeight > 0) {
-            const timeout = setTimeout(() => {
-                flatListRef.current?.scrollToOffset({ offset: 100000, animated: true });
-            }, 100);
-            return () => clearTimeout(timeout);
+        if (!isAtBottom && messages.length > 0) {
+            setShowNewMessageBanner(true); // 하단 배너 노출
         }
-    }, [inputHeight]);
+    }, [messages]);
 
     useEffect(() => {
-        const q = query(collection(db, 'teams', teamId, 'chats'), orderBy('createdAt'));
-        const unsubscribe = onSnapshot(q, snapshot => {
-            const loaded = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
-            const lastMessage = loaded[loaded.length - 1];
+        const setUserStatus = async () => {
+            const user = await getCurrentUser();
+            if (!user?.email) return;
 
-            const isNewMessage = messages.length > 0 &&
-                lastMessage?.id !== messages[messages.length - 1]?.id &&
-                lastMessage?.senderEmail !== userEmail;
+            await setDoc(doc(db, 'userStatus', user.email), {
+                currentScreen: 'chat',
+                teamId: teamId,
+                updatedAt: serverTimestamp(),
+            }, { merge: true });
+        };
 
-            setMessages(loaded);
+        setUserStatus();
 
-            if (isNewMessage) {
-                if (isScrolledToBottom.current) {
-                    // ✅ 하단일 때만 자동 스크롤
-                    setTimeout(() => {
-                        flatListRef.current?.scrollToOffset({ offset: 100000, animated: true });
-                    }, 100);
-                } else {
-                    // ✅ 아니면 배너 표시
-                    setNewMessageBannerVisible(true);
-                }
-            }
+        return () => {
+            // 채팅방 나갈 때 초기화
+            const clearUserStatus = async () => {
+                const user = await getCurrentUser();
+                if (!user?.email) return;
+
+                await setDoc(doc(db, 'userStatus', user.email), {
+                    currentScreen: '',
+                    teamId: '',
+                    updatedAt: serverTimestamp(),
+                }, { merge: true });
+            };
+
+            clearUserStatus();
+        };
+    }, []);
+
+    useFocusEffect(
+        React.useCallback(() => {
+            let isMounted = true;
+            const updatePresence = async () => {
+                const user = await getCurrentUser();
+                if (!user?.email) return;
+
+                const ref = doc(db, 'teams', teamId, 'onlineUsers', user.email);
+                await setDoc(ref, { email: user.email, updatedAt: serverTimestamp() });
+
+                return async () => {
+                    if (isMounted) {
+                        await deleteDoc(ref);
+                        isMounted = false;
+                    }
+                };
+            };
+
+            const unsubscribe = updatePresence();
+            return () => {
+                if (unsubscribe) unsubscribe;
+            };
+        }, [teamId])
+    );
+
+    useEffect(() => {
+        const chatRef = collection(db, 'teams', teamId, 'chats');
+        const q = query(chatRef, orderBy('createdAt'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const docs = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+            setMessages(docs);
         });
-
         return () => unsubscribe();
-    }, [teamId, userEmail, messages]); // messages를 deps에 포함시켜야 비교 가능
+    }, [teamId]);
 
-    /*useEffect(() => {
-        if (messages.length === 0) return;
+    const scrollToMessage = (messageId: string) => {
+        const index = messages.findIndex(msg => msg.id === messageId);
+        console.log('🔍 replyTo.messageId:', messageId, '→ index:', index);
 
-        const timeout = setTimeout(() => {
-            // 🔥 하단에 있을 때만 자동 스크롤
-            if (isScrolledToBottom.current) {
-                flatListRef.current?.scrollToOffset({ offset: 100000, animated: true });
+        if (index !== -1 && flatListRef.current) {
+            try {
+                flatListRef.current.scrollToIndex({ index, animated: true });
+            } catch (err) {
+                console.warn('❗ scrollToIndex 실패:', err);
             }
-        }, 300);
-
-        return () => clearTimeout(timeout);
-    }, [messages.length]);*/
+        } else {
+            console.warn('❌ 메시지 ID 찾을 수 없음:', messageId);
+        }
+    };
 
     const handleSend = async () => {
         const user = await getCurrentUser();
@@ -140,6 +139,8 @@ export default function TeamChat() {
             text: input,
             createdAt: serverTimestamp(),
         });
+        const onlineSnap = await getDocs(collection(db, 'teams', teamId, 'onlineUsers'));
+        const onlineEmails = onlineSnap.docs.map(doc => doc.id);
 
         const teamRef = doc(db, 'teams', teamId);
         const teamSnap = await getDoc(teamRef);
@@ -147,7 +148,18 @@ export default function TeamChat() {
 
         const teamData = teamSnap.data();
         const membersList: string[] = teamData.membersList || [];
-        const notifyEmails = membersList.filter(email => email !== user.email);
+
+        const userStatusSnap = await getDocs(collection(db, 'userStatus'));
+        const excludeEmails: string[] = [];
+        userStatusSnap.forEach(docSnap => {
+            const data = docSnap.data();
+            if (data.currentScreen === 'chat' && data.teamId === teamId) {
+                excludeEmails.push(docSnap.id); // 이메일이 문서 ID
+            }
+        });
+        const notifyEmails = membersList.filter(
+            email => email !== user.email && !excludeEmails.includes(email)
+        );
         const tokens: string[] = [];
 
         if (notifyEmails.length > 0) {
@@ -169,7 +181,9 @@ export default function TeamChat() {
 
         const visibleInChat = pathname === `/teams/${teamId}/chat`;
 
-        if (!visibleInChat && tokens.length > 0) {
+        console.log("📤 알림 보낼 대상 토큰 목록:", tokens);
+
+        if (tokens.length > 0) {
             await sendPushNotification({
                 to: tokens,
                 title: teamData.name,
@@ -188,12 +202,11 @@ export default function TeamChat() {
             }
         }
 
+        console.log("✅ visibleInChat:", visibleInChat);
+        console.log("✅ tokens:", tokens);
+
         setInput('');
-        InteractionManager.runAfterInteractions(() => {
-            if (keyboardHeight === 0) {
-                flatListRef.current?.scrollToOffset({ offset: 100000, animated: true });
-            }
-        });
+        setReplyTo(null);
     };
 
 
@@ -210,357 +223,348 @@ export default function TeamChat() {
     }, []);
 
     const handleCopy = async () => {
-        if (selectedMessage) {
-            await Clipboard.setStringAsync(selectedMessage.text);
-            showToast('📋 복사되었습니다.');
-            setActionSheetVisible(false);
-        }
+        if (!selectedMessage) return;
+        await Clipboard.setStringAsync(selectedMessage.text);
+        setActionSheetVisible(false);
     };
 
     const handleDelete = async () => {
-        if (selectedMessage) {
-            Alert.alert('삭제 확인', '정말 삭제하시겠습니까?', [
-                { text: '취소', style: 'cancel' },
-                {
-                    text: '삭제',
-                    style: 'destructive',
-                    onPress: async () => {
-                        await deleteDoc(doc(db, 'teams', teamId, 'chats', selectedMessage.id));
-                        setActionSheetVisible(false);
-                        showToast('✅ 채팅이 삭제되었습니다.');
-                    },
-                },
-            ]);
-        }
+        if (!selectedMessage) return;
+        setJustDeleted(true); // 삭제 플래그
+        await deleteDoc(doc(db, 'teams', teamId, 'chats', selectedMessage.id));
+        setActionSheetVisible(false);
     };
+
+    const handleEdit = async () => {
+        if (!selectedMessage) return;
+        setInput(selectedMessage.text);
+        await deleteDoc(doc(db, 'teams', teamId, 'chats', selectedMessage.id));
+        setActionSheetVisible(false);
+    };
+
+
 
     const renderItem = ({ item, index }: { item: any; index: number }) => {
         const isMe = item.senderEmail === userEmail;
-        const showDateLabel =
-            index === 0 ||
-            new Date(item.createdAt?.toDate?.() ?? 0).toDateString() !==
-            new Date(messages[index - 1]?.createdAt?.toDate?.() ?? 0).toDateString();
-
-        const dateLabel = (() => {
-            const date = new Date(item.createdAt?.toDate?.() ?? 0);
-            const today = new Date();
-            return date.toDateString() === today.toDateString() ? '오늘' : date.toLocaleDateString();
-        })();
-
-        const timeLabel = new Date(item.createdAt?.toDate?.() ?? 0).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-        });
+        const currentDate = new Date(item.createdAt?.toDate?.()).toDateString();
+        const previousDate = index > 0 ? new Date(messages[index - 1]?.createdAt?.toDate?.()).toDateString() : null;
+        const showDate = currentDate !== previousDate;
 
         return (
-            <>
-                {showDateLabel && (
-                    <View style={{ alignItems: 'center', marginVertical: 10 }}>
-                        <Text
-                            style={{
-                                backgroundColor: colors.card,
-                                color: colors.text,
-                                paddingHorizontal: 12,
-                                paddingVertical: 4,
-                                borderRadius: 12,
-                                fontSize: 12,
-                            }}
-                        >
-                            {dateLabel}
+            <View>
+                {showDate && (
+                    <View style={{ alignItems: 'center', marginVertical: 8 }}>
+                        <Text style={{ fontSize: 12, color: colors.subtext }}>
+                            {currentDate === new Date().toDateString() ? '오늘' : currentDate}
                         </Text>
                     </View>
                 )}
 
+                {/* 이름 (본인 메시지는 생략 가능) */}
+                {!isMe && (
+                    <Text style={{ fontSize: 12, color: '#666', marginLeft: 8, marginBottom: 2 }}>
+                        {item.senderName}
+                    </Text>
+                )}
+
                 <TouchableOpacity
-                    delayLongPress={400}
                     onLongPress={() => {
                         setSelectedMessage(item);
                         setActionSheetVisible(true);
                     }}
                     style={{
                         alignSelf: isMe ? 'flex-end' : 'flex-start',
-                        marginBottom: 14,
-                        maxWidth: '70%',
-                        paddingHorizontal: 2,
+                        marginVertical: 4,
+                        marginBottom: 10,
+                        maxWidth: '75%',
+                        position: 'relative'
                     }}
                 >
-                    <View style={{ marginBottom: 2 }}>
-                        {!isMe && (
-                            <Text
-                                style={{
-                                    marginLeft: 6,
-                                    marginBottom: 4,
-                                    fontSize: 13,
-                                    fontWeight: '500',
-                                    color: colors.subtext,
-                                }}
-                            >
-                                {item.senderName}
-                            </Text>
-                        )}
-
-                        <View style={{ flexDirection: isMe ? 'row-reverse' : 'row', alignItems: 'flex-end' }}>
-                            <View
-                                style={{
-                                    backgroundColor: isMe ? '#3b82f6' : '#333',
-                                    padding: 12,
-                                    borderRadius: 18,
-                                    borderTopLeftRadius: isMe ? 18 : 0,
-                                    borderTopRightRadius: isMe ? 0 : 18,
-                                    shadowColor: '#000',
-                                    shadowOffset: { width: 0, height: 2 },
-                                    shadowOpacity: 0.15,
-                                    shadowRadius: 4,
-                                    elevation: 2,
-                                }}
-                            >
-                                <Text style={{ color: isMe ? '#000' : '#fff', fontSize: 16 }}>{item.text}</Text>
+                    <View style={[styles.bubble, isMe ? styles.myBubble : styles.otherBubble]}>
+                        {item.replyTo && (
+                            <View style={{ marginBottom: 4 }}>
+                                <Text style={{ fontSize: 13, color: '#888' }}>{item.replyTo.senderName}:</Text>
+                                <Text style={{ fontSize: 14, color: '#aaa' }} numberOfLines={1} ellipsizeMode="tail">{item.replyTo.text}</Text>
                             </View>
-
-                            <Text
-                                style={{
-                                    fontSize: 14,
-                                    color: '#888',
-                                    marginHorizontal: 6,
-                                    marginBottom: 2,
-                                }}
-                            >
-                                {timeLabel}
-                            </Text>
-                        </View>
+                        )}
+                        <Text style={{ fontSize: 16, color: isMe ? '#000' : '#fff' }}>{item.text}</Text>
+                        <Text style={styles.time}>
+                            {new Date(item.createdAt?.toDate?.()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
                     </View>
+                    <View style={[styles.tail, isMe ? styles.myTail : styles.otherTail]} />
                 </TouchableOpacity>
-            </>
+            </View>
         );
     };
 
-
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-            {/* Header */}
-            <View
-                style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    height: 56,
-                    justifyContent: 'center',
-                    position: 'relative',
-                    paddingHorizontal: 20,
-                    marginTop: Platform.OS === 'android' ? insets.top : 0,
-                    borderBottomColor: 'black', // 👈 디자인 시스템의 경계선 색상
-                    borderBottomWidth: StyleSheet.hairlineWidth, // 👈 얇은 선
-                }}
-            >
-                <TouchableOpacity
-                    onPress={() => router.back()}
-                    style={{ position: 'absolute', left: 20, zIndex: 10 }}
-                >
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 20 : 0}}>
+            <View style={styles.header}>
+                <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={{ fontSize: 23, fontWeight: '600', color: colors.text }}>
-                    {teamName}
-                </Text>
+                <View style={styles.headerTitleContainer}>
+                    <Text style={styles.headerTitle}>{teamName}</Text>
+                </View>
             </View>
 
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                <View style={{ flex: 1 }}>
-                    <FlatList
-                        ref={flatListRef}
-                        data={messages}
-                        keyExtractor={(item) => item.id}
-                        renderItem={renderItem}
-                        contentContainerStyle={{
-                            padding: 12,
-                            paddingBottom: keyboardHeight + inputHeight + 30, // 입력창 높이 반영
-                            flexGrow: 1,
-                        }}
-                        onContentSizeChange={() => {
-                            // ✅ 키보드 열려있지 않고 + 하단일 경우만 자동 스크롤
-                            if (keyboardHeight === 0 && isScrolledToBottom.current) {
-                                flatListRef.current?.scrollToEnd({ animated: false });
-                            }
-                        }}
-                        onLayout={() => {
-                            if (keyboardHeight === 0 && messages.length > 0) {
-                                flatListRef.current?.scrollToOffset({
-                                    offset: 100000,
-                                    animated: false,
-                                });
-                            }
-                        }}
-                        onScroll={(e) => {
-                            const y = e.nativeEvent.contentOffset.y;
-                            const height = e.nativeEvent.contentSize.height;
-                            const layoutHeight = e.nativeEvent.layoutMeasurement.height;
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+            >
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                    <View style={{ flex: 1 }}>
+                        <FlatList
+                            ref={flatListRef}
+                            data={messages}
+                            keyExtractor={item => item.id}
+                            renderItem={renderItem}
+                            contentContainerStyle={{ padding: 12 }}
+                            keyboardShouldPersistTaps="handled"
+                            keyboardDismissMode="interactive"
+                            removeClippedSubviews={false} // ✅ Android에서 끊김 줄이기
+                            onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                            onScroll={(event) => {
+                                const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+                                const isBottom =
+                                    layoutMeasurement.height + contentOffset.y >= contentSize.height - 20;
 
-                            const isBottom = y + layoutHeight >= height - 10; // 오차 허용 범위 줄이기
-                            isScrolledToBottom.current = isBottom;
-
-                            if (isBottom && newMessageBannerVisible) {
-                                setNewMessageBannerVisible(false);
-                            }
-                        }}
-                        keyboardShouldPersistTaps="always"
-                        initialNumToRender={20}
-                        maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
-                    />
-
-                    {/* ✅ 새 메시지 배너 */}
-                    {newMessageBannerVisible && (
-                        <TouchableOpacity
-                            onPress={() => {
-                                flatListRef.current?.scrollToOffset({ offset: 100000, animated: true });
-                                setNewMessageBannerVisible(false);
+                                setIsAtBottom(isBottom);
+                                if (isBottom) setShowNewMessageBanner(false);
                             }}
-                            style={{
-                                position: 'absolute',
-                                bottom: keyboardHeight + inputHeight + 60,
-                                alignSelf: 'center',
-                                backgroundColor: '#333',
-                                paddingHorizontal: 16,
-                                paddingVertical: 8,
-                                borderRadius: 20,
-                                zIndex: 10,
+                            onContentSizeChange={() => {
+                                if (justDeleted) {
+                                    setJustDeleted(false);
+                                    return;
+                                }
+                                if (isAtBottom) {
+                                    flatListRef.current?.scrollToEnd({ animated: true });
+                                } else {
+                                    setShowNewMessageBanner(true); // 배너 표시
+                                }
                             }}
-                        >
-                            <Text style={{ color: '#fff' }}>📩 새 메시지 도착</Text>
-                        </TouchableOpacity>
-                    )}
+                        />
 
-                    <View
-                        style={{
-                            position: 'absolute',
-                            bottom: Platform.OS === 'ios'
-                                ? keyboardHeight - insets.bottom - 15
-                                : keyboardHeight,
-                            left: 0,
-                            right: 0,
-                            paddingHorizontal: 12,
-                            paddingVertical: 10,
-                            backgroundColor: colors.card,
-                            flexDirection: 'row',
-                            alignItems: 'flex-end',
-                            borderTopColor: colors.border,
-                            borderTopWidth: StyleSheet.hairlineWidth,
-                            paddingBottom: Platform.OS === 'ios' ? 30 : 15,
-                        }}
-                    >
-                        <View style={{ flex: 1, marginRight: 10 }}>
+                        {replyTo && (
+                            <View
+                                style={{
+                                    backgroundColor: '#eee',
+                                    padding: 8,
+                                    borderTopWidth: StyleSheet.hairlineWidth,
+                                    borderColor: '#ccc',
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                }}
+                            >
+                                <TouchableOpacity
+                                    style={{ flex: 1 }}
+                                    activeOpacity={0.7}
+                                    onPress={() => {
+                                        console.log('🔥 scrollToMessage 실행:', replyTo.messageId);
+                                        scrollToMessage(replyTo.messageId);
+                                    }}
+                                >
+                                    <Text style={{ fontWeight: 'bold' }}>{replyTo.senderName}</Text>
+                                    <Text numberOfLines={1} ellipsizeMode="tail">{replyTo.text}</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity onPress={() => setReplyTo(null)} style={{ padding: 4 }}>
+                                    <Ionicons name="close" size={18} />
+                                </TouchableOpacity>
+                            </View>
+                        )}
+
+                        {showNewMessageBanner && (
+                            <TouchableOpacity
+                                onPress={() => {
+                                    flatListRef.current?.scrollToEnd({ animated: true });
+                                    setShowNewMessageBanner(false);
+                                }}
+                                style={styles.newMessageBanner}
+                            >
+                                <Text style={styles.newMessageText}>새 메시지 도착</Text>
+                            </TouchableOpacity>
+                        )}
+
+                        <View style={styles.inputBar}>
                             <TextInput
                                 value={input}
                                 onChangeText={setInput}
-                                multiline
-                                onFocus={() => {
-                                    setTimeout(() => {
-                                        flatListRef.current?.scrollToOffset({ offset: 100000, animated: true });
-                                    }, 100);
-                                }}
-                                onContentSizeChange={(e) => {
-                                    const newHeight = e.nativeEvent.contentSize.height;
-                                    setInputHeight(prev =>
-                                        Platform.OS === 'ios'
-                                            ? Math.min(Math.max(40, newHeight), 200) // iOS는 120 제한 권장
-                                            : Math.max(40, newHeight) // Android는 자연스럽게 제한 없이 늘어나도 괜찮음
-                                    );
-                                }}
                                 placeholder="메시지를 입력하세요"
+                                style={styles.input}
                                 placeholderTextColor={colors.subtext}
-                                style={{
-                                    // height: inputHeight,
-                                    minHeight: 40,
-                                    maxHeight: 200,
-                                    backgroundColor: colors.card,
-                                    color: colors.text,
-                                    borderRadius: 20,
-                                    paddingHorizontal: 14,
-                                    paddingTop: 10,
-                                    paddingBottom: Platform.OS === 'ios' ? 0 : 20,
-                                    fontSize: 16,
-                                    textAlignVertical: 'top',
-                                    flexGrow: 1,
-                                }}
                             />
+                            <TouchableOpacity
+                                onPress={handleSend}
+                                disabled={input.trim().length === 0}
+                                style={{
+                                    padding: 6,
+                                    paddingBottom: 10,
+                                    opacity: input.trim().length === 0 ? 0.4 : 1,
+                                }}
+                            >
+                                <Ionicons name="send" size={24} color={input.trim() ? colors.primary : '#999'} />
+                            </TouchableOpacity>
                         </View>
 
-                        <TouchableOpacity
-                            onPress={handleSend}
-                            disabled={input.trim().length === 0}
-                            style={{
-                                padding: 6,
-                                paddingBottom: 10,
-                                opacity: input.trim().length === 0 ? 0.4 : 1,
-                            }}
-                        >
-                            <Ionicons
-                                name="send"
-                                size={24}
-                                color={input.trim().length === 0 ? '#999' : colors.primary}
-                            />
-                        </TouchableOpacity>
                     </View>
-                    </View>
-            </TouchableWithoutFeedback>
+                </TouchableWithoutFeedback>
+            </KeyboardAvoidingView>
 
             <Modal
-                isVisible={isActionSheetVisible}
-                onBackdropPress={() => setActionSheetVisible(false)}
-                backdropOpacity={0.4}
-                animationIn="fadeIn"
-                animationOut="fadeOut"
-                animationInTiming={150}
-                animationOutTiming={150}
-                useNativeDriver
-                hideModalContentWhileAnimating={true} // 깜빡임 방지 핵심 옵션
-                style={{
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    margin: 0,
-                }}
+                visible={isActionSheetVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setActionSheetVisible(false)}
             >
-                <View
-                    style={{
-                        width: 280,
-                        backgroundColor: '#1e1e1e',
-                        borderRadius: 16,
-                        paddingVertical: 12,
-                        paddingHorizontal: 0,
-                    }}
-                >
-                    <TouchableOpacity onPress={handleCopy} style={styles.optionCentered}>
-                        <Text style={styles.optionText}>복사</Text>
-                    </TouchableOpacity>
-
-                    {selectedMessage?.senderEmail === userEmail && (
-                        <>
-                            <View style={styles.divider} />
-                            <TouchableOpacity onPress={handleDelete} style={styles.optionCentered}>
-                                <Text style={[styles.optionText, { color: '#ff5e5e' }]}>삭제</Text>
+                <TouchableWithoutFeedback onPress={() => setActionSheetVisible(false)}>
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modalBox}>
+                            <TouchableOpacity style={styles.modalButton} onPress={() => {
+                                setReplyTo(selectedMessage); // 🔥 답글 등록
+                                setActionSheetVisible(false);
+                            }}>
+                                <Text style={styles.modalText}>답글 달기</Text>
                             </TouchableOpacity>
-                        </>
-                    )}
-
-                    <View style={styles.divider} />
-                    <TouchableOpacity onPress={() => setActionSheetVisible(false)} style={styles.optionCentered}>
-                        <Text style={[styles.optionText, { color: '#888' }]}>취소</Text>
-                    </TouchableOpacity>
-                </View>
+                            <TouchableOpacity style={styles.modalButton} onPress={handleCopy}>
+                                <Text style={styles.modalText}>복사</Text>
+                            </TouchableOpacity>
+                            {selectedMessage?.senderEmail === userEmail && (
+                                <>
+                                    <TouchableOpacity style={styles.modalButton} onPress={handleEdit}>
+                                        <Text style={styles.modalText}>수정</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.modalButton} onPress={handleDelete}>
+                                        <Text style={[styles.modalText, { color: 'red' }]}>삭제</Text>
+                                    </TouchableOpacity>
+                                </>
+                            )}
+                        </View>
+                    </View>
+                </TouchableWithoutFeedback>
             </Modal>
         </SafeAreaView>
     );
 }
 
+
 const styles = StyleSheet.create({
-    optionCentered: {
-        paddingVertical: 16,
+    header: {
+        height: 56,
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderColor: '#ccc',
+        paddingHorizontal: 12,
+        position: 'relative',
+    },
+    backButton: {
+        zIndex: 10,
+    },
+    headerTitleContainer: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
         alignItems: 'center',
     },
-    optionText: {
+    headerTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+    bubble: {
+        padding: 12,
+        borderRadius: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+        marginTop: 4,
+    },
+    myBubble: {
+        backgroundColor: '#dcf8c6',
+        borderBottomRightRadius: 0,
+    },
+    otherBubble: {
+        backgroundColor: '#333',
+        borderBottomLeftRadius: 0,
+    },
+    tail: {
+        position: 'absolute',
+        bottom: 0,
+        width: 0,
+        height: 0,
+        borderTopWidth: 10,
+        borderTopColor: 'transparent',
+    },
+    myTail: {
+        right: -6,
+        borderLeftWidth: 10,
+        borderLeftColor: '#dcf8c6',
+    },
+    otherTail: {
+        left: -6,
+        borderRightWidth: 10,
+        borderRightColor: '#333',
+    },
+    inputBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 10,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderColor: '#ccc',
+        backgroundColor: '#f8f8f8'
+    },
+    input: {
+        flex: 1,
+        backgroundColor: '#fff',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
+        marginRight: 8
+    },
+    time: {
+        fontSize: 10,
+        color: '#999',
+        marginTop: 4,
+        textAlign: 'right'
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    modalBox: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        width: 220,
+        paddingVertical: 12,
+    },
+    modalButton: {
+        paddingVertical: 14,
+        alignItems: 'center'
+    },
+    modalText: {
         fontSize: 16,
-        color: '#fff',
+        color: '#222'
     },
-    divider: {
-        height: StyleSheet.hairlineWidth,
+    newMessageBanner: {
+        position: 'absolute',
+        bottom: 60,
+        alignSelf: 'center',
         backgroundColor: '#444',
-        marginHorizontal: 16,
+        paddingVertical: 6,
+        paddingHorizontal: 16,
+        borderRadius: 20,
+        zIndex: 10,
     },
+    newMessageText: {
+        color: '#fff',
+        fontSize: 14,
+    }
 });
+

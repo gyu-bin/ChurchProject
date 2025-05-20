@@ -137,11 +137,11 @@ export default function PrayerModal({
                                     </TouchableOpacity>
 
                                     {/*<TouchableOpacity
-                                        onPress={() => setVisibility('pastor')}
+                                        onPress={() => setVisibility('setting')}
                                         style={{
                                             borderWidth: 1,
-                                            borderColor: visibility === 'pastor' ? colors.primary : colors.border,
-                                            backgroundColor: visibility === 'pastor' ? colors.primary : colors.surface,
+                                            borderColor: visibility === 'setting' ? colors.primary : colors.border,
+                                            backgroundColor: visibility === 'setting' ? colors.primary : colors.surface,
                                             borderRadius: 999,
                                             paddingVertical: spacing.sm,
                                             paddingHorizontal: spacing.md,
@@ -150,8 +150,8 @@ export default function PrayerModal({
                                         <Text
                                             style={{
                                                 fontSize: font.caption,
-                                                fontWeight: visibility === 'pastor' ? 'bold' : 'normal',
-                                                color: visibility === 'pastor' ? '#fff' : colors.text,
+                                                fontWeight: visibility === 'setting' ? 'bold' : 'normal',
+                                                color: visibility === 'setting' ? '#fff' : colors.text,
                                             }}
                                         >
                                             교역자만

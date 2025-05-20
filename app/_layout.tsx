@@ -16,6 +16,16 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {store} from "@/redux/store";
 import { Provider } from 'react-redux';
 import { RootSiblingParent } from 'react-native-root-siblings';
+import {clearTeams} from "@/redux/slices/teamSlice";
+import {clearPrayers} from "@/redux/slices/prayerSlice";
+import {logoutUser} from "@/redux/slices/userSlice";
+import {doc, getDoc,onSnapshot} from "firebase/firestore";
+import {db} from "@/firebase/config";
+import * as Device from 'expo-device';
+import {tryBiometricLogin} from "@/utils/biometricLogin";
+import {registerPushToken} from "@/services/registerPushToken";
+import {registerDevice} from "@/services/registerDevice";
+import { setUserInfo } from '@/redux/slices/userSlice';
 
 export default function RootLayout() {
     const colorScheme = useColorScheme();
@@ -51,6 +61,27 @@ export default function RootLayout() {
     }, [isDark]);
 
     useEffect(() => {
+        const checkAndLogin = async () => {
+            const userRaw = await AsyncStorage.getItem('currentUser');
+            const alreadyLoggedIn = Boolean(userRaw);
+            if (!alreadyLoggedIn) {
+                const user = await tryBiometricLogin();
+                if (user) {
+                    await registerPushToken();
+                    await registerDevice();
+                    store.dispatch(setUserInfo(user)); // 로그인 관련 Redux 반영
+                    router.replace('/');
+                } else {
+                    router.replace('/auth/login'); // Face ID 실패 → 로그인 화면
+                }
+            }
+        };
+
+        checkAndLogin();
+    }, []);
+
+
+    useEffect(() => {
         const now = new Date();
         const day = now.getDay(); // 일요일: 0
         const hour = now.getHours(); // 0~23
@@ -76,6 +107,36 @@ export default function RootLayout() {
         };
 
         checkAndSendPush();
+    }, []);
+
+    useEffect(() => {
+        let unsubscribe: (() => void) | null = null;
+
+        const listenDeviceStatus = async () => {
+            const userRaw = await AsyncStorage.getItem('currentUser');
+            if (!userRaw) return;
+
+            const { email } = JSON.parse(userRaw);
+            const currentDeviceId = `${Device.modelName}-${Device.osName}-${Device.osVersion}`;
+            const deviceDocRef = doc(db, `devices/${email}/tokens/${currentDeviceId}`);
+
+            unsubscribe = onSnapshot(deviceDocRef, async (docSnap) => {
+                if (!docSnap.exists()) {
+                    // 실시간으로 문서 삭제 감지 → 로그아웃 처리
+                    await AsyncStorage.removeItem('currentUser');
+                    store.dispatch(logoutUser());
+                    store.dispatch(clearPrayers());
+                    store.dispatch(clearTeams());
+                    router.replace('/auth/login');
+                }
+            });
+        };
+
+        listenDeviceStatus();
+
+        return () => {
+            if (unsubscribe) unsubscribe();
+        };
     }, []);
 
     return (
