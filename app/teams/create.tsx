@@ -60,7 +60,6 @@ export default function CreateTeam() {
                 leader,
                 leaderEmail: creatorEmail,
                 description,
-                // members: 1,
                 membersList: [creatorEmail],
                 createdAt: new Date(),
                 maxMembers: max,

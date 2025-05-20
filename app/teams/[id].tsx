@@ -74,14 +74,7 @@ export default function TeamDetail() {
     const [scheduleDate, setScheduleDate] = useState(team?.scheduleDate || '');
     const [isDatePickerVisible, setDatePickerVisible] = useState(false);
 
-    const [scheduleVote, setScheduleVote] = useState<any>(null);
-    const [voteLoading, setVoteLoading] = useState(false);
-    const [voteStats, setVoteStats] = useState<VoteStats>({ 가능: 0, 어려움: 0, 미정: 0 });
-    const { refresh } = useLocalSearchParams();
-
-    const [voteModalVisible, setVoteModalVisible] = useState(false);
-    const [voters, setVoters] = useState<{ name: string; vote: VoteChoice }[]>([]);
-
+    const [chatBadgeCount, setChatBadgeCount] = useState(0);
     useEffect(() => {
         getCurrentUser().then(setCurrentUser);
     }, []);
@@ -136,6 +129,26 @@ export default function TeamDetail() {
             if (unsubscribe) unsubscribe();
         };
     }, []);
+
+    useEffect(() => {
+        if (!team) return;
+
+        const init = async () => {
+            const user = await getCurrentUser();
+            if (!user?.email) return;
+
+            const badgeRef = doc(db, 'teams', team.id, 'chatBadge', user.email);
+            return onSnapshot(badgeRef, snap => {
+                setChatBadgeCount(snap.exists() ? snap.data()?.count || 0 : 0);
+            });
+        };
+
+        const unsubPromise = init();
+
+        return () => {
+            unsubPromise.then(unsub => unsub && unsub());
+        };
+    }, [team]);
 
     const handleJoin = async () => {
         if (!team || !user) return;
@@ -371,6 +384,34 @@ export default function TeamDetail() {
     }
 
 
+    const handleEnterChat = async () => {
+        const user = await getCurrentUser();
+        if (!user?.email) return;
+
+        try {
+            const teamDocRef = doc(db, 'teams', team.id);
+            const teamSnap = await getDoc(teamDocRef);
+
+            if (!teamSnap.exists()) {
+                showToast('팀 정보를 찾을 수 없습니다.');
+                return;
+            }
+
+            const teamData = teamSnap.data();
+            const membersList: string[] = teamData.membersList || [];
+
+            if (!membersList.includes(user.email)) {
+                showToast('⚠️ 팀 멤버만 채팅방에 입장할 수 있습니다.');
+                return;
+            }
+
+            router.push(`/teams/${team.id}/chat?name=${encodeURIComponent(team.name)}`);
+        } catch (error) {
+            console.error('채팅방 입장 오류:', error);
+            showToast('⚠️ 채팅방 입장 중 오류가 발생했습니다.');
+        }
+    };
+
     const isFull = (team?.members ?? 0) >= (team?.capacity ?? 99);
 
     return (
@@ -397,7 +438,7 @@ export default function TeamDetail() {
                 <Text style={{ fontSize: font.heading, fontWeight: '600', color: colors.text }}>{team.name}</Text>
 
                 <TouchableOpacity
-                    onPress={() => router.push(`/teams/${team.id}/chat?name=${encodeURIComponent(team.name)}`)}
+                    onPress={handleEnterChat}
                     style={{
                         position: 'absolute',
                         right: spacing.lg,
@@ -405,7 +446,31 @@ export default function TeamDetail() {
                         alignItems: 'center',
                     }}
                 >
-                    <Ionicons name="chatbubble-outline" size={22} color={colors.text} />
+                    <View style={{ position: 'relative' }}>
+                        <Ionicons name="chatbubble-outline" size={22} color={colors.text} />
+
+                        {chatBadgeCount > 0 && (
+                            <View
+                                style={{
+                                    position: 'absolute',
+                                    top: -5,
+                                    right: -8,
+                                    backgroundColor: 'red',
+                                    borderRadius: 10,
+                                    minWidth: 16,
+                                    height: 16,
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    paddingHorizontal: 4,
+                                }}
+                            >
+                                <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>
+                                    {chatBadgeCount}
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+
                     <Text style={{ fontSize: 10, color: colors.text, marginTop: 2 }}>팀 채팅방</Text>
                 </TouchableOpacity>
             </View>

@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {
-    View, Text, TouchableOpacity, SafeAreaView, Platform, ScrollView, KeyboardAvoidingView, Alert, Modal
+    View, Text, TouchableOpacity, SafeAreaView, Platform, ScrollView, KeyboardAvoidingView, Alert, Modal, FlatList
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
@@ -17,6 +17,8 @@ import {clearPrayers} from "@/redux/slices/prayerSlice";
 import {clearTeams} from "@/redux/slices/teamSlice";
 import { useAppDispatch } from '@/hooks/useRedux';
 import Toast from 'react-native-root-toast';
+import {setScrollCallback} from "@/utils/scrollRefManager";
+
 export default function SettingsScreen() {
     const [user, setUser] = useState<any>(null);
     const router = useRouter();
@@ -27,8 +29,15 @@ export default function SettingsScreen() {
     const horizontalMargin = Platform.OS === 'ios' ? 20 : 16;
 
     const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-
+    const mainListRef = useRef<FlatList>(null);
     const dispatch = useAppDispatch(); // ✅ 이걸 먼저 선언해야 함
+
+
+    useEffect(() => {
+        setScrollCallback('index', () => {
+            mainListRef.current?.scrollToOffset({ offset: 0, animated: true });
+        });
+    }, []);
 
     // 유저 정보 불러오기
     useEffect(() => {

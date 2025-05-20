@@ -1,3 +1,4 @@
+//services/notificationService.ts
 import {
     addDoc,
     collection,
@@ -10,8 +11,9 @@ import {
 } from 'firebase/firestore';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import { db } from '@/firebase/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {db} from "@/firebase/config";
+
 
 type NotificationType =
     | 'team_create'

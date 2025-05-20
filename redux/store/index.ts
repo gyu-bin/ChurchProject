@@ -1,15 +1,9 @@
-// redux/index.ts
+//redux/store/index.ts
 import { configureStore } from '@reduxjs/toolkit';
-import userReducer from '../slices/userSlice';
-import prayerReducer from '../slices/prayerSlice';
-import teamReducer from '../slices/teamSlice';
+import rootReducer from './reducers';
 
 export const store = configureStore({
-    reducer: {
-        user: userReducer,
-        prayers: prayerReducer,
-        teams: teamReducer,
-    },
+    reducer: rootReducer,
 });
 
 export type RootState = ReturnType<typeof store.getState>;

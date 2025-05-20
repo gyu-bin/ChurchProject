@@ -3,7 +3,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
     View, Text, SafeAreaView, FlatList, RefreshControl,
     TouchableOpacity, Image, Alert, Linking,
-    Dimensions, Platform
+    Dimensions, Platform,ScrollView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -20,6 +20,9 @@ import { useDesign } from '@/context/DesignSystem';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PrayerListModal from '@/app/prayerPage/allPrayer';
 import {showToast} from "@/utils/toast";
+import { useAppDispatch } from '@/hooks/useRedux';
+import { setScrollRef } from '@/redux/slices/scrollRefSlice';
+import { setScrollCallback } from '@/utils/scrollRefManager';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SIDE_MARGIN = 16;
@@ -58,8 +61,17 @@ export default function HomeScreen() {
     const [currentIndex, setCurrentIndex] = useState(1); // 첫 번째 실 데이터 인덱스
     const [initialIndex, setInitialIndex] = useState<number | null>(null);
     const [listKey, setListKey] = useState(Date.now());
+    const dispatch = useAppDispatch();
 
     const [videoData, setVideoData] = useState<any[]>([]);
+
+    const mainListRef = useRef<FlatList>(null);
+    useEffect(() => {
+        setScrollCallback('index', () => {
+            mainListRef.current?.scrollToOffset({ offset: 0, animated: true });
+        });
+    }, []);
+
 
     useEffect(() => {
         const fetchVideos = async () => {
@@ -249,6 +261,7 @@ export default function HomeScreen() {
         <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: Platform.OS === 'android' ? insets.top+10 : 0 }}>
             <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
             <FlatList
+                ref={mainListRef}
                 ListHeaderComponent={(<View style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.primary }}>🙏 안녕하세요{user?.name ? ` ${user.name}님!` : '!'}</Text>
@@ -293,7 +306,23 @@ export default function HomeScreen() {
                                         onMomentumScrollEnd={handleScrollEnd}
                                         renderItem={({ item }) => (
                                             <View style={{ width: ITEM_WIDTH }}>
-                                                <TouchableOpacity onPress={() => Linking.openURL(item.url)}>
+                                                <TouchableOpacity
+                                                    onPress={() => {
+                                                        Alert.alert(
+                                                            '🎥 유튜브로 이동',
+                                                            '해당 영상을 유튜브에서 시청하시겠습니까?',
+                                                            [
+                                                                { text: '❌ 취소', style: 'cancel' },
+                                                                {
+                                                                    text: '✅ 확인',
+                                                                    onPress: () => Linking.openURL(item.url),
+                                                                    style: 'default',
+                                                                },
+                                                            ],
+                                                            { cancelable: true }
+                                                        );
+                                                    }}
+                                                >
                                                     <Image
                                                         source={{ uri: item.thumbnail }}
                                                         style={{

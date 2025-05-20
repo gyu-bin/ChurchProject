@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, {useEffect, useState, useCallback, useRef} from 'react';
 import {
     Dimensions,
     FlatList,
@@ -17,6 +17,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import SkeletonBox from '@/components/Skeleton';
 import { useDesign } from '@/context/DesignSystem';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { setScrollCallback } from '@/utils/scrollRefManager';
 
 export default function TeamsScreen() {
     const [teams, setTeams] = useState<any[]>([]);
@@ -25,10 +26,17 @@ export default function TeamsScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [lastDoc, setLastDoc] = useState<any>(null);
     const [hasMore, setHasMore] = useState(true);
-
+    const mainListRef = useRef<FlatList>(null);
     const router = useRouter();
     const { colors } = useDesign();
     const insets = useSafeAreaInsets();
+
+
+    useEffect(() => {
+        setScrollCallback('index', () => {
+            mainListRef.current?.scrollToOffset({ offset: 0, animated: true });
+        });
+    }, []);
 
     const fetchTeams = useCallback(async (isInitial = false) => {
         if (!hasMore && !isInitial) return;
