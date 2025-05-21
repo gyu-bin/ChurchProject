@@ -1,50 +1,32 @@
-# Welcome to your Expo app 👋
+# 🙏 교회 커뮤니티 앱
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+**청년부 및 각 부서 구성원들이 함께 소통하고, 기도제목을 나누며, 신앙 공동체의 유대감을 이어가기 위해 개발된 교회 전용 커뮤니티 앱**입니다.  
+이 앱은 Firebase 기반 백엔드와 Expo 기반 React Native로 구현되었으며, 실제 교회 운영 방식에 맞춰 설계되었습니다.
 
-## Get started
+---
 
-1. Install dependencies
+## 📖 앱 소개
 
-   ```bash
-   npm install
-   ```
+이 앱은 단순한 채팅 기능을 넘어, 다음과 같은 신앙 공동체의 필요를 모바일 환경에서 실현할 수 있도록 돕습니다:
 
-2. Start the app
+- **부서별 팀 채팅**을 통해 실시간 소통 가능
+- **기도제목 공유 및 열람**을 통한 공동체적 신앙생활
+- **역할 기반 승인 시스템**을 통한 사용자 권한 제어
+- **소모임 관리**, **푸시 알림**, **배지 카운트** 등 실사용 중심 기능 제공
 
-   ```bash
-   npx expo start
-   ```
+---
 
-In the output, you'll find options to open the app in a
+## 🧩 핵심 기술 스택
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+- **Frontend**: React Native + Expo
+- **Backend**: Firebase Firestore, Firebase Auth
+- **알림 시스템**: Expo Push Notification + Firestore 기반 토큰 관리
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+---
+## ✝️ Why This App?
 
-## Get a fresh project
+기존 메신저 앱으로는 채워지지 않는 **신앙 공동체만의 소통 방식과 필요**를 모바일로 옮기기 위해 개발되었습니다.  
+**기도, 말씀, 교제, 소속감**이 연결되는 디지털 공간.  
+이 앱은 **단순한 기능이 아니라 교회를 위한 플랫폼**입니다.
 
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+---

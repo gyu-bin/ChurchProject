@@ -36,6 +36,7 @@
     "expo-image": "~2.1.7",
     "expo-image-picker": "~16.1.4",
     "expo-linking": "~7.1.4",
+    "expo-local-authentication": "~16.0.4",
     "expo-navigation-bar": "~4.2.4",
     "expo-notifications": "~0.31.1",
     "expo-router": "~5.0.6",
@@ -50,6 +51,7 @@
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.2",
+    "react-native-calendars": "^1.1312.0",
     "react-native-chart-kit": "^6.12.0",
     "react-native-device-info": "^14.0.4",
     "react-native-draggable-flatlist": "^4.0.3",
@@ -70,8 +72,7 @@
     "react-native-webview": "13.13.5",
     "react-native-youtube-iframe": "^2.3.0",
     "react-redux": "^9.2.0",
-    "styled-components": "^6.1.17",
-    "expo-local-authentication": "~16.0.4"
+    "styled-components": "^6.1.17"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

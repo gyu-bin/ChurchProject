@@ -18,14 +18,13 @@ import { Provider } from 'react-redux';
 import { RootSiblingParent } from 'react-native-root-siblings';
 import {clearTeams} from "@/redux/slices/teamSlice";
 import {clearPrayers} from "@/redux/slices/prayerSlice";
-import {logoutUser} from "@/redux/slices/userSlice";
+import {logoutUser,setUserInfo} from "@/redux/slices/userSlice";
 import {doc, getDoc,onSnapshot} from "firebase/firestore";
 import {db} from "@/firebase/config";
 import * as Device from 'expo-device';
 import {tryBiometricLogin} from "@/utils/biometricLogin";
 import {registerPushToken} from "@/services/registerPushToken";
 import {registerDevice} from "@/services/registerDevice";
-import { setUserInfo } from '@/redux/slices/userSlice';
 
 export default function RootLayout() {
     const colorScheme = useColorScheme();

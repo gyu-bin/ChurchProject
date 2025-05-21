@@ -13,7 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import PrayerModal from '../prayerPage/prayerModal';
+import PrayerModal from '@/app/prayerPage/prayerModal';
 import { StatusBar } from 'expo-status-bar';
 import { useAppTheme } from '@/context/ThemeContext';
 import { useDesign } from '@/context/DesignSystem';
@@ -23,6 +23,7 @@ import {showToast} from "@/utils/toast";
 import { useAppDispatch } from '@/hooks/useRedux';
 import { setScrollRef } from '@/redux/slices/scrollRefSlice';
 import { setScrollCallback } from '@/utils/scrollRefManager';
+import HomeNotices from "@/app/prayerPage/noticePage";
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SIDE_MARGIN = 16;
@@ -368,6 +369,11 @@ export default function HomeScreen() {
                                     })}
                                 </View>
                             )}
+                        </View>
+
+                    {/*  알림 페이지*/}
+                        <View style={{ backgroundColor: theme.colors.surface,borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
+                            <HomeNotices />
                         </View>
 
                     <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>

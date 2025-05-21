@@ -35,6 +35,10 @@ export default function TeamChat() {
     const pathname = usePathname();
     const [isAtBottom, setIsAtBottom] = useState(true);
     const [showNewMessageBanner, setShowNewMessageBanner] = useState(false);
+    const [latestMsgInfo, setLatestMsgInfo] = useState<{ name: string, text: string } | null>(null);
+    const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+    const didInitialScroll = useRef(false);
+    const [hasSeenNewMessage, setHasSeenNewMessage] = useState(false);
     useEffect(() => {
         getCurrentUser().then(user => {
             if (user?.email) setUserEmail(user.email);
@@ -42,10 +46,16 @@ export default function TeamChat() {
         });
     }, []);
 
+    // ✅ useEffect로 messages가 바뀔 때 아래로 강제 스크롤
     useEffect(() => {
-        if (!isAtBottom && messages.length > 0) {
-            setShowNewMessageBanner(true); // 하단 배너 노출
-        }
+        if (messages.length === 0 || didInitialScroll.current) return;
+
+        const timeout = setTimeout(() => {
+            flatListRef.current?.scrollToOffset({ offset: 100000, animated: true });
+            didInitialScroll.current = true;
+        }, 300);
+
+        return () => clearTimeout(timeout);
     }, [messages]);
 
     useEffect(() => {
@@ -104,7 +114,7 @@ export default function TeamChat() {
         }, [teamId])
     );
 
-    useEffect(() => {
+    /*useEffect(() => {
         const chatRef = collection(db, 'teams', teamId, 'chats');
         const q = query(chatRef, orderBy('createdAt'));
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -112,7 +122,22 @@ export default function TeamChat() {
             setMessages(docs);
         });
         return () => unsubscribe();
-    }, [teamId]);
+    }, [teamId]);*/
+
+    useEffect(() => {
+        const chatRef = collection(db, 'teams', teamId, 'chats');
+        const q = query(chatRef, orderBy('createdAt'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const docs = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+            const lastMessage = docs[docs.length - 1];
+            if (!isAtBottom && lastMessage && lastMessage.senderEmail !== userEmail && !hasSeenNewMessage) {
+                setLatestMsgInfo({ name: lastMessage.senderName, text: lastMessage.text });
+                setShowNewMessageBanner(true);
+            }
+            setMessages(docs);
+        });
+        return () => unsubscribe();
+    }, [teamId, isAtBottom, userEmail]);
 
     const scrollToMessage = (messageId: string) => {
         const index = messages.findIndex(msg => msg.id === messageId);
@@ -138,9 +163,14 @@ export default function TeamChat() {
             senderName: user.name,
             text: input,
             createdAt: serverTimestamp(),
+            replyTo: replyTo?.messageId ?? null, // 🔥 replyTo에는 string(ID)만 저장
         });
-        const onlineSnap = await getDocs(collection(db, 'teams', teamId, 'onlineUsers'));
-        const onlineEmails = onlineSnap.docs.map(doc => doc.id);
+        setTimeout(() => {
+            flatListRef.current?.scrollToOffset({ offset: 1000000, animated: true });
+        }, 100);
+
+        /*const onlineSnap = await getDocs(collection(db, 'teams', teamId, 'onlineUsers'));
+        const onlineEmails = onlineSnap.docs.map(doc => doc.id);*/
 
         const teamRef = doc(db, 'teams', teamId);
         const teamSnap = await getDoc(teamRef);
@@ -181,7 +211,7 @@ export default function TeamChat() {
 
         const visibleInChat = pathname === `/teams/${teamId}/chat`;
 
-        console.log("📤 알림 보낼 대상 토큰 목록:", tokens);
+        // console.log("📤 알림 보낼 대상 토큰 목록:", tokens);
 
         if (tokens.length > 0) {
             await sendPushNotification({
@@ -201,9 +231,6 @@ export default function TeamChat() {
                 await setDoc(badgeRef, { count: increment(1) }, { merge: true });
             }
         }
-
-        console.log("✅ visibleInChat:", visibleInChat);
-        console.log("✅ tokens:", tokens);
 
         setInput('');
         setReplyTo(null);
@@ -242,7 +269,19 @@ export default function TeamChat() {
         setActionSheetVisible(false);
     };
 
+    const scrollToReplyTarget = (messageId: string) => {
+        const index = messages.findIndex(msg => msg.id === messageId);
+        if (index !== -1 && flatListRef.current) {
+            flatListRef.current.scrollToIndex({ index, animated: true });
+        }
+    };
 
+    const handleScrollToBottom = () => {
+        flatListRef.current?.scrollToOffset({ offset: 1000000, animated: true });
+        setShowNewMessageBanner(false);
+        setLatestMsgInfo(null);
+        setHasSeenNewMessage(true);
+    };
 
     const renderItem = ({ item, index }: { item: any; index: number }) => {
         const isMe = item.senderEmail === userEmail;
@@ -277,19 +316,39 @@ export default function TeamChat() {
                         marginVertical: 4,
                         marginBottom: 10,
                         maxWidth: '75%',
-                        position: 'relative'
+                        position: 'relative',
                     }}
                 >
                     <View style={[styles.bubble, isMe ? styles.myBubble : styles.otherBubble]}>
                         {item.replyTo && (
-                            <View style={{ marginBottom: 4 }}>
-                                <Text style={{ fontSize: 13, color: '#888' }}>{item.replyTo.senderName}:</Text>
-                                <Text style={{ fontSize: 14, color: '#aaa' }} numberOfLines={1} ellipsizeMode="tail">{item.replyTo.text}</Text>
+                            <View style={{
+                                backgroundColor: isMe ? '#ebebeb' : '#555',
+                                padding: 6,
+                                borderRadius: 6,
+                                marginBottom: 6,
+                            }}>
+                                <Text style={{
+                                    fontSize: 12,
+                                    fontWeight: 'bold',
+                                    color: isMe ? '#666' : '#ccc',
+                                }}>
+                                    {item.replyTo.senderName}에게 답장
+                                </Text>
+                                <Text
+                                    numberOfLines={1}
+                                    ellipsizeMode="tail"
+                                    style={{ fontSize: 13, color: isMe ? '#666' : '#ccc' }}
+                                >
+                                    {item.replyTo.text}
+                                </Text>
                             </View>
                         )}
                         <Text style={{ fontSize: 16, color: isMe ? '#000' : '#fff' }}>{item.text}</Text>
                         <Text style={styles.time}>
-                            {new Date(item.createdAt?.toDate?.()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {new Date(item.createdAt?.toDate?.()).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                            })}
                         </Text>
                     </View>
                     <View style={[styles.tail, isMe ? styles.myTail : styles.otherTail]} />
@@ -325,13 +384,14 @@ export default function TeamChat() {
                             keyboardShouldPersistTaps="handled"
                             keyboardDismissMode="interactive"
                             removeClippedSubviews={false} // ✅ Android에서 끊김 줄이기
-                            onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                            // onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
                             onScroll={(event) => {
                                 const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
                                 const isBottom =
                                     layoutMeasurement.height + contentOffset.y >= contentSize.height - 20;
 
                                 setIsAtBottom(isBottom);
+                                setShowScrollToBottom(!isBottom);
                                 if (isBottom) setShowNewMessageBanner(false);
                             }}
                             onContentSizeChange={() => {
@@ -339,13 +399,36 @@ export default function TeamChat() {
                                     setJustDeleted(false);
                                     return;
                                 }
-                                if (isAtBottom) {
+                                // 👉 답글 중이거나 유저가 위로 스크롤한 경우엔 강제 스크롤 방지
+                                if (isAtBottom && !replyTo && Keyboard.isVisible?.() !== true) {
                                     flatListRef.current?.scrollToEnd({ animated: true });
-                                } else {
-                                    setShowNewMessageBanner(true); // 배너 표시
                                 }
                             }}
                         />
+
+                        {showScrollToBottom && (
+                            <TouchableOpacity
+                                onPress={() => {
+                                    flatListRef.current?.scrollToOffset({ offset: 100000, animated: true });
+                                    setShowScrollToBottom(false); // 👈 스크롤 후 버튼 숨김
+                                }}
+                                style={styles.scrollToBottomButton}
+                            >
+                                <Ionicons name="arrow-down-circle" size={36} color="#555" />
+                            </TouchableOpacity>
+                        )}
+
+                        {showNewMessageBanner && latestMsgInfo && (
+                            <TouchableOpacity
+                                onPress={handleScrollToBottom}
+                                style={styles.newMessageBanner}
+                            >
+                                <Text style={styles.newMessageText} numberOfLines={1} ellipsizeMode="tail">
+                                    {latestMsgInfo.name}: {latestMsgInfo.text}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+
 
                         {replyTo && (
                             <View
@@ -377,18 +460,6 @@ export default function TeamChat() {
                             </View>
                         )}
 
-                        {showNewMessageBanner && (
-                            <TouchableOpacity
-                                onPress={() => {
-                                    flatListRef.current?.scrollToEnd({ animated: true });
-                                    setShowNewMessageBanner(false);
-                                }}
-                                style={styles.newMessageBanner}
-                            >
-                                <Text style={styles.newMessageText}>새 메시지 도착</Text>
-                            </TouchableOpacity>
-                        )}
-
                         <View style={styles.inputBar}>
                             <TextInput
                                 value={input}
@@ -396,6 +467,7 @@ export default function TeamChat() {
                                 placeholder="메시지를 입력하세요"
                                 style={styles.input}
                                 placeholderTextColor={colors.subtext}
+                                multiline
                             />
                             <TouchableOpacity
                                 onPress={handleSend}
@@ -458,7 +530,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderColor: '#ccc',
-        paddingHorizontal: 12,
+        paddingHorizontal: 20,
         position: 'relative',
     },
     backButton: {
@@ -524,7 +596,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: 20,
-        marginRight: 8
+        marginRight: 8,
+        maxHeight: 120
     },
     time: {
         fontSize: 10,
@@ -554,17 +627,31 @@ const styles = StyleSheet.create({
     },
     newMessageBanner: {
         position: 'absolute',
-        bottom: 60,
+        bottom: 70, // ← scrollToBottomButton 위로 이동
         alignSelf: 'center',
         backgroundColor: '#444',
-        paddingVertical: 6,
-        paddingHorizontal: 16,
+        paddingVertical: 8,
+        paddingHorizontal: 20,
         borderRadius: 20,
         zIndex: 10,
+        maxWidth: '90%',
     },
     newMessageText: {
         color: '#fff',
         fontSize: 14,
-    }
+        fontWeight: '500'
+    },
+    scrollToBottomButton: {
+        position: 'absolute',
+        bottom: 100, // ← 더 높게 올립니다 (기존: 70)
+        // zIndex: 20,
+        // backgroundColor: 'white',
+        borderRadius: 20,
+        // elevation: 5,
+        padding: 10,
+        alignSelf: 'center',
+    },
 });
+
+
 

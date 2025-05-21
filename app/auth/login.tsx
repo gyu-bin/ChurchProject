@@ -45,7 +45,7 @@ export default function LoginScreen() {
             await AsyncStorage.setItem('currentUser', JSON.stringify(user));
 
             const saved = await AsyncStorage.getItem(`useBiometric:${user.email}`);
-            if (saved !== 'true') {
+            /*if (saved !== 'true') {
                 console.log('face id')
                 Alert.alert(
                     'Face ID 등록',
@@ -61,7 +61,7 @@ export default function LoginScreen() {
                         },
                     ]
                 );
-            }
+            }*/
 
             await registerPushToken();
             await registerDevice();    // ✅ 기기 등록 추가
