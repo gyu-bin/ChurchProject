@@ -9,7 +9,7 @@ import {
     SafeAreaView,
     KeyboardAvoidingView,
     Platform,
-    ScrollView,
+    ScrollView, Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { login } from '@/services/authService';
@@ -19,12 +19,24 @@ import { useAuth } from '@/hooks/useAuth';
 import { registerDevice } from '@/services/registerDevice';
 import {tryBiometricLogin} from "@/utils/biometricLogin";
 import Toast from "react-native-root-toast"; // 경로는 실제 위치에 맞게
+import LottieView from 'lottie-react-native';
+
+import loading1 from '@/assets/lottie/Animation - 1747201461030.json'
+import loading2 from '@/assets/lottie/Animation - 1747201431992.json'
+import loading3 from '@/assets/lottie/Animation - 1747201413764.json'
+import loading4 from '@/assets/lottie/Animation - 1747201330128.json'
+
 
 export default function LoginScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const router = useRouter();
     const { reload } = useAuth();
+
+    const [loading, setLoading] = useState(false);
+    const [loadingAnimation, setLoadingAnimation] = useState<any>(null); // 선택된 애니메이션
+
+    const loadingAnimations = [loading1, loading2, loading3, loading4];
 
     // 로그인 화면 useEffect에서 자동 시도
     useEffect(() => {
@@ -40,11 +52,14 @@ export default function LoginScreen() {
     }, []);
 
     const handleLogin = async () => {
+        setLoading(true); // ✅ 1. 로딩 상태 바로 반영 시도
+        setLoadingAnimation(loadingAnimations[Math.floor(Math.random() * loadingAnimations.length)]);
+
         try {
             const user = await login(email.trim(), password.trim());
             await AsyncStorage.setItem('currentUser', JSON.stringify(user));
 
-            const saved = await AsyncStorage.getItem(`useBiometric:${user.email}`);
+            // const saved = await AsyncStorage.getItem(`useBiometric:${user.email}`);
             /*if (saved !== 'true') {
                 console.log('face id')
                 Alert.alert(
@@ -66,7 +81,10 @@ export default function LoginScreen() {
             await registerPushToken();
             await registerDevice();    // ✅ 기기 등록 추가
             await reload();
-            router.replace('/');
+            setTimeout(() => {
+                setLoading(false);
+                router.replace('/');
+            }, 2000);
         } catch (error: any) {
             Alert.alert('로그인 실패', error.message);
         }
@@ -105,8 +123,44 @@ export default function LoginScreen() {
                             />
                         </View>
 
-                        <TouchableOpacity style={styles.button} onPress={handleLogin}>
+                        <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
                             <Text style={styles.buttonText}>로그인</Text>
+                        </TouchableOpacity>
+                        <Modal visible={loading} transparent animationType="fade">
+                            <View
+                                style={{
+                                    flex: 1,
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    backgroundColor: 'rgba(0,0,0,0.3)',
+                                }}
+                            >
+                                {loadingAnimation && (
+                                    <LottieView
+                                        source={loadingAnimation}
+                                        autoPlay
+                                        loop
+                                        style={{ width: 300, height: 300 }}
+                                    />
+                                )}
+                                <Text style={{ color: '#fff', marginTop: 20, fontSize: 16 }}>로그인 중...</Text>
+                            </View>
+                        </Modal>
+
+                        <TouchableOpacity
+                            onPress={() => router.push('/setting/ForgotPassword')}
+                            style={{
+                                backgroundColor: '#fff5f5',
+                                paddingVertical: 14,
+                                paddingHorizontal: 20,
+                                borderRadius: 12,
+                                borderWidth: 1,
+                                borderColor: '#f87171',
+                                alignItems: 'center',
+                                marginBottom: 24,
+                            }}
+                        >
+                            <Text style={{ color: '#ef4444', fontWeight: 'bold' }}>비밀번호를 잊으셨나요?</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity onPress={() => router.push('/auth/register')}>

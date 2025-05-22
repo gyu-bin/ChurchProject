@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity, FlatList,
     SafeAreaView, StyleSheet, Keyboard, KeyboardAvoidingView,
-    Platform, Alert, TouchableWithoutFeedback, Modal, Pressable, useColorScheme
+    Platform, Alert, TouchableWithoutFeedback, Modal, Pressable, useColorScheme, AppState
 } from 'react-native';
 import {useRouter, useLocalSearchParams, usePathname, useFocusEffect} from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,6 +43,8 @@ export default function TeamChat() {
     const [lastSeenMessageId, setLastSeenMessageId] = useState<string | null>(null);
     const seenMessages = useRef<Set<string>>(new Set());
     const hasInitialized = useRef(false); // 🔥 최초 진입 이후에만 알림 허용
+    const isAtBottomRef = useRef(true); // ✅ 변경됨
+
     useEffect(() => {
         getCurrentUser().then(user => {
             if (user?.email) setUserEmail(user.email);
@@ -52,6 +54,16 @@ export default function TeamChat() {
 
     // ✅ useEffect로 messages가 바뀔 때 아래로 강제 스크롤
     useEffect(() => {
+        if (messages.length === 0) return;
+
+        if (isAtBottomRef.current) {
+            setTimeout(() => {
+                flatListRef.current?.scrollToOffset({ offset: 1000000, animated: true });
+            }, 100);
+        }
+    }, [messages]);
+
+    useEffect(() => {
         if (messages.length === 0 || didInitialScroll.current) return;
 
         const timeout = setTimeout(() => {
@@ -59,8 +71,7 @@ export default function TeamChat() {
             didInitialScroll.current = true;
 
             setTimeout(() => {
-                setIsAtBottom(true);
-                hasInitialized.current = true; // 🔥 이 시점부터 알림 작동
+                hasInitialized.current = true; // 알림용 플래그
             }, 300);
         }, 300);
 
@@ -68,35 +79,40 @@ export default function TeamChat() {
     }, [messages]);
 
     useEffect(() => {
-        const setUserStatus = async () => {
+        let appStateListener: any;
+
+        const updateStatus = async (screen: string, teamId: string | null) => {
             const user = await getCurrentUser();
             if (!user?.email) return;
 
             await setDoc(doc(db, 'userStatus', user.email), {
-                currentScreen: 'chat',
-                teamId: teamId,
+                currentScreen: screen,
+                teamId: teamId ?? '',
                 updatedAt: serverTimestamp(),
             }, { merge: true });
         };
 
-        setUserStatus();
+        // ✅ 채팅방 진입 시 상태 등록
+        updateStatus('chat', teamId);
+
+        // ✅ 앱 상태 변화 감지
+        appStateListener = AppState.addEventListener('change', async (nextState) => {
+            if (nextState === 'active') {
+                // 포그라운드 복귀 → 채팅방으로 다시 등록
+                await updateStatus('chat', teamId);
+            } else if (nextState === 'inactive' || nextState === 'background') {
+                // 앱 나감 → 상태 초기화
+                await updateStatus('', null);
+            }
+        });
 
         return () => {
-            // 채팅방 나갈 때 초기화
-            const clearUserStatus = async () => {
-                const user = await getCurrentUser();
-                if (!user?.email) return;
+            appStateListener.remove();
 
-                await setDoc(doc(db, 'userStatus', user.email), {
-                    currentScreen: '',
-                    teamId: '',
-                    updatedAt: serverTimestamp(),
-                }, { merge: true });
-            };
-
-            clearUserStatus();
+            // ✅ 언마운트 시에도 상태 초기화
+            updateStatus('', null);
         };
-    }, []);
+    }, [teamId]);
 
     useFocusEffect(
         React.useCallback(() => {
@@ -141,10 +157,18 @@ export default function TeamChat() {
                     replyTo: replyToData,
                 };
             });
-            setMessages(docs); // ✅ 먼저 상태 업데이트
+            setMessages(docs); // ✅ 상태 업데이트
 
             const lastMessage = docs[docs.length - 1];
 
+            // ✅ 하단에 있을 경우 → 자동 스크롤
+            if (isAtBottom) {
+                setTimeout(() => {
+                    flatListRef.current?.scrollToOffset({ offset: 1000000, animated: true });
+                }, 100);
+            }
+
+            // ✅ 배너 띄우기 로직
             if (
                 lastMessage &&
                 lastMessage.senderEmail !== userEmail &&
@@ -158,7 +182,8 @@ export default function TeamChat() {
                     text: lastMessage.text,
                 });
                 setShowNewMessageBanner(true);
-            }});
+            }
+        });
 
         return () => unsubscribe();
     }, [teamId, isAtBottom, userEmail, lastSeenMessageId]);
@@ -192,17 +217,6 @@ export default function TeamChat() {
                 text: replyTo.text,
             }
             : null;
-        console.log('replyData',replyData);
-
-        const docData = {
-            senderEmail: user.email,
-            senderName: user.name,
-            text: input.trim(), // ✅ 정확히 'text'
-            createdAt: serverTimestamp(),
-            replyTo: replyData,
-        };
-
-        console.log("🔥 Firestore에 저장할 데이터:", JSON.stringify(docData, null, 2));
 
         await addDoc(collection(db, 'teams', teamId, 'chats'), {
             senderEmail: user.email,
@@ -212,7 +226,6 @@ export default function TeamChat() {
             replyTo: replyData, // ✅ 여기서 replyTo 상태 기준
         });
 
-        console.log('replyTo',replyTo);
 
         setTimeout(() => {
             flatListRef.current?.scrollToOffset({ offset: 1000000, animated: true });
@@ -230,12 +243,14 @@ export default function TeamChat() {
 
         const userStatusSnap = await getDocs(collection(db, 'userStatus'));
         const excludeEmails: string[] = [];
+
         userStatusSnap.forEach(docSnap => {
             const data = docSnap.data();
             if (data.currentScreen === 'chat' && data.teamId === teamId) {
-                excludeEmails.push(docSnap.id); // 이메일이 문서 ID
+                excludeEmails.push(docSnap.id); // 현재 채팅방에 있는 사용자
             }
         });
+
         const notifyEmails = membersList.filter(
             email => email !== user.email && !excludeEmails.includes(email)
         );
@@ -258,10 +273,6 @@ export default function TeamChat() {
             }
         }
 
-        const visibleInChat = pathname === `/teams/${teamId}/chat`;
-
-        // console.log("📤 알림 보낼 대상 토큰 목록:", tokens);
-
         if (tokens.length > 0) {
             await sendPushNotification({
                 to: tokens,
@@ -274,11 +285,9 @@ export default function TeamChat() {
             });
         }
 
-        if (!visibleInChat) {
-            for (const email of notifyEmails) {
-                const badgeRef = doc(db, 'teams', teamId, 'chatBadge', email);
-                await setDoc(badgeRef, { count: increment(1) }, { merge: true });
-            }
+        for (const email of notifyEmails) {
+            const badgeRef = doc(db, 'teams', teamId, 'chatBadge', email);
+            await setDoc(badgeRef, { count: increment(1) }, { merge: true });
         }
 
         setInput('');
@@ -462,8 +471,10 @@ export default function TeamChat() {
                             onScroll={(event) => {
                                 const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
                                 const isBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 40;
-                                setIsAtBottom(isBottom);
+
+                                isAtBottomRef.current = isBottom; // ✅ 최신 상태 보존
                                 setShowScrollToBottom(!isBottom);
+
                                 if (isBottom) {
                                     setShowNewMessageBanner(false);
 
@@ -472,6 +483,11 @@ export default function TeamChat() {
                                         setLastSeenMessageId(lastMsgId);
                                         seenMessages.current.add(lastMsgId); // ✅ 여기 중요
                                     }
+                                }
+                            }}
+                            onContentSizeChange={(width, height) => {
+                                if (isAtBottomRef.current) {
+                                    flatListRef.current?.scrollToOffset({ offset: height, animated: true });
                                 }
                             }}
                         />
@@ -596,7 +612,6 @@ export default function TeamChat() {
                                         text: selectedMessage.text,
                                         senderName: selectedMessage.senderName,
                                     });
-                                    console.log(selectedMessage);
                                     setActionSheetVisible(false);
                                 }}
                             >

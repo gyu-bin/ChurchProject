@@ -8,7 +8,7 @@ import {
     Text,
     TouchableOpacity,
     View,
-    RefreshControl,
+    RefreshControl, TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, getDocs, query, where, orderBy, startAfter, limit, onSnapshot } from 'firebase/firestore';
@@ -30,7 +30,9 @@ export default function TeamsScreen() {
     const router = useRouter();
     const { colors } = useDesign();
     const insets = useSafeAreaInsets();
-
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isSearchVisible, setIsSearchVisible] = useState(false);
+    const searchInputRef = useRef<TextInput>(null);
 
     useEffect(() => {
         setScrollCallback('teams', () => {
@@ -125,6 +127,15 @@ export default function TeamsScreen() {
         router.push(`/teams/${id}`);
     };
 
+    //검색
+    const filteredTeams = teams.filter((team) => {
+        const keyword = searchQuery.toLowerCase();
+        return (
+            team.name?.toLowerCase().includes(keyword) ||
+            team.leader?.toLowerCase().includes(keyword)
+        );
+    });
+
     const renderItem = ({ item }: { item: any }) => {
         const members = item.membersList?.length ?? 0;
         const max = item.maxMembers ?? null;
@@ -179,6 +190,14 @@ export default function TeamsScreen() {
             <View style={styles.header}>
                 <Text style={[styles.title, { color: colors.text }]}>📋 소모임 목록</Text>
                 <View style={styles.actions}>
+                    <TouchableOpacity
+                        onPress={() => {
+                            setIsSearchVisible(prev => !prev);
+                            setTimeout(() => searchInputRef.current?.focus(), 100); // 딜레이 후 focus
+                        }}
+                    >
+                        <Ionicons name={isSearchVisible ? 'close' : 'search'} size={24} color={colors.subtext} />
+                    </TouchableOpacity>
                     <TouchableOpacity onPress={() => router.push('/teams/create')}>
                         <Ionicons name="add-circle-outline" size={26} color={colors.primary} />
                     </TouchableOpacity>
@@ -188,6 +207,27 @@ export default function TeamsScreen() {
                 </View>
             </View>
 
+            {isSearchVisible && (
+                <View style={{ paddingHorizontal: 15, marginBottom: 10 }}>
+                    <TextInput
+                        ref={searchInputRef}
+                        placeholder="팀 이름 또는 모임장으로 검색"
+                        placeholderTextColor={colors.subtext}
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        style={{
+                            borderWidth: 1,
+                            borderColor: colors.border,
+                            borderRadius: 8,
+                            paddingHorizontal: 12,
+                            paddingVertical: 8,
+                            color: colors.text,
+                            backgroundColor: colors.surface,
+                        }}
+                    />
+                </View>
+            )}
+
             {loading && !refreshing ? (
                 renderSkeletons()
             ) : teams.length === 0 ? (
@@ -195,19 +235,19 @@ export default function TeamsScreen() {
                     <Text style={{ color: colors.subtext }}>등록된 소모임이 없습니다.</Text>
                 </View>
             ) : (
-                <FlatList
+                <>
+                    <FlatList
                     ref={mainListRef}
-                    data={teams}
+                    data={filteredTeams}
                     key={isGrid ? 'grid' : 'list'}
                     numColumns={isGrid ? 2 : 1}
                     keyExtractor={(item) => item.id}
                     renderItem={renderItem}
                     contentContainerStyle={styles.listContent}
-                    columnWrapperStyle={isGrid && { gap: 16 }}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                    columnWrapperStyle={isGrid && {gap: 16}}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh}/>}
                     onEndReachedThreshold={0.3}
-                    onEndReached={() => fetchTeams()}
-                />
+                    onEndReached={() => fetchTeams()}/></>
             )}
         </SafeAreaView>
     );

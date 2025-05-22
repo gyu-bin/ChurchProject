@@ -21,6 +21,15 @@ import Toast from 'react-native-root-toast';
 import { setScrollCallback } from "@/utils/scrollRefManager";
 import DeviceManager from '@/components/DeviceManager';
 import {changePassword, reauthenticate} from "@/services/authService";
+import {Ionicons} from "@expo/vector-icons";
+import bcrypt from "bcryptjs";
+
+import LottieView from 'lottie-react-native';
+
+import loading1 from '@/assets/lottie/Animation - 1747201461030.json'
+import loading2 from '@/assets/lottie/Animation - 1747201431992.json'
+import loading3 from '@/assets/lottie/Animation - 1747201413764.json'
+import loading4 from '@/assets/lottie/Animation - 1747201330128.json'
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -47,7 +56,25 @@ export default function SettingsScreen() {
     const [newPassword, setNewPassword] = useState('');
     const [showPasswordFields, setShowPasswordFields] = useState(false);
     const [passwordStage, setPasswordStage] = useState<'verify' | 'new'>('verify');
+    const [showPassword, setShowPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [loadingAnimation, setLoadingAnimation] = useState<any>(null); // 선택된 애니메이션
+    const loadingAnimations = [loading1, loading2, loading3, loading4];
+
     // const [notificationModalVisible, setNotificationModalVisible] = useState(false); // ✅ 알림 모달 상태
+
+    if (!bcrypt.setRandomFallback) {
+        console.warn('⚠️ bcryptjs 버전이 올바르지 않습니다.');
+    }
+
+// ✅ RN 환경에서는 setRandomFallback을 등록해줘야 합니다
+    bcrypt.setRandomFallback((len: number) => {
+        const result = [];
+        for (let i = 0; i < len; i++) {
+            result.push(Math.floor(Math.random() * 256));
+        }
+        return result;
+    });
 
     useEffect(() => {
         setScrollCallback('settings', () => {
@@ -137,7 +164,7 @@ export default function SettingsScreen() {
 
         try {
             // 🔧 문서 ID로 name 사용
-            await updateDoc(doc(db, 'users', user.name), updatedFields);
+            await updateDoc(doc(db, 'users', user.email), updatedFields);
 
             const updatedUser = { ...user, ...updatedFields };
             setUser(updatedUser);
@@ -232,6 +259,20 @@ export default function SettingsScreen() {
                                         </Text>
                                     </View>
                                 )}
+                                {user?.role && (
+                                    <View
+                                        style={{
+                                            backgroundColor: '#E8F5E9',
+                                            paddingHorizontal: 8,
+                                            paddingVertical: 2,
+                                            borderRadius: 12,
+                                        }}
+                                    >
+                                        <Text style={{ color: '#2E7D32', fontSize: 12, fontWeight: 'bold' }}>
+                                            {user.role}
+                                        </Text>
+                                    </View>
+                                )}
                                 {user?.campus && (
                                     <View
                                         style={{
@@ -246,6 +287,7 @@ export default function SettingsScreen() {
                                         </Text>
                                     </View>
                                 )}
+
                             </View>
                         </View>
 
@@ -336,89 +378,6 @@ export default function SettingsScreen() {
                                 <Text style={{ color: colors.text }}>🔒 비밀번호 변경</Text>
                             </TouchableOpacity>
 
-                            {/* 비밀번호 필드 */}
-                            {/*{showPasswordFields && (
-                                <>
-                                    <View style={{ marginBottom: spacing.md }}>
-                                        <Text style={{ fontSize: font.caption, fontWeight: '600', color: colors.subtext, marginBottom: 4 }}>
-                                            기존 비밀번호
-                                        </Text>
-                                        <TextInput
-                                            // secureTextEntry
-                                            placeholder="기존 비밀번호"
-                                            value={oldPassword}
-                                            onChangeText={setOldPassword}
-                                            style={{
-                                                borderWidth: 1,
-                                                borderColor: colors.border,
-                                                borderRadius: 10,
-                                                padding: spacing.sm,
-                                                color: colors.text,
-                                                backgroundColor: colors.card,
-                                            }}
-                                        />
-                                    </View>
-
-                                    <View style={{ marginBottom: spacing.md }}>
-                                        <Text style={{ fontSize: font.caption, fontWeight: '600', color: colors.subtext, marginBottom: 4 }}>
-                                            새 비밀번호
-                                        </Text>
-                                        <TextInput
-                                            // secureTextEntry
-                                            placeholder="새 비밀번호"
-                                            value={newPassword}
-                                            onChangeText={setNewPassword}
-                                            style={{
-                                                borderWidth: 1,
-                                                borderColor: colors.border,
-                                                borderRadius: 10,
-                                                padding: spacing.sm,
-                                                color: colors.text,
-                                                backgroundColor: colors.card,
-                                            }}
-                                        />
-                                    </View>
-
-                                     비밀번호 변경 버튼
-                                    <TouchableOpacity
-                                        onPress={async () => {
-                                            try {
-                                                if (!user?.email || !oldPassword || !newPassword) {
-                                                    Alert.alert('입력 누락', '기존/새 비밀번호를 모두 입력해주세요.');
-                                                    return;
-                                                }
-
-                                                await reauthenticate(user.email, oldPassword);
-                                                await changePassword(newPassword);
-
-                                                setOldPassword('');
-                                                setNewPassword('');
-                                                setShowPasswordFields(false);
-
-                                                Toast.show('✅ 비밀번호가 변경되었습니다.', {
-                                                    duration: Toast.durations.SHORT,
-                                                    position: Toast.positions.BOTTOM,
-                                                });
-                                            } catch (err: any) {
-                                                const message = err.code === 'auth/wrong-password'
-                                                    ? '기존 비밀번호가 일치하지 않습니다.'
-                                                    : err.message || '비밀번호 변경 중 오류가 발생했습니다.';
-                                                Alert.alert('변경 실패', message);
-                                            }
-                                        }}
-                                        style={{
-                                            backgroundColor: colors.primary,
-                                            paddingVertical: spacing.sm,
-                                            borderRadius: 8,
-                                            alignItems: 'center',
-                                            marginBottom: spacing.md,
-                                        }}
-                                    >
-                                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>비밀번호 변경 저장</Text>
-                                    </TouchableOpacity>
-                                </>
-                            )}*/}
-
                             <Modal visible={showPasswordFields} transparent animationType="fade">
                                 <View
                                     style={{
@@ -447,7 +406,7 @@ export default function SettingsScreen() {
                                             🔒 비밀번호 변경
                                         </Text>
 
-                                        {/* 기존 비밀번호 */}
+                                        {/* 👁 보기 상태 추가 */}
                                         <View style={{ marginBottom: spacing.md }}>
                                             <Text
                                                 style={{
@@ -463,6 +422,7 @@ export default function SettingsScreen() {
                                                 placeholder="기존 비밀번호"
                                                 value={oldPassword}
                                                 onChangeText={setOldPassword}
+                                                secureTextEntry={!showPassword}
                                                 style={{
                                                     borderWidth: 1,
                                                     borderColor: colors.border,
@@ -474,8 +434,7 @@ export default function SettingsScreen() {
                                             />
                                         </View>
 
-                                        {/* 새 비밀번호 */}
-                                        <View style={{ marginBottom: spacing.md }}>
+                                        <View style={{ marginBottom: spacing.sm }}>
                                             <Text
                                                 style={{
                                                     fontSize: font.caption,
@@ -490,6 +449,7 @@ export default function SettingsScreen() {
                                                 placeholder="새 비밀번호"
                                                 value={newPassword}
                                                 onChangeText={setNewPassword}
+                                                secureTextEntry={!showPassword}
                                                 style={{
                                                     borderWidth: 1,
                                                     borderColor: colors.border,
@@ -501,33 +461,56 @@ export default function SettingsScreen() {
                                             />
                                         </View>
 
+                                        {/* 👁 보기 토글 */}
+                                        <TouchableOpacity onPress={() => setShowPassword(prev => !prev)} style={{ marginBottom: spacing.md }}>
+                                            <Text style={{ color: colors.primary }}>
+                                                {showPassword ? '🙈 숨기기' : '👁 보기'}
+                                            </Text>
+                                        </TouchableOpacity>
+
                                         {/* 저장 버튼 */}
                                         <TouchableOpacity
-                                            onPress={async () => {
-                                                try {
-                                                    if (!user?.email || !oldPassword || !newPassword) {
-                                                        Alert.alert('입력 누락', '기존/새 비밀번호를 모두 입력해주세요.');
-                                                        return;
-                                                    }
-
-                                                    await reauthenticate(user.email, oldPassword);
-                                                    await changePassword(newPassword);
-
-                                                    setOldPassword('');
-                                                    setNewPassword('');
-                                                    setShowPasswordFields(false);
-
-                                                    Toast.show('✅ 비밀번호가 변경되었습니다.', {
-                                                        duration: Toast.durations.SHORT,
-                                                        position: Toast.positions.BOTTOM,
-                                                    });
-                                                } catch (err: any) {
-                                                    const message =
-                                                        err.code === 'auth/wrong-password'
-                                                            ? '기존 비밀번호가 일치하지 않습니다.'
-                                                            : err.message || '비밀번호 변경 중 오류가 발생했습니다.';
-                                                    Alert.alert('변경 실패', message);
+                                            onPress={() => {
+                                                if (!user?.email || !oldPassword || !newPassword) {
+                                                    Alert.alert('입력 누락', '기존/새 비밀번호를 모두 입력해주세요.');
+                                                    return;
                                                 }
+
+                                                const randomIndex = Math.floor(Math.random() * loadingAnimations.length);
+                                                setLoadingAnimation(loadingAnimations[randomIndex]);
+                                                setLoading(true); // ✅ 1. 즉시 로딩 true → Modal 바로 뜰 수 있도록
+
+                                                // ✅ 2. UI 렌더링 우선 보장
+                                                setTimeout(async () => {
+                                                    try {
+                                                        await reauthenticate(user.email, oldPassword);
+
+                                                        const hashed = await bcrypt.hash(newPassword, 10);
+                                                        await updateDoc(doc(db, 'users', user.email), { password: hashed });
+
+                                                        const updatedUser = { ...user, password: hashed };
+                                                        await AsyncStorage.setItem('currentUser', JSON.stringify(updatedUser));
+
+                                                        setOldPassword('');
+                                                        setNewPassword('');
+                                                        setShowPasswordFields(false);
+
+                                                        setLoading(false); // ✅ 먼저 로딩 해제
+                                                        setShowPasswordFields(false);
+                                                        Toast.show('✅ 비밀번호가 변경되었습니다.', {
+                                                            duration: Toast.durations.SHORT,
+                                                            position: Toast.positions.BOTTOM,
+                                                        });
+                                                    } catch (err: any) {
+                                                        const message =
+                                                            err.code === 'auth/wrong-password'
+                                                                ? '기존 비밀번호가 일치하지 않습니다.'
+                                                                : err.message || '비밀번호 변경 중 오류가 발생했습니다.';
+                                                        Alert.alert('변경 실패', message);
+                                                    } finally {
+                                                        setTimeout(() => setLoading(false), 3000); // ✅ 최소 3초 로딩 유지
+                                                    }
+                                                }, 100); // ✅ UI 렌더링 확보 시간
                                             }}
                                             style={{
                                                 backgroundColor: colors.primary,
@@ -536,6 +519,7 @@ export default function SettingsScreen() {
                                                 alignItems: 'center',
                                                 marginBottom: spacing.md,
                                             }}
+                                            disabled={loading}
                                         >
                                             <Text style={{ color: '#fff', fontWeight: 'bold' }}>
                                                 비밀번호 변경 저장
@@ -585,6 +569,27 @@ export default function SettingsScreen() {
                     </View>
                 </Modal>
 
+                {loading && (
+                    <Modal visible={true} transparent animationType="fade">
+                        <View style={{
+                            flex: 1,
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            backgroundColor: 'rgba(0,0,0,0.4)',
+                        }}>
+                            {loadingAnimation && (
+                                <LottieView
+                                    source={loadingAnimation}
+                                    autoPlay
+                                    loop
+                                    style={{ width: 200, height: 200 }}
+                                />
+                            )}
+                            <Text style={{ color: '#fff', marginTop: 16 }}>비밀번호 변경 중...</Text>
+                        </View>
+                    </Modal>
+                )}
+
                 <TouchableOpacity
                     onPress={() => router.push('/setting/joinTeams')}
                     style={{
@@ -592,9 +597,23 @@ export default function SettingsScreen() {
                         padding: spacing.md,
                         borderRadius: 16,
                         marginBottom: spacing.sm,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
                     }}
                 >
-                    <Text style={{ fontSize: 16, color: colors.text }}>내 모임 관리</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <View style={{
+                            backgroundColor: '#d1fae5', // 연한 녹색 배경
+                            borderRadius: 100,
+                            padding: 6,
+                            marginRight: 10,
+                        }}>
+                            <Ionicons name="accessibility-outline" size={18} color="#10b981" />
+                        </View>
+                        <Text style={{ fontSize: 16, color: colors.text }}>내 모임 관리</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={colors.subtext} />
                 </TouchableOpacity>
 
                 {/* 🌙 다크모드 */}
@@ -628,7 +647,6 @@ export default function SettingsScreen() {
                     <PushSettings />
                 </View>
 
-                {/* 📢 공지사항 관리 */}
                 <TouchableOpacity
                     onPress={() => router.push('/setting/noticeManager')}
                     style={{
@@ -638,7 +656,17 @@ export default function SettingsScreen() {
                         marginBottom: spacing.sm,
                     }}
                 >
-                    <Text style={{ fontSize: 16, color: colors.text }}>📢 공지사항 관리</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <View style={{
+                            backgroundColor: '#d1fae5', // 연한 녹색 배경
+                            borderRadius: 100,
+                            padding: 6,
+                            marginRight: 10,
+                        }}>
+                            <Ionicons name="megaphone-outline" size={18} color="#10b981" />
+                        </View>
+                        <Text style={{ fontSize: 16, color: colors.text }}>공지사항 관리</Text>
+                    </View>
                 </TouchableOpacity>
 
                 {/*역할 변경*/}
@@ -758,6 +786,20 @@ export default function SettingsScreen() {
                     </View>
                     <DeviceManager visible={modalVisible} onClose={() => setModalVisible(false)} />
                 </View>
+
+                <TouchableOpacity onPress={() => router.push('/setting/ForgotPassword')}
+                    style={{
+                        backgroundColor: colors.surface,
+                        padding: spacing.md,
+                        borderRadius: 16,
+                        borderWidth: 1,
+                        borderColor: colors.error,
+                        alignItems: 'center',
+                        marginBottom: spacing.md,
+                    }}
+                >
+                    <Text style={{ color: colors.error, fontWeight: 'bold' }}>비밀번호를 잊으셨나요</Text>
+                </TouchableOpacity>
 
                 {/* ❌ 회원 탈퇴 */}
                 <TouchableOpacity

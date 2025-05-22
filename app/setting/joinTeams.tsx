@@ -118,9 +118,29 @@ export default function JoinedTeams() {
 
     if (teams.length === 0) {
         return (
+            <SafeAreaView
+                style={{
+                    flex: 1,
+                    backgroundColor: colors.background,
+                    paddingTop: Platform.OS === 'android' ? insets.top + 20 : insets.top,
+                }}
+            >
+                <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingBottom: 30 }}>
+                    <TouchableOpacity onPress={() => router.back()}>
+                        <Ionicons name="arrow-back" size={24} color={colors.text} />
+                    </TouchableOpacity>
+                    <Text style={{
+                        fontSize: font.heading,
+                        fontWeight: '600',
+                        color: colors.text,
+                        textAlign: 'center',
+                        flex: 1
+                    }}>내모임 관리</Text>
+                </View>
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
                 <Text style={{ color: colors.subtext }}>가입한 모임이 없습니다.</Text>
             </View>
+            </SafeAreaView>
         );
     }
 

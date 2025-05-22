@@ -4,13 +4,21 @@ import React, { useRef, useState } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity,
     StyleSheet, Alert, Animated, Dimensions,
-    SafeAreaView, KeyboardAvoidingView, Platform,
+    SafeAreaView, KeyboardAvoidingView, Platform, Modal,
 } from 'react-native';
 import { db } from '@/firebase/config';
 import { doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'expo-router';
 import { registerPushToken } from '@/services/registerPushToken';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import bcrypt from "bcryptjs";
+import LottieView from 'lottie-react-native';
+
+import loading1 from '@/assets/lottie/Animation - 1747201461030.json'
+import loading2 from '@/assets/lottie/Animation - 1747201431992.json'
+import loading3 from '@/assets/lottie/Animation - 1747201413764.json'
+import loading4 from '@/assets/lottie/Animation - 1747201330128.json'
+import {useAuth} from "@/hooks/useAuth";
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const campuses = ['문래', '신촌'];
@@ -23,8 +31,27 @@ export default function RegisterSlideScreen() {
     const [step, setStep] = useState(0);
     const inputRefs = useRef<Record<string, TextInput | null>>({});
     const [showPassword, setShowPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [loadingAnimation, setLoadingAnimation] = useState<any>(null); // 선택된 애니메이션
+
+    const loadingAnimations = [loading1, loading2, loading3, loading4];
+
+    const { reload } = useAuth(); // 컴포넌트 상단에서 선언
 
     const steps = ['email', 'password', 'confirm', 'name', 'campus', 'division', 'role'] as const;
+
+    if (!bcrypt.setRandomFallback) {
+        console.warn('⚠️ bcryptjs 버전이 올바르지 않습니다.');
+    }
+
+// ✅ RN 환경에서는 setRandomFallback을 등록해줘야 합니다
+    bcrypt.setRandomFallback((len: number) => {
+        const result = [];
+        for (let i = 0; i < len; i++) {
+            result.push(Math.floor(Math.random() * 256));
+        }
+        return result;
+    });
 
     const [form, setForm] = useState({
         email: '', password: '', confirm: '',
@@ -38,30 +65,53 @@ export default function RegisterSlideScreen() {
     const handleNext = async () => {
         const currentKey = steps[step];
         const currentValue = form[currentKey];
+
         if (!currentValue.trim()) {
             return Alert.alert('입력 오류', '내용을 입력하세요.');
         }
         if (currentKey === 'confirm' && form.password !== form.confirm) {
             return Alert.alert('비밀번호 불일치', '비밀번호가 일치하지 않습니다.');
         }
-
         if (step === steps.length - 1) {
-            try {
-                const { confirm, ...userWithoutConfirm } = form;
-                const userData = {
-                    ...userWithoutConfirm,
-                    createdAt: new Date(),
-                };
+            const randomIndex = Math.floor(Math.random() * loadingAnimations.length);
+            setLoadingAnimation(loadingAnimations[randomIndex]);
+            setLoading(true); // ✅ 1. 로딩 상태 바로 반영 시도
 
-                await setDoc(doc(db, 'users', form.email), userData);
-                await AsyncStorage.setItem('currentUser', JSON.stringify(userData));
-                await registerPushToken();
+            // ✅ 2. UI 렌더 우선 후 로직 실행
+            requestAnimationFrame(() => {
+                setTimeout(async () => {
+                    try {
+                        const { confirm, password, ...restForm } = form;
 
-                Alert.alert('가입 완료', '환영합니다!');
-                setTimeout(() => router.replace('/'), 300);
-            } catch (e: any) {
-                Alert.alert('회원가입 실패', e.message);
-            }
+                        const hashedPassword = bcrypt.hashSync(password, 10); // 🔐 CPU 블로킹
+
+                        const userData = {
+                            ...restForm,
+                            password: hashedPassword,
+                            email: form.email,
+                            createdAt: new Date(),
+                        };
+
+                        await setDoc(doc(db, 'users', form.email), userData);
+                        await AsyncStorage.setItem('currentUser', JSON.stringify(userData));
+                        await reload();
+                        await registerPushToken();
+
+                        await reload();
+
+                        // 🔒 최소 3초간 로딩 유지 후 홈 이동
+                        setTimeout(() => {
+                            setLoading(false);
+                            router.replace('/');
+                        }, 2000);
+                    } catch (e: any) {
+                        console.error('❌ 회원가입 실패:', e);
+                        setLoading(false);
+                        Alert.alert('회원가입 실패', e.message);
+                    }
+                }, 0); // 최소한의 delay
+            });
+
             return;
         }
 
@@ -217,9 +267,35 @@ export default function RegisterSlideScreen() {
                     </Animated.View>
                 </View>
 
-                <TouchableOpacity onPress={handleNext} style={styles.button}>
-                    <Text style={styles.buttonText}>{step === steps.length - 1 ? '가입하기' : '다음'}</Text>
+                <TouchableOpacity onPress={handleNext} style={styles.button} disabled={loading}>
+                    {loading ? (
+                        <Text style={styles.buttonText}>가입 중...</Text>
+                    ) : (
+                        <Text style={styles.buttonText}>
+                            {step === steps.length - 1 ? '가입하기' : '다음'}
+                        </Text>
+                    )}
                 </TouchableOpacity>
+                <Modal visible={loading} transparent animationType="fade">
+                    <View
+                        style={{
+                            flex: 1,
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            backgroundColor: 'rgba(0,0,0,0.3)',
+                        }}
+                    >
+                        {loadingAnimation && (
+                            <LottieView
+                                source={loadingAnimation}
+                                autoPlay
+                                loop
+                                style={{ width: 300, height: 300 }}
+                            />
+                        )}
+                        <Text style={{ color: '#fff', marginTop: 20, fontSize: 16 }}>가입 처리 중...</Text>
+                    </View>
+                </Modal>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );

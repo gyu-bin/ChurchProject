@@ -42,13 +42,6 @@ type Team = {
     [key: string]: any; // 기타 필드를 허용하는 경우
 };
 
-export type VoteChoice = '가능' | '어려움' | '미정';
-
-export type VoteStats = {
-    [key in VoteChoice]: number;
-};
-
-
 export default function TeamDetail() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const [team, setTeam] = useState<Team | null>(null);
@@ -131,24 +124,30 @@ export default function TeamDetail() {
     }, []);
 
     useEffect(() => {
-        if (!team) return;
-
-        const init = async () => {
+        const setupBadgeListener = async () => {
+            if (!id) return; // `id`는 useLocalSearchParams에서 가져온 팀 ID
             const user = await getCurrentUser();
             if (!user?.email) return;
 
-            const badgeRef = doc(db, 'teams', team.id, 'chatBadge', user.email);
-            return onSnapshot(badgeRef, snap => {
-                setChatBadgeCount(snap.exists() ? snap.data()?.count || 0 : 0);
+            const badgeRef = doc(db, 'teams', id, 'chatBadge', user.email);
+            const unsubscribe = onSnapshot(badgeRef, (snap) => {
+                const count = snap.exists() ? snap.data()?.count || 0 : 0;
+                console.log('📥 실시간 badge count:', count); // ✅ 디버깅 로그
+                setChatBadgeCount(count);
             });
+
+            return unsubscribe;
         };
 
-        const unsubPromise = init();
+        let unsubscribe: (() => void) | undefined;
+        setupBadgeListener().then((unsub) => {
+            unsubscribe = unsub;
+        });
 
         return () => {
-            unsubPromise.then(unsub => unsub && unsub());
+            if (unsubscribe) unsubscribe();
         };
-    }, [team]);
+    }, [id]); // team.id 대신 id 사용
 
     const handleJoin = async () => {
         if (!team || !user) return;
@@ -415,7 +414,7 @@ export default function TeamDetail() {
     const isFull = (team?.members ?? 0) >= (team?.capacity ?? 99);
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background,paddingTop: Platform.OS === 'android' ? insets.top + 20 : 0 }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background}}>
             <View style={{
                 flexDirection: 'row',
                 alignItems: 'center',

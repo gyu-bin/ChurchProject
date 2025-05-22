@@ -265,7 +265,9 @@ export default function HomeScreen() {
                 ref={mainListRef}
                 ListHeaderComponent={(<View style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.primary }}>🙏 안녕하세요{user?.name ? ` ${user.name}님!` : '!'}</Text>
+                        <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.primary }}>
+                            🙏 안녕하세요{user?.name ? ` ${user.name}님!` : '!'}
+                        </Text>
                         <TouchableOpacity onPress={() => router.push('/notifications')} style={{ position: 'relative' }}>
                             <Ionicons name="notifications-outline" size={24} color={theme.colors.text} />
                             {notifications.length > 0 && (
