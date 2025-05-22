@@ -54,7 +54,7 @@ export default function DepartmentsScreen() {
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background}}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background,paddingTop: Platform.OS === 'android' ? insets.top : 0}}>
             <Animated.View
                 style={[
                     styles.slideContainer,

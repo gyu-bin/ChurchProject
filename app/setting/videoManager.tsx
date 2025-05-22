@@ -95,7 +95,7 @@ export default function VideoManager() {
     }, []);
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#111827' : '#fff', marginTop: Platform.OS === 'android' ? insets.top + 20 : 0 }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? insets.top + 20 : 0 }}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
                 <View style={{ padding: spacing.md }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingBottom: 30 }}>

@@ -415,7 +415,7 @@ export default function TeamDetail() {
     const isFull = (team?.members ?? 0) >= (team?.capacity ?? 99);
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background,paddingTop: Platform.OS === 'android' ? insets.top + 20 : 0 }}>
             <View style={{
                 flexDirection: 'row',
                 alignItems: 'center',

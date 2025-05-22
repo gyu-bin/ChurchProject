@@ -8,6 +8,7 @@ import {
     ScrollView,
     KeyboardAvoidingView,
     Platform,
+    SafeAreaView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '@/context/ThemeContext';
@@ -15,6 +16,8 @@ import { useDesign } from '@/context/DesignSystem';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addDoc, collection } from 'firebase/firestore';
 import { db } from '@/firebase/config';
+import {Ionicons} from "@expo/vector-icons";
+import {router} from "expo-router";
 
 export default function SettingsFeedbackScreen() {
     const insets = useSafeAreaInsets();
@@ -56,6 +59,13 @@ export default function SettingsFeedbackScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={{ flex: 1 }}
         >
+            <SafeAreaView style={{ flex: 1, backgroundColor: colors.background,paddingTop: Platform.OS === 'android' ? insets.top + 20 : 0 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingBottom: 30 }}>
+                <TouchableOpacity onPress={() => router.back()}>
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={{ fontSize: font.heading, fontWeight: '600', color: colors.text, textAlign: 'center', flex: 1 }}>피드백 하기</Text>
+            </View>
             <ScrollView
                 contentContainerStyle={{
                     flexGrow: 1,
@@ -105,6 +115,7 @@ export default function SettingsFeedbackScreen() {
                     <Text style={{ color: '#fff', fontWeight: 'bold' }}>제출하기</Text>
                 </TouchableOpacity>
             </ScrollView>
+            </SafeAreaView>
         </KeyboardAvoidingView>
     );
 }

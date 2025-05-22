@@ -101,7 +101,7 @@ export default function CatechismPage() {
         }, 350); // Modal 완전히 열리고 실행
     };
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background,paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>
             <TouchableOpacity
                 onPress={() => setCategoryModal(true)}
                 style={{ alignItems: 'center', marginBottom: spacing.sm, paddingTop: Platform.OS === 'android' ? insets.top : '3%' }}

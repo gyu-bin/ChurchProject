@@ -13,6 +13,10 @@ import { useAppTheme } from '@/context/ThemeContext';
 import { useDesign } from '@/context/DesignSystem';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { Calendar } from 'react-native-calendars';
+import Toast from "react-native-root-toast";
+import {Ionicons} from "@expo/vector-icons";
+import {router} from "expo-router";
+import {useSafeAreaInsets} from "react-native-safe-area-context";
 const initialLayout = { width: Dimensions.get('window').width };
 
 type Notice = {
@@ -26,6 +30,7 @@ type Notice = {
 };
 
 export default function NoticeManager() {
+    const insets = useSafeAreaInsets();
     const { colors, spacing, font, radius } = useDesign();
     const [index, setIndex] = useState(0);
     const [routes] = useState([
@@ -51,14 +56,14 @@ export default function NoticeManager() {
         id: '', // ✅ 수정 시 사용
     });
     const [eventMode, setEventMode] = useState<'add' | 'edit'>('add');
-    const [showTimePicker, setShowTimePicker] = useState(false);
+    // const [showTimePicker, setShowTimePicker] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
-    const [showDateRangePicker, setShowDateRangePicker] = useState(false);
+    // const [showDateRangePicker, setShowDateRangePicker] = useState(false);
     const [isSelectingStart, setIsSelectingStart] = useState(true); // ✅ 처음엔 시작일 선택 중
-    const [dateError, setDateError] = useState('');
+    // const [dateError, setDateError] = useState('');
 
     const [isDatePickerVisible, setDatePickerVisible] = useState(false);
-    const [scheduleDate, setScheduleDate] = useState<string>('');
+    // const [scheduleDate, setScheduleDate] = useState<string>('');
 
     const [tempStart, setTempStart] = useState<Date | null>(null);
     const [tempEnd, setTempEnd] = useState<Date | null>(null);
@@ -66,7 +71,7 @@ export default function NoticeManager() {
     const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
     // handler
-    const handleDateConfirm = (date: Date) => {
+/*    const handleDateConfirm = (date: Date) => {
         setEventData((prev) =>
             isSelectingStart
                 ? { ...prev, startDate: date, endDate: date }
@@ -77,7 +82,7 @@ export default function NoticeManager() {
         } else {
             setShowDateRangePicker(false);
         }
-    };
+    };*/
 
     const getMarkedRange = (start: Date, end: Date) => {
         const marked: any = {};
@@ -125,6 +130,10 @@ export default function NoticeManager() {
         await updateDoc(doc(db, 'notice', editItem.id), editItem);
         setEditModalVisible(false);
         fetchData();
+        Toast.show('✅ 저장되었습니다.', {
+            duration: Toast.durations.SHORT,
+            position: Toast.positions.BOTTOM,
+        });
     };
 
     const handleDelete = async (id: string) => {
@@ -134,6 +143,10 @@ export default function NoticeManager() {
                 text: '삭제', style: 'destructive', onPress: async () => {
                     await deleteDoc(doc(db, 'notice', id));
                     fetchData();
+                    Toast.show('✅ 삭제되었습니다.', {
+                        duration: Toast.durations.SHORT,
+                        position: Toast.positions.BOTTOM,
+                    });
                 }
             }
         ])
@@ -145,6 +158,10 @@ export default function NoticeManager() {
         setAddModalVisible(false);
         setNewItem({ type: 'notice', title: '', content: '', place: '', date: new Date(), time: '' });
         fetchData();
+        Toast.show('✅ 저장되었습니다.', {
+            duration: Toast.durations.SHORT,
+            position: Toast.positions.BOTTOM,
+        });
     };
 
     const handleSubmitEvent = async () => {
@@ -180,6 +197,10 @@ export default function NoticeManager() {
                 time: '',
             });
             fetchData();
+            Toast.show('✅ 저장되었습니다', {
+                duration: Toast.durations.SHORT,
+                position: Toast.positions.BOTTOM,
+            });
         } catch (err) {
             console.error('❌ 저장 오류:', err);
             Alert.alert('저장 실패', '다시 시도해주세요.');
@@ -261,7 +282,13 @@ export default function NoticeManager() {
     );
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? insets.top + 20 : insets.top+10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingBottom: 30 }}>
+                <TouchableOpacity onPress={() => router.back()}>
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={{ fontSize: font.heading, fontWeight: '600', color: colors.text, textAlign: 'center', flex: 1 }}>공지사항 관리</Text>
+            </View>
             <TabView
                 navigationState={{ index, routes }}
                 renderScene={SceneMap({

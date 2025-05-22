@@ -585,6 +585,18 @@ export default function SettingsScreen() {
                     </View>
                 </Modal>
 
+                <TouchableOpacity
+                    onPress={() => router.push('/setting/joinTeams')}
+                    style={{
+                        backgroundColor: colors.surface,
+                        padding: spacing.md,
+                        borderRadius: 16,
+                        marginBottom: spacing.sm,
+                    }}
+                >
+                    <Text style={{ fontSize: 16, color: colors.text }}>내 모임 관리</Text>
+                </TouchableOpacity>
+
                 {/* 🌙 다크모드 */}
                 <View
                     style={{
