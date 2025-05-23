@@ -626,7 +626,7 @@ export default function SettingsScreen() {
                     <Ionicons name="chevron-forward" size={20} color={colors.subtext} />
                 </TouchableOpacity>
 
-                {/* 🌙 다크모드 */}
+                {/* 다크모드 */}
                 <View
                     style={{
                         backgroundColor: colors.surface,
@@ -638,7 +638,11 @@ export default function SettingsScreen() {
                         alignItems: 'center',
                     }}
                 >
-                    <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text }}>🌙 다크모드</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text }}>
+                            {isDark ? '🌙' : '☀️'} 다크모드
+                        </Text>
+                    </View>
                     <ThemeToggle />
                 </View>
 
@@ -657,6 +661,7 @@ export default function SettingsScreen() {
                     <PushSettings />
                 </View>
 
+                {user?.role === '교역자' && (
                 <TouchableOpacity
                     onPress={() => router.push('/setting/noticeManager')}
                     style={{
@@ -678,6 +683,7 @@ export default function SettingsScreen() {
                         <Text style={{ fontSize: 16, color: colors.text }}>공지사항 관리</Text>
                     </View>
                 </TouchableOpacity>
+                )}
 
                 {/*역할 변경*/}
                 {user?.role === '새가족' && (

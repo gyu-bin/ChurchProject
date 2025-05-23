@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, {
     createContext,
     useContext,
@@ -8,31 +9,25 @@ import React, {
 import {
     Animated,
     Appearance,
-    LayoutAnimation,
     Platform,
     UIManager
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type ThemeMode = 'light' | 'dark';
 
-interface ThemeContextValue {
+interface ThemeContextType {
     mode: ThemeMode;
     toggleTheme: () => void;
-    animatedValue: Animated.Value;
 }
 
-const ThemeContext = createContext<ThemeContextValue>({
+const ThemeContext = createContext<ThemeContextType>({
     mode: 'light',
     toggleTheme: () => {},
-    animatedValue: new Animated.Value(0)
 });
 
-export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
-                                                                           children
-                                                                       }) => {
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const [mode, setMode] = useState<ThemeMode>('light');
-    const animatedValue = useRef(new Animated.Value(0)).current;
+    const fadeAnim = useRef(new Animated.Value(1)).current;
 
     // Android에서 LayoutAnimation 활성화
     if (
@@ -56,31 +51,39 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
         loadTheme();
     }, []);
 
-    // 모드 변경 시 애니메이션 적용
-
-
     const toggleTheme = async () => {
-        const nextMode: ThemeMode = mode === 'light' ? 'dark' : 'light';
+        const nextMode = mode === 'light' ? 'dark' : 'light';
 
-        // 애니메이션 먼저 실행하고 끝나면 모드 전환
-        Animated.timing(animatedValue, {
-            toValue: nextMode === 'dark' ? 1 : 0,
-            duration: 200,
-            useNativeDriver: false,
-        }).start(() => {
-            setMode(nextMode);
-        });
+        // 페이드 아웃과 인을 동시에 실행
+        Animated.sequence([
+            Animated.timing(fadeAnim, {
+                toValue: 0.8,
+                duration: 100,
+                useNativeDriver: true,
+                isInteraction: false, // 인터랙션 플래그 비활성화
+            }),
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 100,
+                useNativeDriver: true,
+                isInteraction: false,
+            })
+        ]).start();
 
-        await AsyncStorage.setItem('themeMode', nextMode);
+        // 테마 변경을 바로 실행
+        setMode(nextMode);
+        AsyncStorage.setItem('themeMode', nextMode);
     };
 
-
-
     return (
-        <ThemeContext.Provider value={{ mode, toggleTheme, animatedValue }}>
-            {children}
+        <ThemeContext.Provider value={{ mode, toggleTheme }}>
+            <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+                {children}
+            </Animated.View>
         </ThemeContext.Provider>
     );
-};
+}
 
-export const useAppTheme = () => useContext(ThemeContext);
+export function useAppTheme() {
+    return useContext(ThemeContext);
+}

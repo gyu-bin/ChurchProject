@@ -1,23 +1,24 @@
-import React, {useEffect, useState, useCallback, useRef} from 'react';
+import SkeletonBox from '@/components/Skeleton';
+import { useDesign } from '@/context/DesignSystem';
+import { db } from '@/firebase/config';
+import { setScrollCallback } from '@/utils/scrollRefManager';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { collection, getDocs, limit, onSnapshot, orderBy, query, startAfter, where } from 'firebase/firestore';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Dimensions,
     FlatList,
     Platform,
+    RefreshControl,
     SafeAreaView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
-    RefreshControl, TextInput,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { collection, getDocs, query, where, orderBy, startAfter, limit, onSnapshot } from 'firebase/firestore';
-import { db } from '@/firebase/config';
-import { useFocusEffect, useRouter } from 'expo-router';
-import SkeletonBox from '@/components/Skeleton';
-import { useDesign } from '@/context/DesignSystem';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { setScrollCallback } from '@/utils/scrollRefManager';
 
 export default function TeamsScreen() {
     const [teams, setTeams] = useState<any[]>([]);

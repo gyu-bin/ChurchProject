@@ -1,13 +1,19 @@
-import React, { useEffect, useState } from 'react';
-import {
-    View, Text, Switch, Button, Platform, Alert,
-    TouchableOpacity, Modal
-} from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import * as Notifications from 'expo-notifications';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { verses } from '@/assets/verses';
 import { useAppTheme } from '@/context/ThemeContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import * as Notifications from 'expo-notifications';
+import React, { useEffect, useState } from 'react';
+import {
+    Alert,
+    Button,
+    Modal,
+    Platform,
+    Switch,
+    Text,
+    TouchableOpacity,
+    View
+} from 'react-native';
 
 type Verses = { verse: string; reference: string };
 

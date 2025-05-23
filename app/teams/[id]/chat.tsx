@@ -1,7 +1,9 @@
 import { useDesign } from '@/context/DesignSystem';
+import { useAppTheme } from '@/context/ThemeContext';
 import { db } from '@/firebase/config';
 import { getCurrentUser } from '@/services/authService';
 import { sendPushNotification } from "@/services/notificationService";
+import { showToast } from '@/utils/toast';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useFocusEffect, useLocalSearchParams, usePathname, useRouter } from 'expo-router';
@@ -22,6 +24,7 @@ import {
 } from 'firebase/firestore';
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     Animated,
     AppState,
@@ -84,7 +87,7 @@ interface MessageItemProps {
     item: Message;
     isMyMessage: boolean;
     showDate: boolean;
-    currentDate: string;
+    currentDate: Date;
     onLongPress: () => void;
     onReplyPress: () => void;
     colors: {
@@ -97,6 +100,11 @@ interface MessageItemProps {
     };
     searchQuery: string;
 }
+
+type TeamMember = {
+    email: string;
+    name: string;
+};
 
 export default function TeamChat() {
     const { id, name } = useLocalSearchParams()
@@ -115,7 +123,7 @@ export default function TeamChat() {
     const [replyTo, setReplyTo] = useState<Message | null>(null); // 🔥 답글 대상
     const flatListRef = useRef<FlatList>(null);
     const [justDeleted, setJustDeleted] = useState(false);
-    const { colors } = useDesign();
+    const { colors, spacing, radius, font } = useDesign();
     const pathname = usePathname();
     const [isAtBottom, setIsAtBottom] = useState(true);
     const [showNewMessageBanner, setShowNewMessageBanner] = useState(false);
@@ -139,6 +147,16 @@ export default function TeamChat() {
     const [currentSearchIndex, setCurrentSearchIndex] = useState(-1);
     const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
     const scaleAnim = useRef(new Animated.Value(1)).current;
+    const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+    const [showMentionModal, setShowMentionModal] = useState(false);
+    const [mentionQuery, setMentionQuery] = useState('');
+    const [filteredMembers, setFilteredMembers] = useState<TeamMember[]>([]);
+    const [cursorPosition, setCursorPosition] = useState(0);
+    const { mode } = useAppTheme();
+    const isDark = mode === 'dark';
+    const [user, setUser] = useState<any>(null);
+    const [notificationEnabled, setNotificationEnabled] = useState(true);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         getCurrentUser().then(user => {
@@ -235,30 +253,31 @@ export default function TeamChat() {
     // ⬇ 기존 useEffect에서 메시지 도착 감지하는 부분 수정
     useEffect(() => {
         const chatRef = collection(db, 'teams', teamId, 'chats');
-        const q = query(chatRef, orderBy('createdAt'));
+        const q = query(chatRef, orderBy('createdAt', 'desc'));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const docs = snapshot.docs.map(doc => {
-                const data = doc.data() as any;
-                const replyToData = data.replyTo ?? null;
-
+                const data = doc.data();
                 return {
                     id: doc.id,
-                    ...data,
-                    replyTo: replyToData,
+                    senderEmail: data.senderEmail,
+                    senderName: data.senderName,
+                    text: data.text,
+                    createdAt: data.createdAt ? data.createdAt : new Date(),
+                    replyTo: data.replyTo || null,
                 };
             });
-            setMessages(docs); // ✅ 상태 업데이트
+            setMessages(docs.reverse());
 
-            const lastMessage = docs[docs.length - 1];
+            const lastMessage = docs[0];  // docs are now in descending order
 
-            // ✅ 하단에 있을 경우 → 자동 스크롤
+            // 하단에 있을 경우 → 자동 스크롤
             if (isAtBottom) {
                 setTimeout(() => {
                     flatListRef.current?.scrollToOffset({ offset: 1000000, animated: true });
                 }, 100);
             }
 
-            // ✅ 배너 띄우기 로직
+            // 배너 띄우기 로직
             if (
                 lastMessage &&
                 lastMessage.senderEmail !== userEmail &&
@@ -278,32 +297,48 @@ export default function TeamChat() {
         return () => unsubscribe();
     }, [teamId, isAtBottom, userEmail, lastSeenMessageId]);
 
-    const scrollToMessage = useCallback((messageId: string) => {
-        const index = messages.findIndex(msg => msg.id === messageId);
-        if (index === -1) return;
+    const highlightMessage = useCallback((messageId: string) => {
+        setHighlightedMessageId(messageId);
+        scaleAnim.setValue(1);
+        
+        Animated.sequence([
+            Animated.timing(scaleAnim, {
+                toValue: 2.05,
+                duration: 200,
+                useNativeDriver: true,
+            }),
+            Animated.spring(scaleAnim, {
+                toValue: 1,
+                friction: 3,
+                tension: 40,
+                useNativeDriver: true,
+            })
+        ]).start(() => {
+            setTimeout(() => setHighlightedMessageId(null), 500);
+        });
+    }, []);
 
+    const scrollToMessage = useCallback((index: number) => {
         try {
             flatListRef.current?.scrollToIndex({
                 index,
                 animated: true,
-                viewPosition: 0.5
+                viewPosition: 0.3
             });
+            
+            const messageId = messages[index]?.id;
+            if (messageId) {
+                highlightMessage(messageId);
+            }
         } catch (error) {
-            console.warn('ScrollToIndex failed, falling back to offset', error);
-            flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
-            setTimeout(() => {
-                flatListRef.current?.scrollToIndex({
-                    index,
-                    animated: true,
-                    viewPosition: 0.5
-                });
-            }, 300);
+            console.error('Scroll to message failed:', error);
         }
-    }, [messages]);
+    }, [messages, highlightMessage]);
 
     const handleSend = useCallback(async () => {
         if (!input.trim() || !userEmail || isComposing) return;
 
+        const now = new Date();
         const messageData = {
             senderEmail: userEmail,
             senderName: userName,
@@ -321,11 +356,11 @@ export default function TeamChat() {
             setReplyTo(null);
             setSelectedMessage(null);
             
-            // Create optimistic update
+            // Create optimistic update with local timestamp
             const newTempMessage = {
                 ...messageData,
                 id: `temp-${Date.now()}`,
-                createdAt: new Date(),
+                createdAt: now,
             };
             setTempMessage(newTempMessage);
             setMessages(prev => [...prev, newTempMessage]);
@@ -437,28 +472,6 @@ export default function TeamChat() {
         );
     }, [userEmail]);
 
-    const highlightMessage = useCallback((messageId: string) => {
-        setHighlightedMessageId(messageId);
-        scaleAnim.setValue(1);
-        
-        Animated.sequence([
-            Animated.timing(scaleAnim, {
-                toValue: 2.05,
-                duration: 200,
-                useNativeDriver: true,
-            }),
-            Animated.spring(scaleAnim, {
-                toValue: 1,
-                friction: 3,
-                tension: 40,
-                useNativeDriver: true,
-            })
-        ]).start(() => {
-            // Clear the highlight after animation
-            setTimeout(() => setHighlightedMessageId(null), 500);
-        });
-    }, []);
-
     const safeScrollToMessage = useCallback((messageId: string) => {
         const index = messages.findIndex(msg => msg.id === messageId);
         if (index === -1) return;
@@ -556,11 +569,25 @@ export default function TeamChat() {
 
     const renderItem = useCallback(({ item, index }: { item: Message; index: number }) => {
         const isMyMessage = isMe(item.senderEmail);
-        const currentDate = new Date(item.createdAt?.toDate()).toDateString();
-        const previousDate = index > 0 ? new Date(messages[index - 1]?.createdAt?.toDate()).toDateString() : null;
-        const showDate = currentDate !== previousDate;
-        const isHighlighted = item.id === highlightedMessageId;
+        
+        // 날짜 처리
+        const getDate = (timestamp: Message['createdAt']) => {
+            if (!timestamp) return new Date();
+            
+            if (timestamp instanceof Date) {
+                return timestamp;
+            }
+            
+            return new Date(timestamp.seconds * 1000);
+        };
 
+        const currentMessageDate = getDate(item.createdAt);
+        const previousMessageDate = index > 0 ? getDate(messages[index - 1].createdAt) : null;
+        
+        const showDate = !previousMessageDate || 
+            currentMessageDate.toDateString() !== previousMessageDate.toDateString();
+
+        const isHighlighted = item.id === highlightedMessageId;
         const messageStyle = isHighlighted ? {
             transform: [{ scale: scaleAnim }]
         } : undefined;
@@ -571,7 +598,7 @@ export default function TeamChat() {
                     item={item}
                     isMyMessage={isMyMessage}
                     showDate={showDate}
-                    currentDate={currentDate}
+                    currentDate={currentMessageDate}
                     onLongPress={() => {
                         setSelectedMessage(item);
                         setActionSheetVisible(true);
@@ -605,12 +632,7 @@ export default function TeamChat() {
         setSearchResults(results);
         if (results.length > 0) {
             setCurrentSearchIndex(0);
-            const firstResult = results[0];
-            flatListRef.current?.scrollToIndex({
-                index: firstResult.index,
-                animated: true,
-                viewPosition: 0.3
-            });
+            scrollToMessage(results[0].index);
         }
     }, [messages]);
 
@@ -625,20 +647,188 @@ export default function TeamChat() {
         }
 
         setCurrentSearchIndex(newIndex);
-        const targetResult = searchResults[newIndex];
-        flatListRef.current?.scrollToIndex({
-            index: targetResult.index,
-            animated: true,
-            viewPosition: 0.3
-        });
+        scrollToMessage(searchResults[newIndex].index);
     }, [searchResults, currentSearchIndex]);
+
+    useEffect(() => {
+        const fetchTeamMembers = async () => {
+            try {
+                const teamDoc = await getDoc(doc(db, 'teams', teamId));
+                if (!teamDoc.exists()) return;
+
+                const memberEmails = teamDoc.data().membersList || [];
+                const memberPromises = memberEmails.map(async (email: string) => {
+                    const userQuery = query(collection(db, 'users'), where('email', '==', email));
+                    const userSnap = await getDocs(userQuery);
+                    const userData = userSnap.docs[0]?.data();
+                    return {
+                        email,
+                        name: userData?.name || email
+                    };
+                });
+
+                const members = await Promise.all(memberPromises);
+                setTeamMembers(members);
+            } catch (error) {
+                console.error('Error fetching team members:', error);
+            }
+        };
+
+        fetchTeamMembers();
+    }, [teamId]);
+
+    // 멘션 모달 필터링
+    useEffect(() => {
+        if (mentionQuery) {
+            const filtered = teamMembers
+                .filter(member => 
+                    member.email !== userEmail && // 본인 제외
+                    (member.name.toLowerCase().includes(mentionQuery.toLowerCase()) ||
+                    member.email.toLowerCase().includes(mentionQuery.toLowerCase()))
+                );
+            setFilteredMembers(filtered);
+        } else {
+            setFilteredMembers(teamMembers.filter(member => member.email !== userEmail)); // 본인 제외
+        }
+    }, [mentionQuery, teamMembers, userEmail]);
+
+    const handleTextChange = (text: string) => {
+        setInput(text);
+        
+        // '@' 입력 감지 및 모달 표시
+        if (text.slice(-1) === '@') {
+            setShowMentionModal(true);
+            setMentionQuery('');
+        } else if (showMentionModal) {
+            // '@' 이후의 텍스트로 멘션 검색
+            const lastAtIndex = text.lastIndexOf('@');
+            if (lastAtIndex >= 0) {
+                setMentionQuery(text.slice(lastAtIndex + 1));
+            } else {
+                setShowMentionModal(false);
+            }
+        }
+    };
+
+    const handleMentionSelect = (member: TeamMember) => {
+        const lastAtIndex = input.lastIndexOf('@');
+        const newText = input.slice(0, lastAtIndex) + `@${member.name} `; // 이메일 대신 이름만 사용
+        setInput(newText);
+        setShowMentionModal(false);
+        inputRef.current?.focus();
+    };
+
+    // 멘션된 사용자 이름을 하이라이트하는 함수 추가
+    const highlightMentions = (text: string) => {
+        const mentionRegex = /@([^\s]+)/g;
+        const parts = [];
+        let lastIndex = 0;
+        let match;
+
+        while ((match = mentionRegex.exec(text)) !== null) {
+            // 멘션 앞의 일반 텍스트
+            if (match.index > lastIndex) {
+                parts.push(
+                    <Text key={`text-${lastIndex}`} style={{ color: colors.text }}>
+                        {text.slice(lastIndex, match.index)}
+                    </Text>
+                );
+            }
+
+            // 멘션된 부분
+            parts.push(
+                <Text 
+                    key={`mention-${match.index}`} 
+                    style={{ color: colors.primary, fontWeight: '600' }}
+                >
+                    {match[0]}
+                </Text>
+            );
+
+            lastIndex = match.index + match[0].length;
+        }
+
+        // 마지막 일반 텍스트
+        if (lastIndex < text.length) {
+            parts.push(
+                <Text key={`text-${lastIndex}`} style={{ color: colors.text }}>
+                    {text.slice(lastIndex)}
+                </Text>
+            );
+        }
+
+        return parts.length > 0 ? parts : text;
+    };
+
+    useEffect(() => {
+        const setup = async () => {
+            const currentUser = await getCurrentUser();
+            setUser(currentUser);
+
+            // 채팅방 입장 시 뱃지 카운트 초기화
+            if (currentUser?.email) {
+                try {
+                    const badgeRef = doc(db, 'teams', teamId, 'chatBadge', currentUser.email);
+                    await setDoc(badgeRef, { count: 0 }, { merge: true });
+                } catch (error) {
+                    console.error('뱃지 초기화 실패:', error);
+                }
+            }
+
+            // 알림 설정 상태 가져오기
+            if (currentUser?.email) {
+                try {
+                    const notifRef = doc(db, `teams/${id}/notificationSettings/${currentUser.email}`);
+                    const notifDoc = await getDoc(notifRef);
+                    if (notifDoc.exists()) {
+                        setNotificationEnabled(notifDoc.data().enabled);
+                    }
+                } catch (error) {
+                    console.error('알림 설정 로드 실패:', error);
+                }
+            }
+            setLoading(false);
+        };
+        setup();
+    }, [id, teamId]);
+
+    const toggleNotification = async () => {
+        if (!user?.email) return;
+
+        try {
+            const newState = !notificationEnabled;
+            const notifRef = doc(db, `teams/${id}/notificationSettings/${user.email}`);
+            await setDoc(notifRef, {
+                enabled: newState,
+                updatedAt: new Date(),
+            });
+            setNotificationEnabled(newState);
+            showToast(`알림을 ${newState ? '켰' : '껐'}습니다`);
+        } catch (error) {
+            console.error('알림 설정 변경 실패:', error);
+            showToast('알림 설정 변경에 실패했습니다');
+        }
+    };
+
+    if (loading) {
+        return (
+            <SafeAreaView style={{ 
+                flex: 1, 
+                justifyContent: 'center', 
+                alignItems: 'center',
+                backgroundColor: colors.background,
+            }}>
+                <ActivityIndicator size="large" color={colors.primary} />
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={[
             styles.safeArea, 
             { 
                 backgroundColor: colors.background,
-                paddingTop: Platform.OS === 'android' ? insets.top : 0,
+                paddingTop: Platform.OS === 'android' ? insets.top  : 0,
             }
         ]}>
             <View style={styles.header}>
@@ -650,17 +840,35 @@ export default function TeamChat() {
                         {teamName}
                     </Text>
                 </View>
-                <TouchableOpacity 
-                    style={styles.searchButton} 
-                    onPress={() => setIsSearchVisible(true)}
-                >
-                    <Ionicons name="search" size={24} color={colors.text} />
-                </TouchableOpacity>
+                <View style={styles.headerRight}>
+                    <TouchableOpacity
+                        onPress={toggleNotification}
+                        style={styles.notificationButton}
+                    >
+                        <Ionicons 
+                            name={notificationEnabled ? "notifications" : "notifications-off"} 
+                            size={24} 
+                            color={notificationEnabled ? colors.primary : colors.subtext} 
+                        />
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={styles.searchButton} 
+                        onPress={() => {
+                            setIsSearchVisible(true);
+                            setSearchQuery('');
+                            setSearchResults([]);
+                            setCurrentSearchIndex(-1);
+                        }}
+                    >
+                        <Ionicons name="search" size={24} color={colors.text} />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {isSearchVisible && (
                 <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
-                    <View style={[styles.searchInputContainer, { backgroundColor: isDarkMode ? '#333' : '#f0f0f0' }]}>
+                    <View style={[styles.searchInputContainer, { backgroundColor: isDark ? '#333' : '#f0f0f0' }]}>
+                        <Ionicons name="search" size={20} color={colors.subtext} style={{ marginRight: 8 }} />
                         <TextInput
                             value={searchQuery}
                             onChangeText={(text) => {
@@ -668,11 +876,8 @@ export default function TeamChat() {
                                 handleSearch(text);
                             }}
                             placeholder="메시지 검색..."
-                            style={[styles.searchInput, { 
-                                color: isDarkMode ? '#fff' : '#000',
-                                backgroundColor: 'transparent'
-                            }]}
-                            placeholderTextColor={isDarkMode ? '#999' : '#666'}
+                            style={[styles.searchInput, { color: colors.text }]}
+                            placeholderTextColor={colors.subtext}
                             autoFocus
                         />
                         {searchResults.length > 0 && (
@@ -700,6 +905,7 @@ export default function TeamChat() {
                                 setSearchQuery('');
                                 setSearchResults([]);
                                 setCurrentSearchIndex(-1);
+                                Keyboard.dismiss();
                             }}
                             style={styles.searchCloseButton}
                         >
@@ -711,7 +917,7 @@ export default function TeamChat() {
 
             <KeyboardAvoidingView 
                 style={styles.container} 
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
                 contentContainerStyle={styles.keyboardAvoidingContent}
             >
@@ -816,7 +1022,7 @@ export default function TeamChat() {
                         <TextInput
                             ref={inputRef}
                             value={input}
-                            onChangeText={setInput}
+                            onChangeText={handleTextChange}
                             placeholder="메시지를 입력하세요"
                             style={[
                                 styles.input,
@@ -894,9 +1100,102 @@ export default function TeamChat() {
                     </View>
                 </TouchableWithoutFeedback>
             </Modal>
+
+            {/* 멘션 모달 */}
+            <Modal
+                visible={showMentionModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowMentionModal(false)}
+            >
+                <TouchableOpacity
+                    style={{
+                        flex: 1,
+                        backgroundColor: 'rgba(0,0,0,0.5)',
+                    }}
+                    activeOpacity={1}
+                    onPress={() => setShowMentionModal(false)}
+                >
+                    <View style={{
+                        position: 'absolute',
+                        bottom: 80,
+                        left: spacing.sm,
+                        right: spacing.sm,
+                        backgroundColor: colors.surface,
+                        borderRadius: radius.md,
+                        maxHeight: 200,
+                        padding: spacing.sm,
+                    }}>
+                        <FlatList
+                            data={filteredMembers}
+                            keyExtractor={(item) => item.email}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    onPress={() => handleMentionSelect(item)}
+                                    style={{
+                                        padding: spacing.sm,
+                                        borderBottomWidth: 1,
+                                        borderBottomColor: colors.border,
+                                    }}
+                                >
+                                    <Text style={{ 
+                                        color: colors.text,
+                                        fontSize: font.body,
+                                        fontWeight: '500'
+                                    }}>
+                                        {item.name}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+                        />
+                    </View>
+                </TouchableOpacity>
+            </Modal>
         </SafeAreaView>
     );
 }
+
+// 멘션 하이라이트 컴포넌트
+const MentionText = memo(({ text, colors, isMyMessage }: { text: string; colors: any; isMyMessage: boolean }) => {
+    const mentionRegex = /@([^\s]+)/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = mentionRegex.exec(text)) !== null) {
+        // 멘션 앞의 일반 텍스트
+        if (match.index > lastIndex) {
+            parts.push(
+                <Text key={`text-${lastIndex}`} style={{ color: isMyMessage ? '#000' : '#fff' }}>
+                    {text.slice(lastIndex, match.index)}
+                </Text>
+            );
+        }
+
+        // 멘션된 부분
+        parts.push(
+            <Text 
+                key={`mention-${match.index}`} 
+                style={{ color: colors.primary, fontWeight: '600' }}
+            >
+                {match[0]}
+            </Text>
+        );
+
+        lastIndex = match.index + match[0].length;
+    }
+
+    // 마지막 일반 텍스트
+    if (lastIndex < text.length) {
+        parts.push(
+            <Text key={`text-${lastIndex}`} style={{ color: isMyMessage ? '#000' : '#fff' }}>
+                {text.slice(lastIndex)}
+            </Text>
+        );
+    }
+
+    return parts.length > 0 ? <Text style={{ fontSize: 16 }}>{parts}</Text> : <Text style={{ fontSize: 16, color: isMyMessage ? '#000' : '#fff' }}>{text}</Text>;
+});
 
 const MessageItem = memo(({ 
     item, 
@@ -907,13 +1206,15 @@ const MessageItem = memo(({
     onReplyPress,
     colors,
     searchQuery
-}: MessageItemProps) => {
+}: MessageItemProps & { currentDate: Date }) => {
     return (
         <View>
             {showDate && (
                 <View style={{ alignItems: 'center', marginVertical: 8 }}>
                     <Text style={{ fontSize: 12, color: colors.subtext }}>
-                        {currentDate === new Date().toDateString() ? '오늘' : currentDate}
+                        {currentDate.toDateString() === new Date().toDateString() 
+                            ? '오늘' 
+                            : currentDate.toLocaleDateString()}
                     </Text>
                 </View>
             )}
@@ -967,15 +1268,13 @@ const MessageItem = memo(({
                             </Text>
                         </TouchableOpacity>
                     )}
-                    <Text style={{ fontSize: 16, color: isMyMessage ? '#000' : '#fff' }}>
-                        {item.text}
-                    </Text>
+                    <MentionText text={item.text} colors={colors} isMyMessage={isMyMessage} />
                 </View>
                 <Text style={styles.time}>
-                    {item.createdAt?.toDate() ? new Date(item.createdAt.toDate()).toLocaleTimeString([], {
+                    {currentDate.toLocaleTimeString([], {
                         hour: '2-digit',
-                        minute: '2-digit',
-                    }) : ''}
+                        minute: '2-digit'
+                    })}
                 </Text>
             </TouchableOpacity>
         </View>
@@ -1004,23 +1303,26 @@ const styles = StyleSheet.create({
         height: 56,
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderColor: '#ccc',
-        paddingHorizontal: 20,
-        position: 'relative',
+        paddingHorizontal: 16,
     },
     backButton: {
-        zIndex: 10,
-    },
-    headerTitleContainer: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
         alignItems: 'center',
     },
+    headerTitleContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     headerTitle: {
-        fontSize: 25,
+        fontSize: 20,
         fontWeight: 'bold',
+        textAlign: 'center',
     },
     bubble: {
         padding: 12,
@@ -1156,9 +1458,10 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
     },
     searchButton: {
-        position: 'absolute',
-        right: 16,
-        zIndex: 10,
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     searchContainer: {
         paddingHorizontal: 16,
@@ -1194,6 +1497,19 @@ const styles = StyleSheet.create({
     searchCloseButton: {
         padding: 8,
         marginLeft: 4,
+    },
+    headerRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        minWidth: 80,
+        justifyContent: 'flex-end',
+    },
+    notificationButton: {
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });
 

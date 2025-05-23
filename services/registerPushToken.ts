@@ -1,26 +1,32 @@
-import {
-    addDoc,
-    collection,
-    serverTimestamp,
-    getDocs,
-    query,
-    where,
-    doc,
-    updateDoc,
-    arrayUnion,
-    arrayRemove,
-    deleteDoc,
-} from 'firebase/firestore';
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
 import { db } from '@/firebase/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform, PermissionsAndroid } from 'react-native';
+import * as Device from 'expo-device';
+import * as Notifications from 'expo-notifications';
+import {
+    addDoc,
+    arrayRemove,
+    arrayUnion,
+    collection,
+    deleteDoc,
+    doc,
+    getDocs,
+    query,
+    serverTimestamp,
+    updateDoc,
+    where,
+} from 'firebase/firestore';
+import { PermissionsAndroid, Platform } from 'react-native';
 
 
 // ✅ 푸시 토큰 등록
 export async function registerPushToken() {
     try {
+        // 시뮬레이터 체크
+        if (!Device.isDevice) {
+            console.log('📱 시뮬레이터에서는 푸시 알림을 사용할 수 없습니다.');
+            return;
+        }
+
         // ✅ Android 13 이상 알림 권한 요청
         const androidVersion = typeof Platform.Version === 'string'
             ? parseInt(Platform.Version, 10)

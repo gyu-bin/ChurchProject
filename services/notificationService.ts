@@ -17,7 +17,8 @@ type NotificationType =
     | 'team_create_approved'   // ✅ 신규
     | 'prayer_private'
     | 'open_meditation_ranking'// ✅ 여기 추가
-    | 'schedule_update'; // ✅ 여기 추가
+    | 'schedule_update'
+    | 'team_deleted'; // ✅ 여기 추가
 
 export async function sendNotification({
                                            to,

@@ -4,7 +4,8 @@ export const NOTIFICATION_TYPES = [
     'team_join_approved',
     'team_join_rejected',
     'schedule_update',
-    'chat_message'
+    'chat_message',
+    'team_deleted'
 ] as const;  // Make it readonly
 
 // Then create the type from the array values
