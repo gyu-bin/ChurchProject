@@ -1,30 +1,27 @@
 // app/_layout.tsx
-import React, { useEffect } from 'react';
-import { ThemeProvider } from '@/context/ThemeContext';
 import { DesignSystemProvider } from '@/context/DesignSystem';
-import RootLayoutInner from './_layout-inner';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { requestNotificationPermission } from '@/utils/notificationPermission';
+import { ThemeProvider } from '@/context/ThemeContext';
+import { db } from "@/firebase/config";
+import { clearPrayers } from "@/redux/slices/prayerSlice";
+import { clearTeams } from "@/redux/slices/teamSlice";
+import { logoutUser } from "@/redux/slices/userSlice";
+import { store } from "@/redux/store";
 import { cleanDuplicateExpoTokens } from '@/services/cleanExpoTokens';
+import { sendWeeklyRankingPush } from "@/services/sendWeeklyRankingPush";
+import { requestNotificationPermission } from '@/utils/notificationPermission';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Device from 'expo-device';
 import * as NavigationBar from 'expo-navigation-bar';
-import { useColorScheme,Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import {sendWeeklyRankingPush} from "@/services/sendWeeklyRankingPush";
+import { doc, onSnapshot } from "firebase/firestore";
+import React, { useEffect } from 'react';
+import { useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import {store} from "@/redux/store";
-import { Provider } from 'react-redux';
 import { RootSiblingParent } from 'react-native-root-siblings';
-import {clearTeams} from "@/redux/slices/teamSlice";
-import {clearPrayers} from "@/redux/slices/prayerSlice";
-import {logoutUser,setUserInfo} from "@/redux/slices/userSlice";
-import {doc, getDoc,onSnapshot} from "firebase/firestore";
-import {db} from "@/firebase/config";
-import * as Device from 'expo-device';
-import {tryBiometricLogin} from "@/utils/biometricLogin";
-import {registerPushToken} from "@/services/registerPushToken";
-import {registerDevice} from "@/services/registerDevice";
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Provider } from 'react-redux';
+import RootLayoutInner from './_layout-inner';
 
 export default function RootLayout() {
     const colorScheme = useColorScheme();
@@ -64,21 +61,12 @@ export default function RootLayout() {
             const userRaw = await AsyncStorage.getItem('currentUser');
             const alreadyLoggedIn = Boolean(userRaw);
             if (!alreadyLoggedIn) {
-                const user = await tryBiometricLogin();
-                if (user) {
-                    await registerPushToken();
-                    await registerDevice();
-                    store.dispatch(setUserInfo(user)); // 로그인 관련 Redux 반영
-                    router.replace('/');
-                } else {
-                    router.replace('/auth/login'); // Face ID 실패 → 로그인 화면
-                }
+                router.replace('/auth/login');
             }
         };
 
         checkAndLogin();
     }, []);
-
 
     useEffect(() => {
         const now = new Date();

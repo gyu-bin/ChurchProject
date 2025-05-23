@@ -10,6 +10,9 @@ export const LightTheme = {
     card: '#ffffff',
     error: '#ef4444',
     placeholder: '#9ca3af',
+    success: '#22c55e',
+    warning: '#f59e0b',
+    icon: '#374151', // ✅ 추가
   },
   spacing: {
     xs: 4,
@@ -28,6 +31,7 @@ export const LightTheme = {
     heading: 24,
     body: 16,
     caption: 13,
+    title: 18,
   },
 };
 
@@ -43,6 +47,9 @@ export const DarkTheme = {
     card: '#1f2937',
     error: '#f87171',
     placeholder: '#9ca3af',
+    success: '#22c55e',
+    warning: '#f59e0b',
+    icon: '#f9fafb', // ✅ 추가
   },
   spacing: LightTheme.spacing,
   radius: LightTheme.radius,

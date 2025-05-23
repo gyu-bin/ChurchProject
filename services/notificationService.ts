@@ -1,18 +1,13 @@
 //services/notificationService.ts
+import { db } from "@/firebase/config";
 import {
     addDoc,
-    collection,
-    serverTimestamp,
+    collection, deleteDoc, doc,
     getDocs,
     query,
-    where,
-    doc,
-    updateDoc,deleteDoc
+    serverTimestamp,
+    where
 } from 'firebase/firestore';
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {db} from "@/firebase/config";
 
 
 type NotificationType =
@@ -21,7 +16,8 @@ type NotificationType =
     | 'team_join_approved'     // ✅ 신규
     | 'team_create_approved'   // ✅ 신규
     | 'prayer_private'
-    | 'open_meditation_ranking'; // ✅ 여기 추가
+    | 'open_meditation_ranking'// ✅ 여기 추가
+    | 'schedule_update'; // ✅ 여기 추가
 
 export async function sendNotification({
                                            to,
@@ -33,6 +29,7 @@ export async function sendNotification({
                                            teamName,
                                            applicantEmail,
                                            applicantName,
+                                           scheduleDate
                                        }: {
     to: string;
     message: string;
@@ -43,6 +40,7 @@ export async function sendNotification({
     teamName?: string;
     applicantEmail?: string;
     applicantName?: string;
+    scheduleDate?: string, // ✅ 추가
 }) {
     try {
         if (!to || !message || !type) return;

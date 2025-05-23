@@ -1,35 +1,42 @@
-import React, {useEffect, useRef, useState} from 'react';
-import {
-    View, Text, TouchableOpacity, SafeAreaView, Platform, ScrollView, KeyboardAvoidingView, Alert, Modal, FlatList,
-    LayoutAnimation, UIManager, TextInput
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
-import { useAppTheme } from '@/context/ThemeContext';
-import { useDesign } from '@/context/DesignSystem';
+import DeviceManager from '@/components/DeviceManager';
 import ThemeToggle from "@/components/ThemeToggle";
 import PushSettings from "@/components/VerseNotificationSettings";
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {doc, updateDoc, onSnapshot, deleteDoc} from 'firebase/firestore';
+import { useDesign } from '@/context/DesignSystem';
+import { useAppTheme } from '@/context/ThemeContext';
 import { db } from '@/firebase/config';
-import { removeDeviceToken } from "@/services/registerPushToken";
-import { logoutUser } from "@/redux/slices/userSlice";
+import { useAppDispatch } from '@/hooks/useRedux';
 import { clearPrayers } from "@/redux/slices/prayerSlice";
 import { clearTeams } from "@/redux/slices/teamSlice";
-import { useAppDispatch } from '@/hooks/useRedux';
-import Toast from 'react-native-root-toast';
+import { logoutUser } from "@/redux/slices/userSlice";
+import { reauthenticate } from "@/services/authService";
+import { removeDeviceToken } from "@/services/registerPushToken";
 import { setScrollCallback } from "@/utils/scrollRefManager";
-import DeviceManager from '@/components/DeviceManager';
-import {changePassword, reauthenticate} from "@/services/authService";
-import {Ionicons} from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import bcrypt from "bcryptjs";
+import { useRouter } from 'expo-router';
+import { deleteDoc, doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+    Alert, Modal,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    UIManager,
+    View
+} from 'react-native';
+import Toast from 'react-native-root-toast';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import LottieView from 'lottie-react-native';
 
-import loading1 from '@/assets/lottie/Animation - 1747201461030.json'
-import loading2 from '@/assets/lottie/Animation - 1747201431992.json'
-import loading3 from '@/assets/lottie/Animation - 1747201413764.json'
-import loading4 from '@/assets/lottie/Animation - 1747201330128.json'
+import loading4 from '@/assets/lottie/Animation - 1747201330128.json';
+import loading3 from '@/assets/lottie/Animation - 1747201413764.json';
+import loading2 from '@/assets/lottie/Animation - 1747201431992.json';
+import loading1 from '@/assets/lottie/Animation - 1747201461030.json';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -471,6 +478,7 @@ export default function SettingsScreen() {
                                         {/* 저장 버튼 */}
                                         <TouchableOpacity
                                             onPress={() => {
+                                                if (loading) return; // 로딩 중일 때 터치 무시
                                                 if (!user?.email || !oldPassword || !newPassword) {
                                                     Alert.alert('입력 누락', '기존/새 비밀번호를 모두 입력해주세요.');
                                                     return;
@@ -513,16 +521,17 @@ export default function SettingsScreen() {
                                                 }, 100); // ✅ UI 렌더링 확보 시간
                                             }}
                                             style={{
-                                                backgroundColor: colors.primary,
+                                                backgroundColor: loading ? colors.subtext : colors.primary, // 로딩 중일 때 색상 변경
                                                 paddingVertical: spacing.sm,
                                                 borderRadius: 8,
                                                 alignItems: 'center',
                                                 marginBottom: spacing.md,
+                                                opacity: loading ? 0.7 : 1, // 로딩 중일 때 투명도 추가
                                             }}
                                             disabled={loading}
                                         >
                                             <Text style={{ color: '#fff', fontWeight: 'bold' }}>
-                                                비밀번호 변경 저장
+                                                {loading ? '변경 중...' : '비밀번호 변경 저장'}
                                             </Text>
                                         </TouchableOpacity>
 
@@ -576,6 +585,7 @@ export default function SettingsScreen() {
                             justifyContent: 'center',
                             alignItems: 'center',
                             backgroundColor: 'rgba(0,0,0,0.4)',
+                            zIndex: 9999, // 최상단에 표시되도록 zIndex 추가
                         }}>
                             {loadingAnimation && (
                                 <LottieView

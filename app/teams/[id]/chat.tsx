@@ -40,6 +40,7 @@ import {
     useColorScheme,
     View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Constants
 const BATCH_SIZE = 10;
@@ -104,6 +105,7 @@ export default function TeamChat() {
     const teamId = id as string;
     const teamName = name as string;
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const [input, setInput] = useState('');
     const [messages, setMessages] = useState<Message[]>([]);
     const [userEmail, setUserEmail] = useState('');
@@ -632,7 +634,13 @@ export default function TeamChat() {
     }, [searchResults, currentSearchIndex]);
 
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[
+            styles.safeArea, 
+            { 
+                backgroundColor: colors.background,
+                paddingTop: Platform.OS === 'android' ? insets.top : 0,
+            }
+        ]}>
             <View style={styles.header}>
                 <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
