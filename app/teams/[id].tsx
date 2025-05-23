@@ -1,33 +1,44 @@
 //app/teams/[id].tsx
-import React, {useCallback, useEffect, useState} from 'react';
-import {
-    View, Text, SafeAreaView, TouchableOpacity, Alert, Image,
-    ActivityIndicator, ScrollView, Platform, RefreshControl, Modal, TextInput, KeyboardAvoidingView, FlatList
-} from 'react-native';
-import { useLocalSearchParams, useRouter,useFocusEffect} from 'expo-router';
-import {
-    doc,
-    getDoc,
-    query,
-    collection,
-    where,
-    getDocs,
-    updateDoc,
-    increment,
-    arrayRemove,
-    deleteDoc,
-    setDoc,onSnapshot
-} from 'firebase/firestore';
+import { useDesign } from '@/context/DesignSystem';
+import { useAppTheme } from '@/context/ThemeContext';
 import { db } from '@/firebase/config';
 import { getCurrentUser } from '@/services/authService';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
-import { useDesign } from '@/context/DesignSystem';
-import { useAppTheme } from '@/context/ThemeContext';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {Ionicons} from "@expo/vector-icons";
+import { showToast } from "@/utils/toast"; // ✅ 추가
+import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from 'expo-clipboard';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import {
+    arrayRemove,
+    collection,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    increment,
+    onSnapshot,
+    query,
+    updateDoc,
+    where
+} from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert, Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform, RefreshControl,
+    SafeAreaView,
+    ScrollView,
+    Share,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import Toast from "react-native-root-toast";
-import {showToast} from "@/utils/toast"; // ✅ 추가
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Team = {
     id: string;
@@ -67,6 +78,9 @@ export default function TeamDetail() {
     const [scheduleDate, setScheduleDate] = useState(team?.scheduleDate || '');
     const [isDatePickerVisible, setDatePickerVisible] = useState(false);
 
+    const [alreadyRequested, setAlreadyRequested] = useState(false);
+
+
     const [chatBadgeCount, setChatBadgeCount] = useState(0);
     useEffect(() => {
         getCurrentUser().then(setCurrentUser);
@@ -76,6 +90,26 @@ export default function TeamDetail() {
         const unsubscribe = fetchTeam();
         return () => unsubscribe && unsubscribe();
     }, []);
+
+    useEffect(() => {
+        const checkJoinRequest = async () => {
+            if (!user || !team) return;
+
+            const q = query(
+                collection(db, 'notifications'),
+                where('type', '==', 'team_join_request'),
+                where('teamId', '==', team.id),
+                where('applicantEmail', '==', user.email),
+            );
+
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+                setAlreadyRequested(true); // 이미 신청한 상태로 처리
+            }
+        };
+
+        checkJoinRequest();
+    }, [user, team]);
 
 // 🔄 API 호출 로직 분리
     const fetchTeam = () => {
@@ -366,6 +400,34 @@ export default function TeamDetail() {
         }
     };
 
+    const handleShare = async () => {
+        try {
+            // 딥링크 URL 생성 (expo-router의 경우)
+            const shareUrl = `churchapp://teams/${id}`;
+            const shareMessage = `${team?.name} 모임에 참여해보세요!\n\n${shareUrl}`;
+
+            const result = await Share.share({
+                message: shareMessage,
+                url: shareUrl,  // iOS only
+            });
+
+            if (result.action === Share.sharedAction) {
+                if (result.activityType) {
+                    // shared with activity type of result.activityType
+                    showToast('링크가 공유되었습니다');
+                } else {
+                    // shared
+                    showToast('링크가 공유되었습니다');
+                }
+            }
+        } catch (error) {
+            // 공유 실패 시 클립보드에 복사
+            const shareUrl = `churchapp://teams/${id}`;
+            await Clipboard.setStringAsync(shareUrl);
+            showToast('링크가 클립보드에 복사되었습니다');
+        }
+    };
+
     if (loading) {
         return (
             <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
@@ -414,64 +476,79 @@ export default function TeamDetail() {
     const isFull = (team?.members ?? 0) >= (team?.capacity ?? 99);
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background}}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
             <View style={{
                 flexDirection: 'row',
                 alignItems: 'center',
+                paddingHorizontal: 16,
                 height: 56,
-                justifyContent: 'center',
-                position: 'relative',
-                paddingHorizontal: spacing.lg,
-                marginTop: Platform.OS === 'android' ? insets.top+10 : 0,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.border,
             }}>
-                <TouchableOpacity
+                <TouchableOpacity 
                     onPress={() => router.back()}
-                    style={{
-                        position: 'absolute',
-                        left: spacing.lg,
-                        zIndex: 10,
-                    }}
+                    style={{ padding: 8 }}
                 >
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={{ fontSize: font.heading, fontWeight: '600', color: colors.text }}>{team.name}</Text>
+                
+                <Text style={{
+                    flex: 1,
+                    fontSize: 18,
+                    fontWeight: 'bold',
+                    color: colors.text,
+                    textAlign: 'center',
+                    marginRight: 80,  // Increased to account for both buttons
+                }}>
+                    {team?.name || '모임'}
+                </Text>
 
-                <TouchableOpacity
-                    onPress={handleEnterChat}
-                    style={{
-                        position: 'absolute',
-                        right: spacing.lg,
-                        zIndex: 10,
-                        alignItems: 'center',
-                    }}
-                >
-                    <View style={{ position: 'relative' }}>
-                        <Ionicons name="chatbubble-outline" size={22} color={colors.text} />
+                <View style={{
+                    position: 'absolute',
+                    right: 16,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                }}>
+                    <TouchableOpacity 
+                        onPress={handleShare}
+                        style={{
+                            padding: 8,
+                            marginRight: 8,
+                        }}
+                    >
+                        <Ionicons name="share-outline" size={24} color={colors.text} />
+                    </TouchableOpacity>
 
-                        {chatBadgeCount > 0 && (
-                            <View
-                                style={{
+                    <TouchableOpacity
+                        onPress={handleEnterChat}
+                        style={{ padding: 8 }}
+                    >
+                        <View style={{ position: 'relative' }}>
+                            <Ionicons name="chatbubble-outline" size={22} color={colors.text} />
+                            {chatBadgeCount > 0 && (
+                                <View style={{
                                     position: 'absolute',
                                     top: -5,
-                                    right: -8,
-                                    backgroundColor: 'red',
+                                    right: -5,
+                                    backgroundColor: colors.primary,
                                     borderRadius: 10,
                                     minWidth: 16,
                                     height: 16,
                                     justifyContent: 'center',
                                     alignItems: 'center',
-                                    paddingHorizontal: 4,
-                                }}
-                            >
-                                <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>
-                                    {chatBadgeCount}
-                                </Text>
-                            </View>
-                        )}
-                    </View>
-
-                    <Text style={{ fontSize: 10, color: colors.text, marginTop: 2 }}>팀 채팅방</Text>
-                </TouchableOpacity>
+                                }}>
+                                    <Text style={{
+                                        color: '#fff',
+                                        fontSize: 10,
+                                        fontWeight: 'bold',
+                                    }}>
+                                        {chatBadgeCount}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <ScrollView contentContainerStyle={{ paddingLeft: spacing.lg, paddingRight: spacing.lg, paddingBottom: '15%' ,gap: spacing.lg}}
@@ -746,10 +823,10 @@ export default function TeamDetail() {
 
                 {!isFull && !isCreator && !team.membersList?.includes(user.email) && (
                     <TouchableOpacity
-                        onPress={handleJoin}
-                        disabled={isFull}
+                        onPress={alreadyRequested ? undefined : handleJoin}
+                        disabled={isFull || alreadyRequested}
                         style={{
-                            backgroundColor: isFull ? colors.border : colors.primary,
+                            backgroundColor: isFull || alreadyRequested ? colors.border : colors.primary,
                             paddingVertical: spacing.md,
                             borderRadius: radius.md,
                             alignItems: 'center',
@@ -757,7 +834,7 @@ export default function TeamDetail() {
                         }}
                     >
                         <Text style={{ color: '#fff', fontSize: font.body, fontWeight: '600' }}>
-                            {isFull ? '모집마감' : '가입 신청하기'}
+                            {isFull ? '모집마감' : alreadyRequested ? '가입 신청 완료' : '가입 신청하기'}
                         </Text>
                     </TouchableOpacity>
                 )}

@@ -17,7 +17,6 @@ import { registerPushToken } from '@/services/registerPushToken';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@/hooks/useAuth';
 import { registerDevice } from '@/services/registerDevice';
-import {tryBiometricLogin} from "@/utils/biometricLogin";
 import Toast from "react-native-root-toast"; // 경로는 실제 위치에 맞게
 import LottieView from 'lottie-react-native';
 
@@ -25,6 +24,7 @@ import loading1 from '@/assets/lottie/Animation - 1747201461030.json'
 import loading2 from '@/assets/lottie/Animation - 1747201431992.json'
 import loading3 from '@/assets/lottie/Animation - 1747201413764.json'
 import loading4 from '@/assets/lottie/Animation - 1747201330128.json'
+import {Ionicons} from "@expo/vector-icons";
 
 
 export default function LoginScreen() {
@@ -37,56 +37,58 @@ export default function LoginScreen() {
     const [loadingAnimation, setLoadingAnimation] = useState<any>(null); // 선택된 애니메이션
 
     const loadingAnimations = [loading1, loading2, loading3, loading4];
+    const [buttonDisabled, setButtonDisabled] = useState(false);
+    const [autoLoginChecked, setAutoLoginChecked] = useState(false);
 
-    // 로그인 화면 useEffect에서 자동 시도
     useEffect(() => {
-        const attemptBiometric = async () => {
-            const user = await tryBiometricLogin();
-            if (user) {
-                await registerPushToken(); // 자동 로그인 처리
-                router.replace('/');
+        const checkAutoLogin = async () => {
+            const saved = await AsyncStorage.getItem('autoLogin');
+            if (saved === 'true') {
+                const raw = await AsyncStorage.getItem('currentUser');
+                if (raw) {
+                    const user = JSON.parse(raw);
+                    await registerPushToken();
+                    await registerDevice();
+                    await reload();
+                    router.replace('/');
+                }
             }
         };
 
-        attemptBiometric();
+        checkAutoLogin();
     }, []);
 
     const handleLogin = async () => {
-        setLoading(true); // ✅ 1. 로딩 상태 바로 반영 시도
+        if (buttonDisabled) return;
+        setButtonDisabled(true);
+
+        setLoading(true);
         setLoadingAnimation(loadingAnimations[Math.floor(Math.random() * loadingAnimations.length)]);
 
         try {
+            if (autoLoginChecked) {
+                await AsyncStorage.setItem('autoLogin', 'true');
+            } else {
+                await AsyncStorage.removeItem('autoLogin');
+            }
+
             const user = await login(email.trim(), password.trim());
             await AsyncStorage.setItem('currentUser', JSON.stringify(user));
 
-            // const saved = await AsyncStorage.getItem(`useBiometric:${user.email}`);
-            /*if (saved !== 'true') {
-                console.log('face id')
-                Alert.alert(
-                    'Face ID 등록',
-                    '다음 로그인부터 Face ID를 사용하시겠습니까?',
-                    [
-                        { text: '아니오', style: 'cancel' },
-                        {
-                            text: '예',
-                            onPress: async () => {
-                                await AsyncStorage.setItem(`useBiometric:${user.email}`, 'true');
-                                Toast.show('✅ Face ID가 등록되었습니다.');
-                            },
-                        },
-                    ]
-                );
-            }*/
-
             await registerPushToken();
-            await registerDevice();    // ✅ 기기 등록 추가
+            await registerDevice();
             await reload();
+
+            Toast.show('환영합니다.');
+
             setTimeout(() => {
                 setLoading(false);
                 router.replace('/');
             }, 2000);
         } catch (error: any) {
             Alert.alert('로그인 실패', error.message);
+            setLoading(false);
+            setButtonDisabled(false);  // 실패 시 복구
         }
     };
 
@@ -123,9 +125,25 @@ export default function LoginScreen() {
                             />
                         </View>
 
-                        <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                            <TouchableOpacity onPress={() => setAutoLoginChecked(prev => !prev)} style={{ marginRight: 8 }}>
+                                <Ionicons
+                                    name={autoLoginChecked ? 'checkbox' : 'square-outline'}
+                                    size={24}
+                                    color="#2563eb"
+                                />
+                            </TouchableOpacity>
+                            <Text style={{ color: '#111827', fontSize: 14 }}>자동 로그인</Text>
+                        </View>
+
+                        <TouchableOpacity
+                            onPress={handleLogin}
+                            disabled={loading || buttonDisabled}
+                            style={[styles.button, (loading || buttonDisabled) && { opacity: 0.5 }]}
+                        >
                             <Text style={styles.buttonText}>로그인</Text>
                         </TouchableOpacity>
+
                         <Modal visible={loading} transparent animationType="fade">
                             <View
                                 style={{
