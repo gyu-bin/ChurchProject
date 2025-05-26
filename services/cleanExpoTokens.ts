@@ -1,6 +1,6 @@
 // services/cleanExpoTokens.ts
-import { collection, getDocs, query, where, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/firebase/config';
+import { collection, deleteDoc, doc, getDocs, query } from 'firebase/firestore';
 
 export async function cleanDuplicateExpoTokens() {
     try {
@@ -31,7 +31,7 @@ export async function cleanDuplicateExpoTokens() {
             }
         }
 
-        console.log('✅ 중복 토큰 정리 완료');
+        // console.log('✅ 중복 토큰 정리 완료');
     } catch (err) {
         console.error('❌ 중복 토큰 정리 실패:', err);
     }

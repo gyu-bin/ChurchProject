@@ -155,46 +155,76 @@ export default function PushDevotional() {
         <View style={{
             backgroundColor: cardColor,
             padding: 20,
-            borderRadius: 12,
-            marginVertical: 12,
+            borderRadius: 16,
+            marginVertical: 16,
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.1,
-            shadowRadius: 4,
-            elevation: 4,
+            shadowRadius: 6,
+            elevation: 5,
         }}>
-            <Text style={{ fontSize: 18, fontWeight: 'bold', color: textColor, marginBottom: 12 }}>
+            {/* 타이틀 */}
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: textColor, marginBottom: 16 }}>
                 📖 오늘의 말씀 알림
             </Text>
 
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ color: textColor, fontSize: 16 }}>알림 받기</Text>
+            {/* 알림 스위치 */}
+            <View style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingBottom: 12,
+                borderBottomWidth: 1,
+                borderColor: '#e5e7eb',
+            }}>
+                <Text style={{ fontSize: 16, color: textColor }}>알림 받기</Text>
                 <Switch value={enabled} onValueChange={toggleSwitch} />
             </View>
 
+            {/* 알림 시간 */}
             {enabled && (
-                <>
-                    <Text style={{ color: subTextColor, marginTop: 10 }}>
-                        설정된 시간: {formatAMPM(time)}
+                <View style={{ marginTop: 16 }}>
+                    <Text style={{ color: subTextColor, fontSize: 14, marginBottom: 6 }}>
+                        설정된 시간: <Text style={{ fontWeight: '600', color: textColor }}>{formatAMPM(time)}</Text>
                     </Text>
                     <TouchableOpacity onPress={() => setShowPicker(true)}>
-                        <Text style={{ color: '#3b82f6', fontSize: 14, marginTop: 4 }}>시간 변경</Text>
+                        <Text style={{
+                            fontSize: 14,
+                            color: '#3b82f6',
+                            fontWeight: '500',
+                            paddingVertical: 6,
+                        }}>
+                            시간 변경
+                        </Text>
                     </TouchableOpacity>
-                </>
+                </View>
             )}
 
+            {/* 시간 선택 Picker */}
             {showPicker && (
                 Platform.OS === 'ios' ? (
-                    <Modal visible={showPicker} transparent animationType="slide">
+                    <Modal visible={showPicker} transparent animationType="fade">
                         <View style={{
-                            flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
-                            justifyContent: 'center', alignItems: 'center'
+                            flex: 1,
+                            backgroundColor: 'rgba(0,0,0,0.4)',
+                            justifyContent: 'center',
+                            alignItems: 'center',
                         }}>
                             <View style={{
                                 backgroundColor: isDark ? '#1f2937' : '#fff',
-                                padding: 24, borderRadius: 16, width: '80%', alignItems: 'center'
+                                padding: 24,
+                                borderRadius: 16,
+                                width: '80%',
+                                alignItems: 'center',
                             }}>
-                                <Text style={{ fontSize: 16, marginBottom: 12, color: textColor }}>시간 선택</Text>
+                                <Text style={{
+                                    fontSize: 16,
+                                    fontWeight: '600',
+                                    marginBottom: 12,
+                                    color: textColor
+                                }}>
+                                    시간 선택
+                                </Text>
                                 <DateTimePicker
                                     mode="time"
                                     value={tempTime}
@@ -217,7 +247,7 @@ export default function PushDevotional() {
                     <DateTimePicker
                         mode="time"
                         value={tempTime}
-                        display="spinner"
+                        display="clock"
                         is24Hour={false}
                         onChange={handleAndroidTimeChange}
                     />

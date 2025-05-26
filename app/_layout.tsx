@@ -89,7 +89,7 @@ export default function RootLayout() {
                 await AsyncStorage.setItem(storageKey, todayKey);
                 console.log('✅ 푸시 전송 완료');
             } else {
-                console.log('ℹ️ 푸시 전송 조건 미충족 or 이미 전송됨');
+                // console.log('ℹ️ 푸시 전송 조건 미충족 or 이미 전송됨');
             }
         };
 

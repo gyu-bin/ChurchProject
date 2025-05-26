@@ -1315,9 +1315,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     headerTitleContainer: {
-        flex: 1,
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
         alignItems: 'center',
         justifyContent: 'center',
+        zIndex: -1,
     },
     headerTitle: {
         fontSize: 20,
@@ -1502,7 +1507,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        minWidth: 80,
+        width: 40,
         justifyContent: 'flex-end',
     },
     notificationButton: {

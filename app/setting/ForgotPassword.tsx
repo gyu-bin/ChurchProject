@@ -4,23 +4,22 @@ import {
     StyleSheet, Alert, SafeAreaView, Platform
 } from 'react-native';
 import { getDoc, doc, updateDoc } from 'firebase/firestore';
+import { useNavigation } from 'expo-router';
 import { db } from '@/firebase/config';
 import bcrypt from 'bcryptjs';
 import { useDesign } from '@/context/DesignSystem';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function ForgotPasswordScreen() {
     const [email, setEmail] = useState('');
     const [resetSuccess, setResetSuccess] = useState(false);
     const { colors, spacing, font } = useDesign();
+    const navigation = useNavigation();
 
-    // ✅ RN 환경 대응
+    // RN 환경 대응
     if (bcrypt.setRandomFallback) {
         bcrypt.setRandomFallback((len: number) => {
-            const result = [];
-            for (let i = 0; i < len; i++) {
-                result.push(Math.floor(Math.random() * 256));
-            }
-            return result;
+            return Array.from({ length: len }, () => Math.floor(Math.random() * 256));
         });
     }
 
@@ -39,7 +38,7 @@ export default function ForgotPasswordScreen() {
             await updateDoc(ref, { password: hashed });
 
             setResetSuccess(true);
-            Alert.alert('비밀번호 초기화 완료', '비밀번호가 1234로 초기화되었습니다.\n로그인 후 꼭 변경해주세요.');
+            Alert.alert('비밀번호 초기화 완료', '비밀번호가 1234로 초기화되었습니다.\n비밀번호를 꼭 변경해주세요.');
         } catch (err) {
             console.error('비밀번호 초기화 실패:', err);
             Alert.alert('오류', '비밀번호 초기화 중 문제가 발생했습니다.');
@@ -48,57 +47,50 @@ export default function ForgotPasswordScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-            <Text style={[styles.title, { color: colors.text }]}>🔑 비밀번호 찾기</Text>
+            {/* 헤더 */}
+            <View style={styles.header}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 8 }}>
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>비밀번호 찾기</Text>
+                <View style={{ width: 32 }} />
+            </View>
 
-            <TextInput
-                style={[
-                    styles.input,
-                    {
-                        borderColor: colors.border,
-                        color: colors.text,
-                        backgroundColor: colors.card,
-                    },
-                ]}
-                placeholder="이메일을 입력하세요"
-                placeholderTextColor={colors.subtext}
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-            />
+            {/* 중앙 콘텐츠 */}
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', bottom: '15%',paddingHorizontal: 32 }}>
+                <Text style={[styles.title, { color: colors.text }]}>🔐 이메일을 입력하세요</Text>
 
-            <TouchableOpacity
-                onPress={handleReset}
-                style={[
-                    styles.button,
-                    {
-                        backgroundColor: colors.primary,
-                        marginTop: spacing.md,
-                        marginBottom: spacing.lg,
-                    },
-                ]}
-            >
-                <Text style={[styles.buttonText, { color: '#fff' }]}>비밀번호 초기화</Text>
-            </TouchableOpacity>
+                <TextInput
+                    style={[
+                        styles.input,
+                        {
+                            borderColor: colors.border,
+                            color: colors.text,
+                            backgroundColor: colors.card,
+                        },
+                    ]}
+                    placeholder="이메일 주소"
+                    placeholderTextColor={colors.subtext}
+                    value={email}
+                    onChangeText={setEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                />
 
-            {resetSuccess && (
-                <View
-                    style={{
-                        backgroundColor: '#e6f4ea',
-                        borderRadius: 8,
-                        padding: spacing.md,
-                        borderWidth: 1,
-                        borderColor: '#2ecc71',
-                    }}
+                <TouchableOpacity
+                    onPress={handleReset}
+                    style={[styles.button, { backgroundColor: colors.primary }]}
                 >
-                    <Text style={{ color: '#2ecc71', fontWeight: 'bold', fontSize: 15 }}>
-                        ✅ 초기화된 비밀번호: 1234
-                    </Text>
-                    <Text style={{ color: colors.subtext, marginTop: 4, fontSize: 13 }}>
-                        로그인 후 꼭 비밀번호를 변경해주세요.
-                    </Text>
-                </View>
-            )}
+                    <Text style={[styles.buttonText, { color: '#fff' }]}>비밀번호 초기화</Text>
+                </TouchableOpacity>
+
+                {resetSuccess && (
+                    <View style={styles.successBox}>
+                        <Text style={styles.successTitle}>✅ 초기화된 비밀번호: 1234</Text>
+                        <Text style={styles.successSub}>로그인 후 꼭 비밀번호를 변경해주세요.</Text>
+                    </View>
+                )}
+            </View>
         </SafeAreaView>
     );
 }
@@ -106,29 +98,60 @@ export default function ForgotPasswordScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        paddingHorizontal: 25,
-        justifyContent: 'center',
-        paddingTop: Platform.OS === 'android' ? 20 : 0,
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        height: 56,
+    },
+    headerTitle: {
+        fontSize: 20,
+        fontWeight: '600',
     },
     title: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        marginBottom: 24,
+        fontSize: 18,
+        fontWeight: '500',
+        marginBottom: 20,
     },
     input: {
+        width: '100%',
         borderWidth: 1,
         borderRadius: 10,
         fontSize: 16,
         paddingVertical: Platform.OS === 'ios' ? 12 : 10,
         paddingHorizontal: 16,
+        marginBottom: 20,
     },
     button: {
-        padding: 16,
+        paddingVertical: 14,
+        paddingHorizontal: 32,
         borderRadius: 10,
         alignItems: 'center',
+        width: '100%',
+        marginBottom: 24,
     },
     buttonText: {
         fontSize: 16,
         fontWeight: '600',
+    },
+    successBox: {
+        backgroundColor: '#e6f4ea',
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#2ecc71',
+        alignItems: 'center',
+    },
+    successTitle: {
+        color: '#2ecc71',
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+    successSub: {
+        color: '#666',
+        marginTop: 6,
+        fontSize: 13,
     },
 });

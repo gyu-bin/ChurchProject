@@ -31,6 +31,8 @@ export default function CatechismPage() {
     const { colors, font, spacing, radius } = useDesign();
     const insets = useSafeAreaInsets();
 
+    const [fontScale, setFontScale] = useState(1); // 기본값: 1배
+
     useEffect(() => {
         const loadState = async () => {
             const storedCate = await AsyncStorage.getItem('last_catechism_category');
@@ -115,7 +117,7 @@ export default function CatechismPage() {
                 onPress={openQuestionModal}
                 style={{ backgroundColor: colors.surface, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: colors.border }}
             >
-                <Text style={{ fontSize: font.body, fontWeight: '600', color: colors.primary }}>
+                <Text style={{ fontSize: font.heading, fontWeight: '600', color: colors.primary }}>
                     문항 {currentIndex + 1} ▾
                 </Text>
             </TouchableOpacity>
@@ -134,7 +136,7 @@ export default function CatechismPage() {
                                 <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.primary, marginBottom: spacing.md }}>
                                     Q{item.question_number}. {item.question}
                                 </Text>
-                                <Text style={{ fontSize: font.body, color: colors.text, lineHeight: 26 }}>
+                                <Text style={{ fontSize: font.body * fontScale, color: colors.text, lineHeight: 26 * fontScale }}>
                                     {item.answer}
                                 </Text>
                                 {Array.isArray(item.references) && item.references.length > 0 && (
@@ -234,6 +236,40 @@ export default function CatechismPage() {
                     </View>
                 </TouchableOpacity>
             </Modal>
+
+            <View
+                style={{
+                    position: 'absolute',
+                    bottom: insets.bottom,
+                    right: spacing.xl,
+                    backgroundColor: colors.surface,
+                    borderRadius: radius.md,
+                    paddingHorizontal: spacing.sm,
+                    paddingVertical: spacing.xs,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    shadowColor: '#000',
+                    shadowOpacity: 0.1,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowRadius: 4,
+                    elevation: 4,
+                }}
+            >
+                <TouchableOpacity onPress={() => setFontScale(prev => Math.max(0.8, prev - 0.1))}>
+                    <Text style={{ fontSize: 16 * fontScale, color: colors.text, fontWeight: 'bold', paddingHorizontal: 8 }}>
+                        가−
+                    </Text>
+                </TouchableOpacity>
+
+                {/* 구분선 */}
+                <View style={{ width: 1, height: 20, backgroundColor: colors.border, marginHorizontal: spacing.xs }} />
+
+                <TouchableOpacity onPress={() => setFontScale(prev => Math.min(1.8, prev + 0.1))}>
+                    <Text style={{ fontSize: 20 * fontScale, color: colors.text, fontWeight: 'bold', paddingHorizontal: 8 }}>
+                        가+
+                    </Text>
+                </TouchableOpacity>
+            </View>
         </SafeAreaView>
     );
 }

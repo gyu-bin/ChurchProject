@@ -1,10 +1,10 @@
 // utils/notificationPermission.ts
-import { Alert, Linking, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { Alert, Linking, Platform } from 'react-native';
 
 export async function requestNotificationPermission() {
     const { status } = await Notifications.getPermissionsAsync();
-    console.log('현재 알림 권한 상태:', status); // ← 추가
+    // console.log('현재 알림 권한 상태:', status); // ← 추가
 
     if (status !== 'granted') {
         const { status: newStatus } = await Notifications.requestPermissionsAsync();

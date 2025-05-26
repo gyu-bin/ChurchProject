@@ -23,7 +23,7 @@ import {
     where,
     writeBatch
 } from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -74,6 +74,8 @@ type VoteStats = {
     no: number;
     maybe: number;
     total: number;
+    participationRate: string;
+    totalMembers: number;
 };
 
 type Schedule = {
@@ -82,6 +84,13 @@ type Schedule = {
     createdBy: string;
     creatorName: string;
     status: 'active' | 'cancelled';
+};
+
+type VoteStatusBarProps = {
+    status: string;
+    count: number;
+    total: number;
+    color: string;
 };
 
 export default function TeamDetail() {
@@ -125,6 +134,101 @@ export default function TeamDetail() {
         '카페',
     ]);
 
+    const [memberSearchQuery, setMemberSearchQuery] = useState('');
+
+    // Memoize sorted and filtered members
+    const sortedAndFilteredMembers = useMemo(() => {
+        return [...memberUsers]
+            .sort((a, b) => {
+                if (a.email === team?.leaderEmail) return -1;
+                if (b.email === team?.leaderEmail) return 1;
+                return a.name.localeCompare(b.name);
+            })
+            .filter(member => 
+                memberSearchQuery === '' || 
+                member.name.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
+                member.email.toLowerCase().includes(memberSearchQuery.toLowerCase())
+            );
+    }, [memberUsers, team?.leaderEmail, memberSearchQuery]);
+
+    // Enhance vote statistics calculation
+    const voteStats = useMemo(() => {
+        const voteArray = Object.values(votes);
+        const total = voteArray.length;
+        const totalMembers = team?.membersList?.length || 0;
+        const participationRate = totalMembers > 0 ? ((total / totalMembers) * 100).toFixed(1) : '0';
+        
+        return {
+            yes: voteArray.filter(v => v.status === 'yes').length,
+            no: voteArray.filter(v => v.status === 'no').length,
+            maybe: voteArray.filter(v => v.status === 'maybe').length,
+            total,
+            participationRate: `${participationRate}%`,
+            totalMembers
+        };
+    }, [votes, team?.membersList?.length]);
+
+    // Fix VoteStatusBar component definition
+    const VoteStatusBar = ({ status, count, total, color }: VoteStatusBarProps) => (
+        <View style={{ marginBottom: spacing.sm }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                <Text style={{ fontSize: font.caption, color: colors.text }}>{status}</Text>
+                <Text style={{ fontSize: font.caption, color: colors.text }}>{count}명</Text>
+            </View>
+            <View style={{
+                height: 8,
+                backgroundColor: colors.border,
+                borderRadius: 4,
+                overflow: 'hidden',
+            }}>
+                <View style={{
+                    width: `${(count / (total || 1)) * 100}%`,
+                    height: '100%',
+                    backgroundColor: color,
+                    borderRadius: 4,
+                }} />
+            </View>
+        </View>
+    );
+
+    // Memoize vote status component with the fixed VoteStatusBar
+    const VoteStatusComponent = useMemo(() => {
+        return (
+            <View style={{ marginTop: spacing.md }}>
+                <View style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    marginBottom: spacing.sm
+                }}>
+                    <Text style={{ fontSize: font.caption, color: colors.text }}>
+                        투표 현황
+                    </Text>
+                    <Text style={{ fontSize: font.caption, color: colors.text }}>
+                        참여율: {voteStats.participationRate} ({voteStats.total}/{voteStats.totalMembers}명)
+                    </Text>
+                </View>
+                <VoteStatusBar
+                    status="✅ 참석 가능"
+                    count={voteStats.yes}
+                    total={voteStats.total}
+                    color={colors.success}
+                />
+                <VoteStatusBar
+                    status="🤔 미정"
+                    count={voteStats.maybe}
+                    total={voteStats.total}
+                    color={colors.warning}
+                />
+                <VoteStatusBar
+                    status="❌ 불참"
+                    count={voteStats.no}
+                    total={voteStats.total}
+                    color={colors.error}
+                />
+            </View>
+        );
+    }, [voteStats, colors, font, spacing]);
+
     useEffect(() => {
         getCurrentUser().then(setCurrentUser);
     }, []);
@@ -162,7 +266,7 @@ export default function TeamDetail() {
         const teamRef = doc(db, 'teams', id);
         const unsubscribe = onSnapshot(teamRef, (docSnap) => {
             if (!docSnap.exists()) return;
-            
+
             const teamData = docSnap.data();
             if (teamData.scheduleDate) {
                 setScheduleDate(teamData.scheduleDate);
@@ -248,7 +352,7 @@ export default function TeamDetail() {
     }, [id]); // team.id 대신 id 사용
 
     useEffect(() => {
-        if (!team?.id || !scheduleDate) return;
+        if (!team?.id || !scheduleDate || !user) return;
 
         const votesRef = collection(db, 'teams', team.id, 'scheduleVotes');
         const q = query(votesRef, where('scheduleDate', '==', scheduleDate));
@@ -257,6 +361,8 @@ export default function TeamDetail() {
             const votesData: { [key: string]: Vote } = {};
             snapshot.docs.forEach((doc) => {
                 votesData[doc.id] = doc.data() as Vote;
+
+                // ✅ 해당 부분이 핵심: 현재 사용자의 투표 상태를 반영
                 if (doc.id === user?.email) {
                     setMyVote(doc.data().status as VoteStatus);
                 }
@@ -265,9 +371,10 @@ export default function TeamDetail() {
         });
 
         return () => unsubscribe();
-    }, [team?.id, scheduleDate]);
+    }, [team?.id, scheduleDate, user]);  // ✅ user를 의존성에 추가
 
-    const handleJoin = async () => {
+    // Optimize handlers with useCallback
+    const handleJoin = useCallback(async () => {
         if (!team || !user) return;
 
         if (team.membersList?.includes(user.email)) {
@@ -280,36 +387,38 @@ export default function TeamDetail() {
             return;
         }
 
-        // ✅ 1. Push 토큰 가져오기 (email 기준으로)
-        const q = query(collection(db, 'expoTokens'), where('email', '==', team.leaderEmail));
-        const snap = await getDocs(q);
-        const tokens: string[] = snap.docs.map(doc => doc.data().token).filter(Boolean);
+        try {
+            const q = query(collection(db, 'expoTokens'), where('email', '==', team.leaderEmail));
+            const snap = await getDocs(q);
+            const tokens: string[] = snap.docs.map(doc => doc.data().token).filter(Boolean);
 
-// ✅ 2. Firestore 알림 저장 (email 저장)
-        await sendNotification({
-            to: team.leaderEmail, // Firestore 알림 받는 주체(email)
-            message: `${user.name}님이 "${team.name}" 모임에 가입 신청했습니다.`,
-            type: 'team_join_request',
-            link: '/notifications',
-            teamId: team.id,
-            teamName: team.name,
-            applicantEmail: user.email,
-            applicantName: user.name,
-        });
-
-// ✅ 3. Expo 푸시 전송 (token 기반)
-        if (tokens.length > 0) {
-            await sendPushNotification({
-                to: tokens,
-                title: '🙋 소모임 가입 신청',
-                body: `${user.name}님의 신청`,
+            await sendNotification({
+                to: team.leaderEmail,
+                message: `${user.name}님이 "${team.name}" 모임에 가입 신청했습니다.`,
+                type: 'team_join_request',
+                link: '/notifications',
+                teamId: team.id,
+                teamName: team.name,
+                applicantEmail: user.email,
+                applicantName: user.name,
             });
-        }
 
-        showToast('✅가입 신청 완료: 모임장에게 신청 메시지를 보냈습니다.');
-        fetchTeam();  // ✅ 추가된 부분
-        router.back();
-    };
+            if (tokens.length > 0) {
+                await sendPushNotification({
+                    to: tokens,
+                    title: '🙋 소모임 가입 신청',
+                    body: `${user.name}님의 신청`,
+                });
+            }
+
+            showToast('✅가입 신청 완료: 모임장에게 신청 메시지를 보냈습니다.');
+            fetchTeam();
+            router.back();
+        } catch (error) {
+            console.error('가입 신청 실패:', error);
+            showToast('⚠️ 가입 신청에 실패했습니다.');
+        }
+    }, [team, user, router]);
 
     const openEditModal = () => {
         if (!team) return;
@@ -362,10 +471,9 @@ export default function TeamDetail() {
         }
     };
 
-    const handleKick = async (email: string) => {
+    const handleKick = useCallback(async (email: string) => {
         if (!team) return;
 
-        // ✅ 이메일에 해당하는 사용자 이름 찾기
         const member = memberUsers.find(m => m.email === email);
         const displayName = member?.name || email;
 
@@ -391,12 +499,12 @@ export default function TeamDetail() {
                                 members: updatedData.members,
                                 capacity: updatedData.capacity,
                                 membersList: updatedData.membersList,
-                                ...updatedData, // 기타 필드
+                                ...updatedData,
                             });
                         }
 
                         setMemberUsers(prev => prev.filter(m => m.email !== email));
-                        fetchTeam();  // ✅ 추가된 부분
+                        fetchTeam();
                         Alert.alert('강퇴 완료', `${displayName}님이 강퇴되었습니다.`);
                     } catch (e) {
                         console.error('❌ 강퇴 실패:', e);
@@ -405,7 +513,7 @@ export default function TeamDetail() {
                 }
             }
         ]);
-    };
+    }, [team, memberUsers, fetchTeam]);
 
     const deleteTeam = async (id: string) => {
         Alert.alert('삭제 확인', '정말로 이 소모임을 삭제하시겠습니까?', [
@@ -449,7 +557,7 @@ export default function TeamDetail() {
         try {
             // 1. 팀 문서 업데이트
             const teamRef = doc(db, 'teams', team.id);
-            await updateDoc(teamRef, { 
+            await updateDoc(teamRef, {
                 scheduleDate: newDate,
                 lastScheduleUpdate: Date.now(),
             });
@@ -478,7 +586,7 @@ export default function TeamDetail() {
 
             // 4. 모임원들에게 알림 전송
             if (!team.membersList) return;
-            
+
             const emails = team.membersList.filter(email => email !== team.leaderEmail);
             if (emails.length > 0) {
             const tokenQueryBatches = [];
@@ -504,7 +612,7 @@ export default function TeamDetail() {
                     });
                 }
 
-                const notificationPromises = emails.map(email => 
+                const notificationPromises = emails.map(email =>
                     sendNotification({
                         to: email,
                         message: `${team.name} 모임의 일정이 ${newDate}로 정해졌습니다.`,
@@ -553,11 +661,26 @@ export default function TeamDetail() {
         }
     };
 
-    const handleVote = async (status: VoteStatus) => {
+    const handleVote = useCallback(async (status: VoteStatus) => {
         if (!team?.id || !scheduleDate || !user) return;
 
+        const voteRef = doc(db, 'teams', team.id, 'scheduleVotes', user.email);
+
+        if (myVote === status) {
+            try {
+                await deleteDoc(voteRef);
+                setMyVote(null);
+                setSelectedVote(null);
+                setShowVoteStatus(false);
+                showToast('⛔️ 투표가 취소되었습니다.');
+            } catch (e) {
+                console.error('❌ 투표 취소 실패:', e);
+                showToast('⚠️ 투표 취소 중 문제가 발생했습니다.');
+            }
+            return;
+        }
+
         try {
-            const voteRef = doc(db, 'teams', team.id, 'scheduleVotes', user.email);
             await setDoc(voteRef, {
                 userId: user.email,
                 userName: user.name,
@@ -568,49 +691,13 @@ export default function TeamDetail() {
 
             setMyVote(status);
             setSelectedVote(null);
-            showToast('✅ 투표가 완료되었습니다.');
-            
-            // 투표 현황을 바로 보여주기 위해 모달 상태 변경
             setShowVoteStatus(true);
+            showToast('✅ 투표가 완료되었습니다.');
         } catch (error) {
             console.error('투표 저장 실패:', error);
             showToast('⚠️ 투표 저장에 실패했습니다.');
         }
-    };
-
-    // Add function to calculate vote statistics
-    const calculateVoteStats = (): VoteStats => {
-        const voteArray = Object.values(votes);
-        const total = voteArray.length;
-        return {
-            yes: voteArray.filter(v => v.status === 'yes').length,
-            no: voteArray.filter(v => v.status === 'no').length,
-            maybe: voteArray.filter(v => v.status === 'maybe').length,
-            total
-        };
-    };
-
-    const VoteStatusBar = ({ status, count, total, color }: { status: string; count: number; total: number; color: string }) => (
-        <View style={{ marginBottom: spacing.sm }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                <Text style={{ fontSize: font.caption, color: colors.text }}>{status}</Text>
-                <Text style={{ fontSize: font.caption, color: colors.text }}>{count}명</Text>
-            </View>
-            <View style={{ 
-                height: 8,
-                backgroundColor: colors.border,
-                borderRadius: 4,
-                overflow: 'hidden',
-            }}>
-                <View style={{
-                    width: `${(count / (total || 1)) * 100}%`,
-                    height: '100%',
-                    backgroundColor: color,
-                    borderRadius: 4,
-                }} />
-            </View>
-        </View>
-    );
+    }, [team?.id, scheduleDate, user, myVote]);
 
     const handleUpdateLocation = async (location: string) => {
         if (!team) return;
@@ -637,10 +724,10 @@ export default function TeamDetail() {
 
     if (loading) {
         return (
-            <SafeAreaView style={{ 
-                flex: 1, 
-                justifyContent: 'center', 
-                alignItems: 'center', 
+            <SafeAreaView style={{
+                flex: 1,
+                justifyContent: 'center',
+                alignItems: 'center',
                 backgroundColor: colors.background,
                 paddingTop: Platform.OS === 'android' ? insets.top : 0,
             }}>
@@ -651,10 +738,10 @@ export default function TeamDetail() {
 
     if (!team) {
         return (
-            <SafeAreaView style={{ 
-                flex: 1, 
-                justifyContent: 'center', 
-                alignItems: 'center', 
+            <SafeAreaView style={{
+                flex: 1,
+                justifyContent: 'center',
+                alignItems: 'center',
                 backgroundColor: colors.background,
                 paddingTop: Platform.OS === 'android' ? insets.top : 0,
             }}>
@@ -694,9 +781,105 @@ export default function TeamDetail() {
 
     const isFull = (team?.members ?? 0) >= (team?.capacity ?? 99);
 
+    // Modify the members list section
+    const renderMembersList = () => (
+        <View style={{
+            backgroundColor: colors.surface,
+            borderRadius: radius.lg,
+            padding: spacing.lg,
+            marginBottom: spacing.lg,
+        }}>
+            <Text style={{
+                fontSize: font.body,
+                fontWeight: '600',
+                color: colors.text,
+                marginBottom: spacing.md,
+            }}>
+                🙋 참여자 ({memberUsers.length}명)
+            </Text>
+
+            {/* 멤버 검색 */}
+            <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: colors.background,
+                borderRadius: radius.md,
+                paddingHorizontal: spacing.sm,
+                marginBottom: spacing.md,
+            }}>
+                <Ionicons name="search" size={20} color={colors.subtext} />
+                <TextInput
+                    value={memberSearchQuery}
+                    onChangeText={setMemberSearchQuery}
+                    placeholder="이름으로 검색"
+                    placeholderTextColor={colors.subtext}
+                    style={{
+                        flex: 1,
+                        paddingVertical: spacing.sm,
+                        paddingHorizontal: spacing.sm,
+                        color: colors.text,
+                    }}
+                />
+                {memberSearchQuery !== '' && (
+                    <TouchableOpacity onPress={() => setMemberSearchQuery('')}>
+                        <Ionicons name="close-circle" size={20} color={colors.subtext} />
+                    </TouchableOpacity>
+                )}
+            </View>
+
+            {/* 멤버 리스트 */}
+            {sortedAndFilteredMembers.map(member => (
+                <View
+                    key={member.email}
+                    style={{
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: spacing.sm,
+                    }}
+                >
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={{
+                            color: member.email === team?.leaderEmail ? colors.primary : colors.text,
+                            fontWeight: member.email === team?.leaderEmail ? 'bold' : 'normal',
+                            fontSize: font.body,
+                        }}>
+                            {member.email === team?.leaderEmail && '👑 '}
+                            {member.name}
+                        </Text>
+                    </View>
+
+                    {isCreator && member.email !== user?.email && (
+                        <TouchableOpacity
+                            onPress={() => handleKick(member.email)}
+                            style={{
+                                backgroundColor: colors.error + '20',
+                                paddingHorizontal: 12,
+                                paddingVertical: 6,
+                                borderRadius: radius.md,
+                            }}
+                        >
+                            <Text style={{ color: colors.error, fontSize: font.caption }}>강퇴</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+            ))}
+
+            {sortedAndFilteredMembers.length === 0 && memberSearchQuery !== '' && (
+                <Text style={{
+                    textAlign: 'center',
+                    color: colors.subtext,
+                    marginTop: spacing.md,
+                }}>
+                    검색 결과가 없습니다.
+                </Text>
+            )}
+        </View>
+    );
+
     return (
-        <SafeAreaView style={{ 
-            flex: 1, 
+        <SafeAreaView style={{
+            flex: 1,
             backgroundColor: colors.background,
             paddingTop: Platform.OS === 'android' ? insets.top : 0,
         }}>
@@ -742,19 +925,19 @@ export default function TeamDetail() {
                 </View>
 
                 {/* 우측 버튼 영역 */}
-                <View style={{ 
+                <View style={{
                     flexDirection: 'row',
                     gap: spacing.md,
                     zIndex: 1,
                 }}>
                     <View style={{ alignItems: 'center' }}>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             onPress={handleShare}
                             style={{ padding: 8 }}
                         >
                             <Ionicons name="share-outline" size={24} color={colors.text} />
                         </TouchableOpacity>
-                        <Text style={{ 
+                        <Text style={{
                             fontSize: 10,
                             color: colors.subtext,
                             marginTop: -4,
@@ -764,7 +947,7 @@ export default function TeamDetail() {
                     </View>
                     {team.membersList?.includes(user?.email) && (
                         <View style={{ alignItems: 'center' }}>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 onPress={handleEnterChat}
                                 style={{ padding: 8, position: 'relative' }}
                             >
@@ -791,7 +974,7 @@ export default function TeamDetail() {
                             </View>
                         )}
                 </TouchableOpacity>
-                            <Text style={{ 
+                            <Text style={{
                                 fontSize: 10,
                                 color: colors.subtext,
                                 marginTop: -4,
@@ -803,9 +986,9 @@ export default function TeamDetail() {
                 </View>
             </View>
 
-            <ScrollView 
-                contentContainerStyle={{ 
-                    paddingHorizontal: spacing.lg, 
+            <ScrollView
+                contentContainerStyle={{
+                    paddingHorizontal: spacing.lg,
                     paddingBottom: spacing.xl * 4,
                     gap: spacing.lg
                 }}
@@ -825,21 +1008,21 @@ export default function TeamDetail() {
                     marginTop: spacing.lg,
                 }}>
                     {/* 팀 이름 */}
-                    <View style={{ 
-                        flexDirection: 'row', 
-                        alignItems: 'center', 
+                    <View style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
                         justifyContent: 'space-between',
                         marginBottom: spacing.md,
                     }}>
                         <View style={{ flex: 1 }}>
-                            <Text style={{ 
+                            <Text style={{
                                 fontSize: font.heading,
                                 fontWeight: 'bold',
                                 color: colors.text,
                             }}>
                                 {team.name}
                             </Text>
-                            <Text style={{ 
+                            <Text style={{
                                 fontSize: font.caption,
                                 color: colors.subtext,
                                 marginTop: 2,
@@ -862,14 +1045,14 @@ export default function TeamDetail() {
                     </View>
 
                     {/* 구분선 */}
-                    <View style={{ 
-                        height: 1, 
+                    <View style={{
+                        height: 1,
                         backgroundColor: colors.border,
                         marginBottom: spacing.md,
                     }} />
 
                     {/* 모임장 정보 */}
-                    <View style={{ 
+                    <View style={{
                         flexDirection: 'row',
                         alignItems: 'center',
                         marginBottom: spacing.md,
@@ -889,14 +1072,14 @@ export default function TeamDetail() {
                             <Text style={{ fontSize: 16 }}>👑</Text>
                         </View>
                         <View style={{ flex: 1 }}>
-                            <Text style={{ 
+                            <Text style={{
                                 fontSize: font.body,
                                 color: colors.text,
                                 fontWeight: '600',
                             }}>
                                 {team.leader}
                             </Text>
-                            <Text style={{ 
+                            <Text style={{
                                 fontSize: font.caption,
                                 color: colors.subtext,
                             }}>
@@ -911,9 +1094,9 @@ export default function TeamDetail() {
                         marginBottom: spacing.md,
                         gap: spacing.sm,
                     }}>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             onPress={() => isCreator && setLocationModalVisible(true)}
-                            style={{ 
+                            style={{
                                 flex: 1,
                                 flexDirection: 'row',
                                 alignItems: 'center',
@@ -935,14 +1118,14 @@ export default function TeamDetail() {
                                 <Ionicons name="location-outline" size={16} color={colors.primary} />
                             </View>
                             <View>
-                                <Text style={{ 
+                                <Text style={{
                                     fontSize: font.caption,
                                     color: colors.subtext,
                                     marginBottom: 2,
                                 }}>
                                     모임 장소
                                 </Text>
-                                <Text style={{ 
+                                <Text style={{
                                     fontSize: font.body,
                                     color: colors.text,
                                     fontWeight: '500',
@@ -951,11 +1134,11 @@ export default function TeamDetail() {
                                 </Text>
                             </View>
                             {isCreator && (
-                                <Ionicons 
-                                    name="chevron-forward" 
-                                    size={16} 
-                                    color={colors.subtext} 
-                                    style={{ marginLeft: 'auto' }} 
+                                <Ionicons
+                                    name="chevron-forward"
+                                    size={16}
+                                    color={colors.subtext}
+                                    style={{ marginLeft: 'auto' }}
                                 />
                             )}
                         </TouchableOpacity>
@@ -969,14 +1152,14 @@ export default function TeamDetail() {
                             borderRadius: radius.md,
                             marginBottom: spacing.md,
                         }}>
-                            <Text style={{ 
+                            <Text style={{
                                 fontSize: font.caption,
                                 color: colors.subtext,
                                 marginBottom: 2,
                             }}>
                                 모임 소개
                             </Text>
-                            <Text style={{ 
+                            <Text style={{
                                 fontSize: font.body,
                                 color: colors.text,
                                 lineHeight: 20,
@@ -1010,7 +1193,7 @@ export default function TeamDetail() {
                 </View>
 
                 {/* 일정 및 투표 섹션 */}
-                <View style={{ 
+                <View style={{
                     backgroundColor: colors.surface,
                     borderRadius: radius.lg,
                     padding: spacing.lg,
@@ -1023,7 +1206,7 @@ export default function TeamDetail() {
                         marginBottom: spacing.sm,
                     }}>
                         <View style={{ flex: 1 }}>
-                            <Text style={{ 
+                            <Text style={{
                                 fontSize: font.body,
                                 fontWeight: 'bold',
                                 color: colors.text,
@@ -1031,7 +1214,7 @@ export default function TeamDetail() {
                                 다음 모임 일정
                             </Text>
                             {scheduleDate ? (
-                                <Text style={{ 
+                                <Text style={{
                                     fontSize: font.body,
                                     color: colors.text,
                                     marginTop: 4,
@@ -1044,7 +1227,7 @@ export default function TeamDetail() {
                                     })()})
                                 </Text>
                             ) : (
-                                <Text style={{ 
+                                <Text style={{
                                     fontSize: font.body,
                                     color: colors.subtext,
                                     marginTop: 4,
@@ -1106,7 +1289,7 @@ export default function TeamDetail() {
                                     borderWidth: 1,
                                     borderColor: colors.border,
                                 }}>
-                                    <Text style={{ 
+                                    <Text style={{
                                         fontSize: font.caption,
                                         color: colors.text,
                                         flex: 1,
@@ -1117,7 +1300,7 @@ export default function TeamDetail() {
                                             '❌ 불참'
                                         }
                                     </Text>
-                                    <Text style={{ 
+                                    <Text style={{
                                         fontSize: font.caption,
                                         color: colors.subtext,
                                     }}>
@@ -1131,7 +1314,7 @@ export default function TeamDetail() {
 
                 {/* 공지사항이 있는 경우에만 표시 */}
                 {team.announcement && (
-                    <View style={{ 
+                    <View style={{
                         marginTop: spacing.lg,
                         padding: spacing.md,
                         backgroundColor: colors.primary + '10',
@@ -1139,7 +1322,7 @@ export default function TeamDetail() {
                         borderLeftWidth: 4,
                         borderLeftColor: colors.primary,
                     }}>
-                        <Text style={{ 
+                        <Text style={{
                             fontSize: font.caption,
                             color: colors.primary,
                             fontWeight: '600',
@@ -1147,7 +1330,7 @@ export default function TeamDetail() {
                         }}>
                             공지사항
                         </Text>
-                        <Text style={{ 
+                        <Text style={{
                             fontSize: font.body,
                             color: colors.text,
                             lineHeight: 20,
@@ -1156,6 +1339,9 @@ export default function TeamDetail() {
                         </Text>
                 </View>
                 )}
+
+                {/* Replace the old members list with the new one */}
+                {memberUsers.length > 0 && renderMembersList()}
 
                 <Modal visible={editModalVisible} animationType="slide" transparent>
                     <KeyboardAvoidingView
@@ -1290,7 +1476,9 @@ export default function TeamDetail() {
                                     ].map((option) => (
                                         <TouchableOpacity
                                             key={option.status}
-                                            onPress={() => setSelectedVote(option.status)}
+                                            onPress={() => {
+                                                setSelectedVote(prev => prev === option.status ? null : option.status);
+                                            }}
                                             style={{
                                                 flexDirection: 'row',
                                                 alignItems: 'center',
@@ -1339,7 +1527,7 @@ export default function TeamDetail() {
                                     ))}
 
                                     {/* 투표하기 버튼 */}
-                                    <TouchableOpacity
+                                    {/*<TouchableOpacity
                                         onPress={() => selectedVote && handleVote(selectedVote)}
                                         disabled={!selectedVote}
                                         style={{
@@ -1356,11 +1544,29 @@ export default function TeamDetail() {
                                         }}>
                                             투표하기
                                         </Text>
+                                    </TouchableOpacity>*/}
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            if (selectedVote) {
+                                                handleVote(selectedVote);
+                                            }
+                                        }}
+                                        style={{
+                                            backgroundColor: colors.primary,
+                                            paddingVertical: spacing.md,
+                                            borderRadius: radius.md,
+                                            alignItems: 'center',
+                                            marginTop: spacing.md,
+                                        }}
+                                    >
+                                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>
+                                            {selectedVote === null ? '투표 취소' : '투표하기'}
+                                        </Text>
                                     </TouchableOpacity>
                                 </>
                             ) : (
                                 <>
-                                    <Text style={{ 
+                                    <Text style={{
                                         fontSize: font.caption,
                                         color: colors.subtext,
                                         marginBottom: spacing.md,
@@ -1369,28 +1575,11 @@ export default function TeamDetail() {
                                         총 {Object.keys(votes).length}명 참여
                                     </Text>
 
-                                    <VoteStatusBar 
-                                        status="✅ 참석 가능" 
-                                        count={calculateVoteStats().yes}
-                                        total={calculateVoteStats().total}
-                                        color={colors.success}
-                                    />
-                                    <VoteStatusBar 
-                                        status="🤔 미정" 
-                                        count={calculateVoteStats().maybe}
-                                        total={calculateVoteStats().total}
-                                        color={colors.warning}
-                                    />
-                                    <VoteStatusBar 
-                                        status="❌ 불참" 
-                                        count={calculateVoteStats().no}
-                                        total={calculateVoteStats().total}
-                                        color={colors.error}
-                                    />
+                                    {VoteStatusComponent}
 
                                     {/* 투표자 명단 */}
                                     <View style={{ marginTop: spacing.lg }}>
-                                        <Text style={{ 
+                                        <Text style={{
                                             fontSize: font.body,
                                             fontWeight: 'bold',
                                             color: colors.text,
@@ -1400,7 +1589,7 @@ export default function TeamDetail() {
                                         </Text>
                                         <ScrollView style={{ maxHeight: 200 }}>
                                             {Object.values(votes).map((vote) => (
-                                                <View 
+                                                <View
                                                     key={vote.userId}
                                                     style={{
                                                         flexDirection: 'row',
@@ -1410,7 +1599,7 @@ export default function TeamDetail() {
                                                 >
                                                     <Text style={{ color: colors.text }}>{vote.userName}</Text>
                                                     <Text style={{ color: colors.text }}>
-                                                        {vote.status === 'yes' ? '✅ 참석' : 
+                                                        {vote.status === 'yes' ? '✅ 참석' :
                                                          vote.status === 'maybe' ? '🤔 미정' : '❌ 불참'}
                                                     </Text>
                                                 </View>
@@ -1470,15 +1659,15 @@ export default function TeamDetail() {
                     animationType="slide"
                     onRequestClose={() => setLocationModalVisible(false)}
                 >
-                    <KeyboardAvoidingView 
+                    <KeyboardAvoidingView
                         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                         style={{ flex: 1 }}
                     >
                         <TouchableWithoutFeedback onPress={() => setLocationModalVisible(false)}>
-                            <View style={{ 
-                                flex: 1, 
-                                backgroundColor: 'rgba(0,0,0,0.5)', 
-                                justifyContent: 'flex-end' 
+                            <View style={{
+                                flex: 1,
+                                backgroundColor: 'rgba(0,0,0,0.5)',
+                                justifyContent: 'flex-end'
                             }}>
                                 <TouchableWithoutFeedback>
                                     <View style={{
@@ -1495,7 +1684,7 @@ export default function TeamDetail() {
                                             borderBottomWidth: StyleSheet.hairlineWidth,
                                             borderBottomColor: colors.border,
                                         }}>
-                                            <Text style={{ 
+                                            <Text style={{
                                                 fontSize: font.heading,
                                                 fontWeight: 'bold',
                                                 color: colors.text,
@@ -1507,14 +1696,14 @@ export default function TeamDetail() {
                                             </TouchableOpacity>
                                         </View>
 
-                                        <ScrollView 
+                                        <ScrollView
                                             style={{ maxHeight: '100%' }}
                                             contentContainerStyle={{ padding: spacing.lg }}
                                             keyboardShouldPersistTaps="handled"
                                         >
                                             {/* 직접 입력 */}
                                             <View style={{ marginBottom: spacing.lg }}>
-                                                <Text style={{ 
+                                                <Text style={{
                                                     fontSize: font.body,
                                                     color: colors.text,
                                                     marginBottom: spacing.sm,
@@ -1554,15 +1743,15 @@ export default function TeamDetail() {
 
                                             {/* 자주 사용하는 장소 */}
                                             <View>
-                                                <Text style={{ 
+                                                <Text style={{
                                                     fontSize: font.body,
                                                     color: colors.text,
                                                     marginBottom: spacing.sm,
                                                 }}>
                                                     자주 사용하는 장소
                                                 </Text>
-                                                <View style={{ 
-                                                    flexDirection: 'row', 
+                                                <View style={{
+                                                    flexDirection: 'row',
                                                     flexWrap: 'wrap',
                                                     gap: spacing.sm,
                                                 }}>
@@ -1611,185 +1800,6 @@ export default function TeamDetail() {
                         </TouchableWithoutFeedback>
                     </KeyboardAvoidingView>
                 </Modal>
-
-                {/* 멤버 리스트 */}
-                {memberUsers.length > 0 && (
-                    <View style={{
-                        backgroundColor: colors.surface,
-                        borderRadius: radius.lg,
-                        padding: spacing.lg,
-                        marginBottom: spacing.lg,
-                    }}>
-                        <Text style={{
-                            fontSize: font.body,
-                            fontWeight: '600',
-                            color: colors.text,
-                            marginBottom: spacing.md,
-                        }}>
-                            🙋 참여자 ({memberUsers.length}명)
-                        </Text>
-
-                        {[...memberUsers]
-                            .sort((a, b) => (a.email === team.leaderEmail ? -1 : 1))
-                            .map((member) => (
-                                <View
-                                    key={member.email}
-                                    style={{
-                                        flexDirection: 'row',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        marginBottom: spacing.sm,
-                                    }}
-                                >
-                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                        <Text style={{
-                                            color: member.email === team.leaderEmail ? colors.primary : colors.text,
-                                            fontWeight: member.email === team.leaderEmail ? 'bold' : 'normal',
-                                            fontSize: font.body,
-                                        }}>
-                                        {member.email === team.leaderEmail && '👑 '}
-                                        {member.name}
-                                    </Text>
-                                    </View>
-
-                                    {/* 강퇴 버튼 (모임장만 보임) */}
-                                    {isCreator && member.email !== user.email && (
-                                        <TouchableOpacity 
-                                            onPress={() => handleKick(member.email)}
-                                            style={{
-                                                backgroundColor: colors.error + '20',
-                                                paddingHorizontal: 12,
-                                                paddingVertical: 6,
-                                                borderRadius: radius.md,
-                                            }}
-                                        >
-                                            <Text style={{ color: colors.error, fontSize: font.caption }}>강퇴</Text>
-                                        </TouchableOpacity>
-                                    )}
-                                </View>
-                            ))}
-
-                        {/* 탈퇴하기 버튼 (모임장이 아닌 멤버만 보임) */}
-                        {!isCreator && team.membersList?.includes(user?.email) && (
-                            <TouchableOpacity
-                                onPress={() => {
-                                    Alert.alert(
-                                        '모임 탈퇴',
-                                        '정말 모임을 탈퇴하시겠습니까?',
-                                        [
-                                            { text: '취소', style: 'cancel' },
-                                            {
-                                                text: '탈퇴',
-                                                style: 'destructive',
-                                                onPress: async () => {
-                                                    try {
-                                                        const teamRef = doc(db, 'teams', team.id);
-                                                        await updateDoc(teamRef, {
-                                                            membersList: arrayRemove(user.email),
-                                                            members: increment(-1),
-                                                        });
-                                                        showToast('✅ 모임에서 탈퇴했습니다.');
-                                                        router.back();
-                                                    } catch (error) {
-                                                        console.error('탈퇴 실패:', error);
-                                                        showToast('⚠️ 탈퇴에 실패했습니다.');
-                                                    }
-                                                },
-                                            },
-                                        ]
-                                    );
-                                }}
-                                style={{
-                                    marginTop: spacing.md,
-                                    paddingVertical: spacing.sm,
-                                    borderRadius: radius.md,
-                                    alignItems: 'center',
-                                    backgroundColor: colors.error + '10',
-                                }}
-                            >
-                                <Text style={{ color: colors.error, fontSize: font.body }}>
-                                    모임 탈퇴하기
-                                </Text>
-                            </TouchableOpacity>
-                        )}
-
-                        {/* 모임장 탈퇴 버튼 */}
-                        {isCreator && (
-                            <TouchableOpacity
-                                onPress={() => {
-                                    Alert.alert(
-                                        '모임장 탈퇴',
-                                        '모임장이 탈퇴하면 모임이 자동으로 삭제됩니다.\n정말 탈퇴하시겠습니까?',
-                                        [
-                                            { text: '취소', style: 'cancel' },
-                                            {
-                                                text: '탈퇴 및 모임 삭제',
-                                                style: 'destructive',
-                                                onPress: async () => {
-                                                    try {
-                                                        // 1. 모든 멤버에게 알림 보내기
-                                                        const memberEmails = team.membersList.filter(email => email !== user.email);
-                                                        const notificationPromises = memberEmails.map(email => 
-                                                            sendNotification({
-                                                                to: email,
-                                                                message: `"${team.name}" 모임이 모임장의 탈퇴로 인해 삭제되었습니다.`,
-                                                                type: 'team_deleted',
-                                                                teamName: team.name,
-                                                            })
-                                                        );
-
-                                                        // 2. 푸시 알림 보내기
-                                                        const tokenQueryBatches = [];
-                                                        const emailClone = [...memberEmails];
-                                                        while (emailClone.length) {
-                                                            const batch = emailClone.splice(0, 10);
-                                                            tokenQueryBatches.push(
-                                                                query(collection(db, 'expoTokens'), where('email', 'in', batch))
-                                                            );
-                                                        }
-
-                                                        const tokenSnapshots = await Promise.all(tokenQueryBatches.map(q => getDocs(q)));
-                                                        const tokens = tokenSnapshots.flatMap(snap =>
-                                                            snap.docs.map(doc => doc.data().token).filter(Boolean)
-                                                        );
-
-                                                        if (tokens.length > 0) {
-                                                            await sendPushNotification({
-                                                                to: tokens,
-                                                                title: '모임 삭제 알림',
-                                                                body: `"${team.name}" 모임이 모임장의 탈퇴로 인해 삭제되었습니다.`,
-                                                            });
-                                                        }
-
-                                                        // 3. 모임 삭제
-                                                        await deleteDoc(doc(db, 'teams', team.id));
-                                                        
-                                                        showToast('✅ 모임에서 탈퇴했습니다.');
-                                                        router.replace('/teams');
-                                                    } catch (error) {
-                                                        console.error('모임장 탈퇴 실패:', error);
-                                                        showToast('⚠️ 탈퇴에 실패했습니다.');
-                                                    }
-                                                },
-                                            },
-                                        ]
-                                    );
-                                }}
-                                style={{
-                                    marginTop: spacing.md,
-                                    paddingVertical: spacing.sm,
-                                    borderRadius: radius.md,
-                                    alignItems: 'center',
-                                    backgroundColor: colors.error + '10',
-                                }}
-                            >
-                                <Text style={{ color: colors.error, fontSize: font.body }}>
-                                    모임장 탈퇴하기
-                                </Text>
-                            </TouchableOpacity>
-                        )}
-                    </View>
-                )}
 
                 {/* 하단 버튼 영역 */}
                 <View style={{ gap: spacing.md }}>

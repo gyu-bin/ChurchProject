@@ -257,8 +257,9 @@ export default function SettingsScreen() {
                                         style={{
                                             backgroundColor: '#E3F2FD',
                                             paddingHorizontal: 8,
-                                            paddingVertical: 2,
+                                            paddingVertical: 4,
                                             borderRadius: 12,
+                                            marginRight: 4,
                                         }}
                                     >
                                         <Text style={{ color: '#1976D2', fontSize: 12, fontWeight: 'bold' }}>
@@ -271,8 +272,9 @@ export default function SettingsScreen() {
                                         style={{
                                             backgroundColor: '#E8F5E9',
                                             paddingHorizontal: 8,
-                                            paddingVertical: 2,
+                                            paddingVertical: 4,
                                             borderRadius: 12,
+                                            marginRight: 4,
                                         }}
                                     >
                                         <Text style={{ color: '#2E7D32', fontSize: 12, fontWeight: 'bold' }}>
@@ -281,15 +283,14 @@ export default function SettingsScreen() {
                                     </View>
                                 )}
                                 {user?.campus && (
-                                    <View
-                                        style={{
-                                            backgroundColor: '#E8F5E9',
-                                            paddingHorizontal: 8,
-                                            paddingVertical: 2,
-                                            borderRadius: 12,
-                                        }}
-                                    >
-                                        <Text style={{ color: '#2E7D32', fontSize: 12, fontWeight: 'bold' }}>
+                                    <View style={{
+                                        backgroundColor: '#FDECEC',  // 연한 레드
+                                        paddingHorizontal: 8,
+                                        paddingVertical: 4,
+                                        borderRadius: 12,
+                                        marginRight: 4,
+                                    }}>
+                                        <Text style={{ color: '#ff9191', fontSize: 12, fontWeight: 'bold' }}>
                                             {user.campus}
                                         </Text>
                                     </View>
@@ -317,15 +318,7 @@ export default function SettingsScreen() {
                 {/* 👤 내 정보 수정 모달 */}
                 <Modal visible={showEditProfile} transparent animationType="fade">
                     <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
-                        <View style={{
-                            width: '90%',
-                            backgroundColor: colors.surface,
-                            borderRadius: 16,
-                            padding: spacing.lg,
-                            shadowColor: '#000',
-                            shadowOpacity: 0.1,
-                            shadowRadius: 10,
-                        }}>
+                        <View style={{ width: '90%', backgroundColor: colors.surface, borderRadius: 20, padding: spacing.lg }}>
                             {/* 타이틀 */}
                             <Text style={{
                                 fontSize: 20,
@@ -647,19 +640,7 @@ export default function SettingsScreen() {
                 </View>
 
                 {/* 📖 오늘의 말씀 알림 */}
-                <View
-                    style={{
-                        backgroundColor: colors.surface,
-                        borderRadius: 16,
-                        padding: spacing.md,
-                        marginBottom: spacing.md,
-                    }}
-                >
-                    <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text, marginBottom: 6 }}>
-                        📖 오늘의 말씀 알림
-                    </Text>
-                    <PushSettings />
-                </View>
+                <PushSettings />
 
                 {user?.role === '교역자' && (
                 <TouchableOpacity
