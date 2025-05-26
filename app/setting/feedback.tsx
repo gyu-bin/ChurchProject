@@ -64,7 +64,7 @@ export default function SettingsFeedbackScreen() {
                 <TouchableOpacity onPress={() => router.back()}>
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={{ fontSize: font.heading, fontWeight: '600', color: colors.text, textAlign: 'center', flex: 1 }}>피드백 하기</Text>
+                <Text style={{ fontSize: font.heading, fontWeight: '600', color: colors.text, textAlign: 'center', flex: 1 }}>✉️ 피드백</Text>
             </View>
             <ScrollView
                 contentContainerStyle={{

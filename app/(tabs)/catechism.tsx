@@ -103,7 +103,7 @@ export default function CatechismPage() {
         }, 350); // Modal 완전히 열리고 실행
     };
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background,paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background,paddingTop: Platform.OS === 'android' ? insets.top + 10 : 0 }}>
             <TouchableOpacity
                 onPress={() => setCategoryModal(true)}
                 style={{ alignItems: 'center', marginBottom: spacing.sm}}
@@ -117,7 +117,7 @@ export default function CatechismPage() {
                 onPress={openQuestionModal}
                 style={{ backgroundColor: colors.surface, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: colors.border }}
             >
-                <Text style={{ fontSize: font.heading, fontWeight: '600', color: colors.primary }}>
+                <Text style={{ fontSize: font.body+5, fontWeight: '600', color: colors.primary }}>
                     문항 {currentIndex + 1} ▾
                 </Text>
             </TouchableOpacity>
