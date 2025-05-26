@@ -49,6 +49,7 @@ type Team = {
     name: string;
     leader: string;
     leaderEmail: string;
+    subLeaderEmail?: string; // 부모임장 이메일 추가
     members: number;
     capacity: number;
     membersList: string[];
@@ -1133,22 +1134,14 @@ export default function TeamDetail() {
                                         const totalMembers = team.membersList?.length || 0;
                                         const participationRate = Math.round((stats.total / totalMembers) * 100);
 
-                                        let mostVoted = '';
-                                        let voteCount = 0;
-                                        if (maxVotes === stats.yes) {
-                                            mostVoted = '✅ 참석';
-                                            voteCount = stats.yes;
-                                        }
-                                        else if (maxVotes === stats.no) {
-                                            mostVoted = '❌ 불참';
-                                            voteCount = stats.no;
-                                        }
-                                        else if (maxVotes === stats.maybe) {
-                                            mostVoted = '🤔 미정';
-                                            voteCount = stats.maybe;
-                                        }
+                                        // 최다 득표 항목들을 찾습니다
+                                        const topVotes = [];
+                                        if (stats.yes === maxVotes) topVotes.push({ status: '✅ 참석', count: stats.yes });
+                                        if (stats.no === maxVotes) topVotes.push({ status: '❌ 불참', count: stats.no });
+                                        if (stats.maybe === maxVotes) topVotes.push({ status: '🤔 미정', count: stats.maybe });
 
-                                        return `${mostVoted} ${voteCount}표`;
+                                        // 동률인 경우 모두 표시
+                                        return topVotes.map(vote => `${vote.status} ${vote.count}표`).join(' / ');
                                     })()}
                                 </Text>
                                 <Text style={{
@@ -1661,7 +1654,13 @@ export default function TeamDetail() {
                         </Text>
 
                         {[...memberUsers]
-                            .sort((a, b) => (a.email === team.leaderEmail ? -1 : 1))
+                            .sort((a, b) => {
+                                if (a.email === team.leaderEmail) return -1;
+                                if (b.email === team.leaderEmail) return 1;
+                                if (a.email === team.subLeaderEmail) return -1;
+                                if (b.email === team.subLeaderEmail) return 1;
+                                return 0;
+                            })
                             .map((member) => (
                                 <View
                                     key={member.email}
@@ -1672,29 +1671,71 @@ export default function TeamDetail() {
                                         marginBottom: spacing.sm,
                                     }}
                                 >
-                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                                         <Text style={{
-                                            color: member.email === team.leaderEmail ? colors.primary : colors.text,
-                                            fontWeight: member.email === team.leaderEmail ? 'bold' : 'normal',
+                                            color: member.email === team.leaderEmail ? colors.primary : 
+                                                  member.email === team.subLeaderEmail ? colors.primary : colors.text,
+                                            fontWeight: (member.email === team.leaderEmail || member.email === team.subLeaderEmail) ? 'bold' : 'normal',
                                             fontSize: font.body,
                                         }}>
-                                        {member.email === team.leaderEmail && '👑 '}
-                                        {member.name}
-                                    </Text>
+                                            {member.email === team.leaderEmail && '👑 '}
+                                            {member.email === team.subLeaderEmail && '👮 '}
+                                            {member.name}
+                                        </Text>
+                                        <Text style={{
+                                            fontSize: font.caption,
+                                            color: colors.subtext,
+                                            marginLeft: spacing.sm,
+                                        }}>
+                                            {member.email === team.leaderEmail ? '(모임장)' : 
+                                             member.email === team.subLeaderEmail ? '(부모임장)' : ''}
+                                        </Text>
                                     </View>
 
-                                    {/* 강퇴 버튼 (모임장만 보임) */}
+                                    {/* 설정 버튼 */}
                                     {isCreator && member.email !== user.email && (
                                         <TouchableOpacity
-                                            onPress={() => handleKick(member.email)}
+                                            onPress={() => {
+                                                Alert.alert(
+                                                    '멤버 관리',
+                                                    `${member.name}님을 어떻게 하시겠습니까?`,
+                                                    [
+                                                        { text: '취소', style: 'cancel' },
+                                                        {
+                                                            text: member.email === team.subLeaderEmail ? '부모임장 해제' : '부모임장 임명',
+                                                            onPress: async () => {
+                                                                try {
+                                                                    const teamRef = doc(db, 'teams', team.id);
+                                                                    if (member.email === team.subLeaderEmail) {
+                                                                        await updateDoc(teamRef, {
+                                                                            subLeaderEmail: null
+                                                                        });
+                                                                        showToast('✅ 부모임장이 해제되었습니다.');
+                                                                    } else {
+                                                                        await updateDoc(teamRef, {
+                                                                            subLeaderEmail: member.email
+                                                                        });
+                                                                        showToast('✅ 부모임장이 임명되었습니다.');
+                                                                    }
+                                                                } catch (e) {
+                                                                    console.error('❌ 부모임장 설정 실패:', e);
+                                                                    showToast('⚠️ 부모임장 설정에 실패했습니다.');
+                                                                }
+                                                            }
+                                                        },
+                                                        {
+                                                            text: '강퇴',
+                                                            style: 'destructive',
+                                                            onPress: () => handleKick(member.email)
+                                                        }
+                                                    ]
+                                                );
+                                            }}
                                             style={{
-                                                backgroundColor: colors.error + '20',
-                                                paddingHorizontal: 12,
-                                                paddingVertical: 6,
-                                                borderRadius: radius.md,
+                                                padding: spacing.sm,
                                             }}
                                         >
-                                            <Text style={{ color: colors.error, fontSize: font.caption }}>강퇴</Text>
+                                            <Ionicons name="ellipsis-vertical" size={20} color={colors.subtext} />
                                         </TouchableOpacity>
                                     )}
                                 </View>

@@ -1,17 +1,24 @@
 // screens/DepartmentsScreen.tsx
 
-import React, { useState, useRef } from 'react';
-import {
-    View, Text, TouchableOpacity, StyleSheet, Animated, FlatList, useColorScheme, SafeAreaView, Dimensions,Platform
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { useAppTheme } from '@/context/ThemeContext';
 import { useDesign } from '@/context/DesignSystem';
-import {useSafeAreaInsets} from "react-native-safe-area-context";
+import { useAppTheme } from '@/context/ThemeContext';
+import { useRouter } from 'expo-router';
+import React, { useRef, useState } from 'react';
+import {
+    Animated,
+    Dimensions,
+    FlatList,
+    Platform,
+    SafeAreaView,
+    StyleSheet,
+    Text, TouchableOpacity,
+    View
+} from 'react-native';
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 const CAMPUS_DIVISIONS: Record<string, string[]> = {
     신촌캠퍼스: ['유치부', '초등부', '중고등부', '청년1부', '청년2부', '장년부'],
     문래캠퍼스: ['유치부', '초등부', '중고등부', '청년1부', '청년2부', '장년부'],
-    인덕원캠퍼스: ['유치부', '초등부', '중고등부', '청년1부', '청년2부', '장년부'],
+    시선교회: ['유치부', '초등부', '중고등부', '청년1부', '청년2부', '장년부'],
 };
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
