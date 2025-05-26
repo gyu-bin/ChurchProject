@@ -13,7 +13,7 @@ export async function requestNotificationPermission() {
         if (newStatus !== 'granted') {
             Alert.alert(
                 '알림 권한 요청',
-                '📢 알림을 허용하시겠습니까?\n설정에서 알림을 켜주셔야 말씀 알림을 받을 수 있어요.',
+                '📢 알림을 허용하시겠습니까?\n설정에서 알림을 켜주셔야 앱 알림을 받을 수 있어요.',
                 [
                     { text: '취소', style: 'cancel' },
                     {

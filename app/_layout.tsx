@@ -13,7 +13,7 @@ import * as NavigationBar from 'expo-navigation-bar';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { doc, onSnapshot } from "firebase/firestore";
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { RootSiblingParent } from 'react-native-root-siblings';
@@ -25,6 +25,41 @@ export default function RootLayout() {
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
     const router = useRouter();
+    const [isAppReady, setIsAppReady] = useState(false);
+
+    useEffect(() => {
+        const initializeApp = async () => {
+            try {
+                if (Device.isDevice) {
+                    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+
+                    if (existingStatus !== 'granted') {
+                        const { status: finalStatus } = await Notifications.requestPermissionsAsync();
+                        console.log('알림 최종 상태:', finalStatus);
+
+                        if (finalStatus !== 'granted') {
+                            console.warn('❗️알림 권한이 거부되었습니다.');
+                        }
+                    } else {
+                        console.log('✅ 알림 권한 허용됨');
+                    }
+                }
+
+                /*const userRaw = await AsyncStorage.getItem('currentUser');
+                const alreadyLoggedIn = Boolean(userRaw);*/
+
+                // 👇 시스템 권한 팝업 이후 UI가 렌더되도록 잠시 대기
+                setTimeout(() => {
+                    setIsAppReady(true);
+                }, 300);
+            } catch (e) {
+                console.error('앱 초기화 중 오류:', e);
+                setIsAppReady(true);
+            }
+        };
+
+        initializeApp();
+    }, []);
 
     useEffect(() => {
         // ✅ 앱이 실행 중일 때 알림 클릭 감지
@@ -50,18 +85,6 @@ export default function RootLayout() {
         NavigationBar.setBackgroundColorAsync(isDark ? '#1f2937' : '#ffffff');
         NavigationBar.setButtonStyleAsync(isDark ? 'light' : 'dark');
     }, [isDark]);
-
-    useEffect(() => {
-        const checkAndLogin = async () => {
-            const userRaw = await AsyncStorage.getItem('currentUser');
-            const alreadyLoggedIn = Boolean(userRaw);
-            if (!alreadyLoggedIn) {
-                router.replace('/auth/login');
-            }
-        };
-
-        checkAndLogin();
-    }, []);
 
     useEffect(() => {
         const now = new Date();
@@ -91,10 +114,11 @@ export default function RootLayout() {
         checkAndSendPush();
     }, []);
 
+    //계정이 삭제되었을때
     useEffect(() => {
-        let unsubscribe: (() => void) | null = null;
+        let unsubRef: (() => void) | null = null;
 
-        const listenDeviceStatus = async () => {
+        const run = async () => {
             const userRaw = await AsyncStorage.getItem('currentUser');
             if (!userRaw) return;
 
@@ -102,9 +126,8 @@ export default function RootLayout() {
             const currentDeviceId = `${Device.modelName}-${Device.osName}-${Device.osVersion}`;
             const deviceDocRef = doc(db, `devices/${email}/tokens/${currentDeviceId}`);
 
-            unsubscribe = onSnapshot(deviceDocRef, async (docSnap) => {
+            const unsubscribe = onSnapshot(deviceDocRef, async (docSnap) => {
                 if (!docSnap.exists()) {
-                    // 실시간으로 문서 삭제 감지 → 로그아웃 처리
                     await AsyncStorage.removeItem('currentUser');
                     store.dispatch(logoutUser());
                     store.dispatch(clearPrayers());
@@ -112,12 +135,16 @@ export default function RootLayout() {
                     router.replace('/auth/login');
                 }
             });
+
+            unsubRef = unsubscribe;
         };
 
-        listenDeviceStatus();
+        run();
 
         return () => {
-            if (unsubscribe) unsubscribe();
+            if (unsubRef) {
+                unsubRef();
+            }
         };
     }, []);
 
