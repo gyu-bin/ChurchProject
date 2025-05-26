@@ -29,8 +29,11 @@ export default function RootLayout() {
     const router = useRouter();
 
     useEffect(() => {
-        requestNotificationPermission();
-        cleanDuplicateExpoTokens();
+        const setup = async () => {
+            await requestNotificationPermission();
+            await cleanDuplicateExpoTokens();
+        };
+        setup();
 
         // ✅ 앱이 실행 중일 때 알림 클릭 감지
         const subscription = Notifications.addNotificationResponseReceivedListener(response => {

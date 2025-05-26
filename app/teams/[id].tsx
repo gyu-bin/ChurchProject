@@ -23,7 +23,7 @@ import {
     where,
     writeBatch
 } from 'firebase/firestore';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -74,8 +74,6 @@ type VoteStats = {
     no: number;
     maybe: number;
     total: number;
-    participationRate: string;
-    totalMembers: number;
 };
 
 type Schedule = {
@@ -84,13 +82,6 @@ type Schedule = {
     createdBy: string;
     creatorName: string;
     status: 'active' | 'cancelled';
-};
-
-type VoteStatusBarProps = {
-    status: string;
-    count: number;
-    total: number;
-    color: string;
 };
 
 export default function TeamDetail() {
@@ -133,101 +124,6 @@ export default function TeamDetail() {
         '본당',
         '카페',
     ]);
-
-    const [memberSearchQuery, setMemberSearchQuery] = useState('');
-
-    // Memoize sorted and filtered members
-    const sortedAndFilteredMembers = useMemo(() => {
-        return [...memberUsers]
-            .sort((a, b) => {
-                if (a.email === team?.leaderEmail) return -1;
-                if (b.email === team?.leaderEmail) return 1;
-                return a.name.localeCompare(b.name);
-            })
-            .filter(member => 
-                memberSearchQuery === '' || 
-                member.name.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
-                member.email.toLowerCase().includes(memberSearchQuery.toLowerCase())
-            );
-    }, [memberUsers, team?.leaderEmail, memberSearchQuery]);
-
-    // Enhance vote statistics calculation
-    const voteStats = useMemo(() => {
-        const voteArray = Object.values(votes);
-        const total = voteArray.length;
-        const totalMembers = team?.membersList?.length || 0;
-        const participationRate = totalMembers > 0 ? ((total / totalMembers) * 100).toFixed(1) : '0';
-        
-        return {
-            yes: voteArray.filter(v => v.status === 'yes').length,
-            no: voteArray.filter(v => v.status === 'no').length,
-            maybe: voteArray.filter(v => v.status === 'maybe').length,
-            total,
-            participationRate: `${participationRate}%`,
-            totalMembers
-        };
-    }, [votes, team?.membersList?.length]);
-
-    // Fix VoteStatusBar component definition
-    const VoteStatusBar = ({ status, count, total, color }: VoteStatusBarProps) => (
-        <View style={{ marginBottom: spacing.sm }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                <Text style={{ fontSize: font.caption, color: colors.text }}>{status}</Text>
-                <Text style={{ fontSize: font.caption, color: colors.text }}>{count}명</Text>
-            </View>
-            <View style={{
-                height: 8,
-                backgroundColor: colors.border,
-                borderRadius: 4,
-                overflow: 'hidden',
-            }}>
-                <View style={{
-                    width: `${(count / (total || 1)) * 100}%`,
-                    height: '100%',
-                    backgroundColor: color,
-                    borderRadius: 4,
-                }} />
-            </View>
-        </View>
-    );
-
-    // Memoize vote status component with the fixed VoteStatusBar
-    const VoteStatusComponent = useMemo(() => {
-        return (
-            <View style={{ marginTop: spacing.md }}>
-                <View style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    marginBottom: spacing.sm
-                }}>
-                    <Text style={{ fontSize: font.caption, color: colors.text }}>
-                        투표 현황
-                    </Text>
-                    <Text style={{ fontSize: font.caption, color: colors.text }}>
-                        참여율: {voteStats.participationRate} ({voteStats.total}/{voteStats.totalMembers}명)
-                    </Text>
-                </View>
-                <VoteStatusBar
-                    status="✅ 참석 가능"
-                    count={voteStats.yes}
-                    total={voteStats.total}
-                    color={colors.success}
-                />
-                <VoteStatusBar
-                    status="🤔 미정"
-                    count={voteStats.maybe}
-                    total={voteStats.total}
-                    color={colors.warning}
-                />
-                <VoteStatusBar
-                    status="❌ 불참"
-                    count={voteStats.no}
-                    total={voteStats.total}
-                    color={colors.error}
-                />
-            </View>
-        );
-    }, [voteStats, colors, font, spacing]);
 
     useEffect(() => {
         getCurrentUser().then(setCurrentUser);
@@ -373,8 +269,7 @@ export default function TeamDetail() {
         return () => unsubscribe();
     }, [team?.id, scheduleDate, user]);  // ✅ user를 의존성에 추가
 
-    // Optimize handlers with useCallback
-    const handleJoin = useCallback(async () => {
+    const handleJoin = async () => {
         if (!team || !user) return;
 
         if (team.membersList?.includes(user.email)) {
@@ -387,38 +282,36 @@ export default function TeamDetail() {
             return;
         }
 
-        try {
-            const q = query(collection(db, 'expoTokens'), where('email', '==', team.leaderEmail));
-            const snap = await getDocs(q);
-            const tokens: string[] = snap.docs.map(doc => doc.data().token).filter(Boolean);
+        // ✅ 1. Push 토큰 가져오기 (email 기준으로)
+        const q = query(collection(db, 'expoTokens'), where('email', '==', team.leaderEmail));
+        const snap = await getDocs(q);
+        const tokens: string[] = snap.docs.map(doc => doc.data().token).filter(Boolean);
 
-            await sendNotification({
-                to: team.leaderEmail,
-                message: `${user.name}님이 "${team.name}" 모임에 가입 신청했습니다.`,
-                type: 'team_join_request',
-                link: '/notifications',
-                teamId: team.id,
-                teamName: team.name,
-                applicantEmail: user.email,
-                applicantName: user.name,
+// ✅ 2. Firestore 알림 저장 (email 저장)
+        await sendNotification({
+            to: team.leaderEmail, // Firestore 알림 받는 주체(email)
+            message: `${user.name}님이 "${team.name}" 모임에 가입 신청했습니다.`,
+            type: 'team_join_request',
+            link: '/notifications',
+            teamId: team.id,
+            teamName: team.name,
+            applicantEmail: user.email,
+            applicantName: user.name,
+        });
+
+// ✅ 3. Expo 푸시 전송 (token 기반)
+        if (tokens.length > 0) {
+            await sendPushNotification({
+                to: tokens,
+                title: '🙋 소모임 가입 신청',
+                body: `${user.name}님의 신청`,
             });
-
-            if (tokens.length > 0) {
-                await sendPushNotification({
-                    to: tokens,
-                    title: '🙋 소모임 가입 신청',
-                    body: `${user.name}님의 신청`,
-                });
-            }
-
-            showToast('✅가입 신청 완료: 모임장에게 신청 메시지를 보냈습니다.');
-            fetchTeam();
-            router.back();
-        } catch (error) {
-            console.error('가입 신청 실패:', error);
-            showToast('⚠️ 가입 신청에 실패했습니다.');
         }
-    }, [team, user, router]);
+
+        showToast('✅가입 신청 완료: 모임장에게 신청 메시지를 보냈습니다.');
+        fetchTeam();  // ✅ 추가된 부분
+        router.back();
+    };
 
     const openEditModal = () => {
         if (!team) return;
@@ -471,9 +364,10 @@ export default function TeamDetail() {
         }
     };
 
-    const handleKick = useCallback(async (email: string) => {
+    const handleKick = async (email: string) => {
         if (!team) return;
 
+        // ✅ 이메일에 해당하는 사용자 이름 찾기
         const member = memberUsers.find(m => m.email === email);
         const displayName = member?.name || email;
 
@@ -499,12 +393,12 @@ export default function TeamDetail() {
                                 members: updatedData.members,
                                 capacity: updatedData.capacity,
                                 membersList: updatedData.membersList,
-                                ...updatedData,
+                                ...updatedData, // 기타 필드
                             });
                         }
 
                         setMemberUsers(prev => prev.filter(m => m.email !== email));
-                        fetchTeam();
+                        fetchTeam();  // ✅ 추가된 부분
                         Alert.alert('강퇴 완료', `${displayName}님이 강퇴되었습니다.`);
                     } catch (e) {
                         console.error('❌ 강퇴 실패:', e);
@@ -513,7 +407,7 @@ export default function TeamDetail() {
                 }
             }
         ]);
-    }, [team, memberUsers, fetchTeam]);
+    };
 
     const deleteTeam = async (id: string) => {
         Alert.alert('삭제 확인', '정말로 이 소모임을 삭제하시겠습니까?', [
@@ -661,11 +555,12 @@ export default function TeamDetail() {
         }
     };
 
-    const handleVote = useCallback(async (status: VoteStatus) => {
+    const handleVote = async (status: VoteStatus) => {
         if (!team?.id || !scheduleDate || !user) return;
 
         const voteRef = doc(db, 'teams', team.id, 'scheduleVotes', user.email);
 
+        // 같은 걸 눌렀다면 → 삭제
         if (myVote === status) {
             try {
                 await deleteDoc(voteRef);
@@ -697,7 +592,41 @@ export default function TeamDetail() {
             console.error('투표 저장 실패:', error);
             showToast('⚠️ 투표 저장에 실패했습니다.');
         }
-    }, [team?.id, scheduleDate, user, myVote]);
+    };
+
+    // Add function to calculate vote statistics
+    const calculateVoteStats = (): VoteStats => {
+        const voteArray = Object.values(votes);
+        const total = voteArray.length;
+        return {
+            yes: voteArray.filter(v => v.status === 'yes').length,
+            no: voteArray.filter(v => v.status === 'no').length,
+            maybe: voteArray.filter(v => v.status === 'maybe').length,
+            total
+        };
+    };
+
+    const VoteStatusBar = ({ status, count, total, color }: { status: string; count: number; total: number; color: string }) => (
+        <View style={{ marginBottom: spacing.sm }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                <Text style={{ fontSize: font.caption, color: colors.text }}>{status}</Text>
+                <Text style={{ fontSize: font.caption, color: colors.text }}>{count}명</Text>
+            </View>
+            <View style={{
+                height: 8,
+                backgroundColor: colors.border,
+                borderRadius: 4,
+                overflow: 'hidden',
+            }}>
+                <View style={{
+                    width: `${(count / (total || 1)) * 100}%`,
+                    height: '100%',
+                    backgroundColor: color,
+                    borderRadius: 4,
+                }} />
+            </View>
+        </View>
+    );
 
     const handleUpdateLocation = async (location: string) => {
         if (!team) return;
@@ -780,102 +709,6 @@ export default function TeamDetail() {
     };
 
     const isFull = (team?.members ?? 0) >= (team?.capacity ?? 99);
-
-    // Modify the members list section
-    const renderMembersList = () => (
-        <View style={{
-            backgroundColor: colors.surface,
-            borderRadius: radius.lg,
-            padding: spacing.lg,
-            marginBottom: spacing.lg,
-        }}>
-            <Text style={{
-                fontSize: font.body,
-                fontWeight: '600',
-                color: colors.text,
-                marginBottom: spacing.md,
-            }}>
-                🙋 참여자 ({memberUsers.length}명)
-            </Text>
-
-            {/* 멤버 검색 */}
-            <View style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: colors.background,
-                borderRadius: radius.md,
-                paddingHorizontal: spacing.sm,
-                marginBottom: spacing.md,
-            }}>
-                <Ionicons name="search" size={20} color={colors.subtext} />
-                <TextInput
-                    value={memberSearchQuery}
-                    onChangeText={setMemberSearchQuery}
-                    placeholder="이름으로 검색"
-                    placeholderTextColor={colors.subtext}
-                    style={{
-                        flex: 1,
-                        paddingVertical: spacing.sm,
-                        paddingHorizontal: spacing.sm,
-                        color: colors.text,
-                    }}
-                />
-                {memberSearchQuery !== '' && (
-                    <TouchableOpacity onPress={() => setMemberSearchQuery('')}>
-                        <Ionicons name="close-circle" size={20} color={colors.subtext} />
-                    </TouchableOpacity>
-                )}
-            </View>
-
-            {/* 멤버 리스트 */}
-            {sortedAndFilteredMembers.map(member => (
-                <View
-                    key={member.email}
-                    style={{
-                        flexDirection: 'row',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: spacing.sm,
-                    }}
-                >
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={{
-                            color: member.email === team?.leaderEmail ? colors.primary : colors.text,
-                            fontWeight: member.email === team?.leaderEmail ? 'bold' : 'normal',
-                            fontSize: font.body,
-                        }}>
-                            {member.email === team?.leaderEmail && '👑 '}
-                            {member.name}
-                        </Text>
-                    </View>
-
-                    {isCreator && member.email !== user?.email && (
-                        <TouchableOpacity
-                            onPress={() => handleKick(member.email)}
-                            style={{
-                                backgroundColor: colors.error + '20',
-                                paddingHorizontal: 12,
-                                paddingVertical: 6,
-                                borderRadius: radius.md,
-                            }}
-                        >
-                            <Text style={{ color: colors.error, fontSize: font.caption }}>강퇴</Text>
-                        </TouchableOpacity>
-                    )}
-                </View>
-            ))}
-
-            {sortedAndFilteredMembers.length === 0 && memberSearchQuery !== '' && (
-                <Text style={{
-                    textAlign: 'center',
-                    color: colors.subtext,
-                    marginTop: spacing.md,
-                }}>
-                    검색 결과가 없습니다.
-                </Text>
-            )}
-        </View>
-    );
 
     return (
         <SafeAreaView style={{
@@ -1279,35 +1112,57 @@ export default function TeamDetail() {
 
                     {scheduleDate && team.membersList?.includes(user?.email) && (
                         <View style={{ marginTop: spacing.sm }}>
-                            {myVote && (
-                                <View style={{
-                                    flexDirection: 'row',
-                                    alignItems: 'center',
-                                    backgroundColor: colors.background,
-                                    padding: spacing.sm,
-                                    borderRadius: radius.md,
-                                    borderWidth: 1,
-                                    borderColor: colors.border,
+                            {/* 가장 많은 투표와 참여율 표시 */}
+                            <View style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                backgroundColor: colors.background,
+                                padding: spacing.sm,
+                                borderRadius: radius.md,
+                                borderWidth: 1,
+                                borderColor: colors.border,
+                            }}>
+                                <Text style={{
+                                    fontSize: font.caption,
+                                    color: colors.text,
+                                    flex: 1,
                                 }}>
-                                    <Text style={{
-                                        fontSize: font.caption,
-                                        color: colors.text,
-                                        flex: 1,
-                                    }}>
-                                        내 투표: {
-                                            myVote === 'yes' ? '✅ 참석' :
-                                            myVote === 'maybe' ? '🤔 미정' :
-                                            '❌ 불참'
+                                    {(() => {
+                                        const stats = calculateVoteStats();
+                                        const maxVotes = Math.max(stats.yes, stats.no, stats.maybe);
+                                        const totalMembers = team.membersList?.length || 0;
+                                        const participationRate = Math.round((stats.total / totalMembers) * 100);
+
+                                        let mostVoted = '';
+                                        let voteCount = 0;
+                                        if (maxVotes === stats.yes) {
+                                            mostVoted = '✅ 참석';
+                                            voteCount = stats.yes;
                                         }
-                                    </Text>
-                                    <Text style={{
-                                        fontSize: font.caption,
-                                        color: colors.subtext,
-                                    }}>
-                                        총 {Object.keys(votes).length}명 투표
-                                    </Text>
-                                </View>
-                            )}
+                                        else if (maxVotes === stats.no) {
+                                            mostVoted = '❌ 불참';
+                                            voteCount = stats.no;
+                                        }
+                                        else if (maxVotes === stats.maybe) {
+                                            mostVoted = '🤔 미정';
+                                            voteCount = stats.maybe;
+                                        }
+
+                                        return `${mostVoted} ${voteCount}표`;
+                                    })()}
+                                </Text>
+                                <Text style={{
+                                    fontSize: font.caption,
+                                    color: colors.subtext,
+                                }}>
+                                    {(() => {
+                                        const stats = calculateVoteStats();
+                                        const totalMembers = team.membersList?.length || 0;
+                                        const participationRate = Math.round((stats.total / totalMembers) * 100);
+                                        return `참여율 ${participationRate}%`;
+                                    })()}
+                                </Text>
+                            </View>
                         </View>
                     )}
                 </View>
@@ -1339,9 +1194,6 @@ export default function TeamDetail() {
                         </Text>
                 </View>
                 )}
-
-                {/* Replace the old members list with the new one */}
-                {memberUsers.length > 0 && renderMembersList()}
 
                 <Modal visible={editModalVisible} animationType="slide" transparent>
                     <KeyboardAvoidingView
@@ -1466,128 +1318,133 @@ export default function TeamDetail() {
                                 {scheduleDate ? `${scheduleDate} 참석 여부` : '일정 투표'}
                             </Text>
 
-                            {!showVoteStatus ? (
-                                <>
-                                    {/* 투표 옵션 */}
-                                    {[
-                                        { status: 'yes' as VoteStatus, label: '가능', icon: '✅' },
-                                        { status: 'maybe' as VoteStatus, label: '미정', icon: '🤔' },
-                                        { status: 'no' as VoteStatus, label: '불가능', icon: '❌' },
-                                    ].map((option) => (
-                                        <TouchableOpacity
-                                            key={option.status}
-                                            onPress={() => {
-                                                setSelectedVote(prev => prev === option.status ? null : option.status);
-                                            }}
-                                            style={{
-                                                flexDirection: 'row',
-                                                alignItems: 'center',
-                                                paddingVertical: spacing.sm,
-                                                paddingHorizontal: spacing.md,
-                                                marginBottom: spacing.sm,
-                                                backgroundColor: selectedVote === option.status ? colors.primary + '20' : 'transparent',
-                                                borderRadius: radius.md,
-                                                borderWidth: 1,
-                                                borderColor: selectedVote === option.status ? colors.primary : colors.border,
-                                            }}
-                                        >
-                                            <View style={{
-                                                width: 24,
-                                                height: 24,
-                                                borderRadius: 12,
-                                                borderWidth: 2,
-                                                borderColor: selectedVote === option.status ? colors.primary : colors.border,
-                                                marginRight: spacing.md,
-                                                justifyContent: 'center',
-                                                alignItems: 'center',
-                                            }}>
-                                                {selectedVote === option.status && (
-                                                    <View style={{
-                                                        width: 12,
-                                                        height: 12,
-                                                        borderRadius: 6,
-                                                        backgroundColor: colors.primary,
-                                                    }} />
-                                                )}
-                                            </View>
-                                            <Text style={{
-                                                fontSize: font.body,
-                                                color: colors.text,
-                                                marginRight: spacing.sm,
-                                            }}>
-                                                {option.icon}
-                                            </Text>
-                                            <Text style={{
-                                                fontSize: font.body,
-                                                color: colors.text,
-                                            }}>
-                                                {option.label}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-
-                                    {/* 투표하기 버튼 */}
-                                    {/*<TouchableOpacity
-                                        onPress={() => selectedVote && handleVote(selectedVote)}
-                                        disabled={!selectedVote}
-                                        style={{
-                                            backgroundColor: selectedVote ? colors.primary : colors.border,
-                                            paddingVertical: spacing.md,
-                                            borderRadius: radius.md,
-                                            alignItems: 'center',
-                                            marginTop: spacing.md,
-                                        }}
-                                    >
-                                        <Text style={{
-                                            color: selectedVote ? '#fff' : colors.subtext,
-                                            fontWeight: 'bold',
-                                        }}>
-                                            투표하기
-                                        </Text>
-                                    </TouchableOpacity>*/}
-                                    <TouchableOpacity
-                                        onPress={() => {
-                                            if (selectedVote) {
-                                                handleVote(selectedVote);
-                                            }
-                                        }}
-                                        style={{
-                                            backgroundColor: colors.primary,
-                                            paddingVertical: spacing.md,
-                                            borderRadius: radius.md,
-                                            alignItems: 'center',
-                                            marginTop: spacing.md,
-                                        }}
-                                    >
-                                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>
-                                            {selectedVote === null ? '투표 취소' : '투표하기'}
-                                        </Text>
-                                    </TouchableOpacity>
-                                </>
-                            ) : (
-                                <>
-                                    <Text style={{
-                                        fontSize: font.caption,
-                                        color: colors.subtext,
-                                        marginBottom: spacing.md,
-                                        textAlign: 'center',
+                            {/* 투표 옵션 */}
+                            {[
+                                { status: 'yes' as VoteStatus, label: '가능', icon: '✅' },
+                                { status: 'maybe' as VoteStatus, label: '미정', icon: '🤔' },
+                                { status: 'no' as VoteStatus, label: '불가능', icon: '❌' },
+                            ].map((option) => (
+                                <TouchableOpacity
+                                    key={option.status}
+                                    onPress={() => {
+                                        if (myVote === option.status) {
+                                            // 같은 옵션을 선택하면 투표 취소
+                                            handleVote(option.status);
+                                        } else {
+                                            handleVote(option.status);
+                                        }
+                                        setVoteModalVisible(false);
+                                    }}
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        paddingVertical: spacing.sm,
+                                        paddingHorizontal: spacing.md,
+                                        marginBottom: spacing.sm,
+                                        backgroundColor: myVote === option.status ? colors.primary + '20' : 'transparent',
+                                        borderRadius: radius.md,
+                                        borderWidth: 1,
+                                        borderColor: myVote === option.status ? colors.primary : colors.border,
+                                    }}
+                                >
+                                    <View style={{
+                                        width: 24,
+                                        height: 24,
+                                        borderRadius: 12,
+                                        borderWidth: 2,
+                                        borderColor: myVote === option.status ? colors.primary : colors.border,
+                                        marginRight: spacing.md,
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
                                     }}>
-                                        총 {Object.keys(votes).length}명 참여
+                                        {myVote === option.status && (
+                                            <View style={{
+                                                width: 12,
+                                                height: 12,
+                                                borderRadius: 6,
+                                                backgroundColor: colors.primary,
+                                            }} />
+                                        )}
+                                    </View>
+                                    <Text style={{
+                                        fontSize: font.body,
+                                        color: colors.text,
+                                        marginRight: spacing.sm,
+                                    }}>
+                                        {option.icon}
                                     </Text>
+                                    <Text style={{
+                                        fontSize: font.body,
+                                        color: colors.text,
+                                    }}>
+                                        {option.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
 
-                                    {VoteStatusComponent}
+                            {/* 투표 현황 보기 버튼 */}
+                           {/* <TouchableOpacity
+                                onPress={() => {
+                                    setShowVoteStatus(true);
+                                }}
+                                style={{
+                                    backgroundColor: colors.primary + '20',
+                                    paddingVertical: spacing.sm,
+                                    borderRadius: radius.md,
+                                    alignItems: 'center',
+                                    marginTop: spacing.md,
+                                }}
+                            >
+                                <Text style={{ color: colors.primary, fontWeight: 'bold' }}>투표 현황 보기</Text>
+                            </TouchableOpacity>*/}
 
-                                    {/* 투표자 명단 */}
-                                    <View style={{ marginTop: spacing.lg }}>
-                                        <Text style={{
-                                            fontSize: font.body,
-                                            fontWeight: 'bold',
-                                            color: colors.text,
-                                            marginBottom: spacing.sm,
-                                        }}>
-                                            투표자 명단
+                            {showVoteStatus && (
+                                <View style={{ marginTop: spacing.md }}>
+                                    <View style={{
+                                        flexDirection: 'row',
+                                        justifyContent: 'space-between',
+                                        marginBottom: spacing.sm,
+                                    }}>
+                                        <Text style={{ color: colors.text, fontWeight: 'bold' }}>
+                                            투표 현황
                                         </Text>
-                                        <ScrollView style={{ maxHeight: 200 }}>
+                                        <Text style={{ color: colors.subtext }}>
+                                            총 {Object.keys(votes).length}명 참여
+                                        </Text>
+                                    </View>
+
+                                    <View style={{
+                                        backgroundColor: colors.background,
+                                        padding: spacing.sm,
+                                        borderRadius: radius.md,
+                                        marginBottom: spacing.md,
+                                    }}>
+                                        {[
+                                            { status: 'yes', label: '✅ 참석', count: calculateVoteStats().yes },
+                                            { status: 'maybe', label: '🤔 미정', count: calculateVoteStats().maybe },
+                                            { status: 'no', label: '❌ 불참', count: calculateVoteStats().no },
+                                        ].map((item) => (
+                                            <View key={item.status} style={{
+                                                flexDirection: 'row',
+                                                justifyContent: 'space-between',
+                                                paddingVertical: spacing.xs,
+                                            }}>
+                                                <Text style={{ color: colors.text }}>{item.label}</Text>
+                                                <Text style={{ color: colors.text }}>{item.count}명</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+
+                                    <Text style={{ color: colors.text, fontWeight: 'bold', marginBottom: spacing.sm }}>
+                                        투표자 명단
+                                    </Text>
+                                    <View style={{
+                                        backgroundColor: colors.background,
+                                        padding: spacing.sm,
+                                        borderRadius: radius.md,
+                                        maxHeight: 150,
+                                    }}>
+                                        <ScrollView>
                                             {Object.values(votes).map((vote) => (
                                                 <View
                                                     key={vote.userId}
@@ -1606,21 +1463,7 @@ export default function TeamDetail() {
                                             ))}
                                         </ScrollView>
                                     </View>
-
-                                    {/* 다시 투표하기 버튼 */}
-                                    <TouchableOpacity
-                                        onPress={() => setShowVoteStatus(false)}
-                                        style={{
-                                            backgroundColor: colors.primary,
-                                            paddingVertical: spacing.sm,
-                                            borderRadius: radius.md,
-                                            alignItems: 'center',
-                                            marginTop: spacing.md,
-                                        }}
-                                    >
-                                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>다시 투표하기</Text>
-                                    </TouchableOpacity>
-                                </>
+                                </View>
                             )}
 
                             {/* 닫기 버튼 */}
@@ -1628,7 +1471,6 @@ export default function TeamDetail() {
                                 onPress={() => {
                                     setVoteModalVisible(false);
                                     setSelectedVote(null);
-                                    setShowVoteStatus(false);
                                 }}
                                 style={{
                                     paddingVertical: spacing.sm,
@@ -1800,6 +1642,185 @@ export default function TeamDetail() {
                         </TouchableWithoutFeedback>
                     </KeyboardAvoidingView>
                 </Modal>
+
+                {/* 멤버 리스트 */}
+                {memberUsers.length > 0 && (
+                    <View style={{
+                        backgroundColor: colors.surface,
+                        borderRadius: radius.lg,
+                        padding: spacing.lg,
+                        marginBottom: spacing.lg,
+                    }}>
+                        <Text style={{
+                            fontSize: font.body,
+                            fontWeight: '600',
+                            color: colors.text,
+                            marginBottom: spacing.md,
+                        }}>
+                            🙋 참여자 ({memberUsers.length}명)
+                        </Text>
+
+                        {[...memberUsers]
+                            .sort((a, b) => (a.email === team.leaderEmail ? -1 : 1))
+                            .map((member) => (
+                                <View
+                                    key={member.email}
+                                    style={{
+                                        flexDirection: 'row',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        marginBottom: spacing.sm,
+                                    }}
+                                >
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <Text style={{
+                                            color: member.email === team.leaderEmail ? colors.primary : colors.text,
+                                            fontWeight: member.email === team.leaderEmail ? 'bold' : 'normal',
+                                            fontSize: font.body,
+                                        }}>
+                                        {member.email === team.leaderEmail && '👑 '}
+                                        {member.name}
+                                    </Text>
+                                    </View>
+
+                                    {/* 강퇴 버튼 (모임장만 보임) */}
+                                    {isCreator && member.email !== user.email && (
+                                        <TouchableOpacity
+                                            onPress={() => handleKick(member.email)}
+                                            style={{
+                                                backgroundColor: colors.error + '20',
+                                                paddingHorizontal: 12,
+                                                paddingVertical: 6,
+                                                borderRadius: radius.md,
+                                            }}
+                                        >
+                                            <Text style={{ color: colors.error, fontSize: font.caption }}>강퇴</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                            ))}
+
+                        {/* 탈퇴하기 버튼 (모임장이 아닌 멤버만 보임) */}
+                        {!isCreator && team.membersList?.includes(user?.email) && (
+                            <TouchableOpacity
+                                onPress={() => {
+                                    Alert.alert(
+                                        '모임 탈퇴',
+                                        '정말 모임을 탈퇴하시겠습니까?',
+                                        [
+                                            { text: '취소', style: 'cancel' },
+                                            {
+                                                text: '탈퇴',
+                                                style: 'destructive',
+                                                onPress: async () => {
+                                                    try {
+                                                        const teamRef = doc(db, 'teams', team.id);
+                                                        await updateDoc(teamRef, {
+                                                            membersList: arrayRemove(user.email),
+                                                            members: increment(-1),
+                                                        });
+                                                        showToast('✅ 모임에서 탈퇴했습니다.');
+                                                        router.back();
+                                                    } catch (error) {
+                                                        console.error('탈퇴 실패:', error);
+                                                        showToast('⚠️ 탈퇴에 실패했습니다.');
+                                                    }
+                                                },
+                                            },
+                                        ]
+                                    );
+                                }}
+                                style={{
+                                    marginTop: spacing.md,
+                                    paddingVertical: spacing.sm,
+                                    borderRadius: radius.md,
+                                    alignItems: 'center',
+                                    backgroundColor: colors.error + '10',
+                                }}
+                            >
+                                <Text style={{ color: colors.error, fontSize: font.body }}>
+                                    모임 탈퇴하기
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {/* 모임장 탈퇴 버튼 */}
+                        {isCreator && (
+                            <TouchableOpacity
+                                onPress={() => {
+                                    Alert.alert(
+                                        '모임장 탈퇴',
+                                        '모임장이 탈퇴하면 모임이 자동으로 삭제됩니다.\n정말 탈퇴하시겠습니까?',
+                                        [
+                                            { text: '취소', style: 'cancel' },
+                                            {
+                                                text: '탈퇴 및 모임 삭제',
+                                                style: 'destructive',
+                                                onPress: async () => {
+                                                    try {
+                                                        // 1. 모든 멤버에게 알림 보내기
+                                                        const memberEmails = team.membersList.filter(email => email !== user.email);
+                                                        const notificationPromises = memberEmails.map(email =>
+                                                            sendNotification({
+                                                                to: email,
+                                                                message: `"${team.name}" 모임이 모임장의 탈퇴로 인해 삭제되었습니다.`,
+                                                                type: 'team_deleted',
+                                                                teamName: team.name,
+                                                            })
+                                                        );
+
+                                                        // 2. 푸시 알림 보내기
+                                                        const tokenQueryBatches = [];
+                                                        const emailClone = [...memberEmails];
+                                                        while (emailClone.length) {
+                                                            const batch = emailClone.splice(0, 10);
+                                                            tokenQueryBatches.push(
+                                                                query(collection(db, 'expoTokens'), where('email', 'in', batch))
+                                                            );
+                                                        }
+
+                                                        const tokenSnapshots = await Promise.all(tokenQueryBatches.map(q => getDocs(q)));
+                                                        const tokens = tokenSnapshots.flatMap(snap =>
+                                                            snap.docs.map(doc => doc.data().token).filter(Boolean)
+                                                        );
+
+                                                        if (tokens.length > 0) {
+                                                            await sendPushNotification({
+                                                                to: tokens,
+                                                                title: '모임 삭제 알림',
+                                                                body: `"${team.name}" 모임이 모임장의 탈퇴로 인해 삭제되었습니다.`,
+                                                            });
+                                                        }
+
+                                                        // 3. 모임 삭제
+                                                        await deleteDoc(doc(db, 'teams', team.id));
+
+                                                        showToast('✅ 모임에서 탈퇴했습니다.');
+                                                        router.replace('/teams');
+                                                    } catch (error) {
+                                                        console.error('모임장 탈퇴 실패:', error);
+                                                        showToast('⚠️ 탈퇴에 실패했습니다.');
+                                                    }
+                                                },
+                                            },
+                                        ]
+                                    );
+                                }}
+                                style={{
+                                    marginTop: spacing.md,
+                                    paddingVertical: spacing.sm,
+                                    borderRadius: radius.md,
+                                    alignItems: 'center',
+                                    backgroundColor: colors.error + '10',
+                                }}
+                            >
+                                <Text style={{ color: colors.error, fontSize: font.body }}>
+                                    모임장 탈퇴하기
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                )}
 
                 {/* 하단 버튼 영역 */}
                 <View style={{ gap: spacing.md }}>

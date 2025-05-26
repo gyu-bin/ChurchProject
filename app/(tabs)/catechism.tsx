@@ -106,7 +106,7 @@ export default function CatechismPage() {
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background,paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>
             <TouchableOpacity
                 onPress={() => setCategoryModal(true)}
-                style={{ alignItems: 'center', marginBottom: spacing.sm, paddingTop: Platform.OS === 'android' ? insets.top : '3%' }}
+                style={{ alignItems: 'center', marginBottom: spacing.sm}}
             >
                 <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.primary }}>
                     {selectedCategory.label} ▾
