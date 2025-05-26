@@ -6,9 +6,7 @@ import { clearPrayers } from "@/redux/slices/prayerSlice";
 import { clearTeams } from "@/redux/slices/teamSlice";
 import { logoutUser } from "@/redux/slices/userSlice";
 import { store } from "@/redux/store";
-import { cleanDuplicateExpoTokens } from '@/services/cleanExpoTokens';
 import { sendWeeklyRankingPush } from "@/services/sendWeeklyRankingPush";
-import { requestNotificationPermission } from '@/utils/notificationPermission';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Device from 'expo-device';
 import * as NavigationBar from 'expo-navigation-bar';
@@ -29,12 +27,6 @@ export default function RootLayout() {
     const router = useRouter();
 
     useEffect(() => {
-        const setup = async () => {
-            await requestNotificationPermission();
-            await cleanDuplicateExpoTokens();
-        };
-        setup();
-
         // ✅ 앱이 실행 중일 때 알림 클릭 감지
         const subscription = Notifications.addNotificationResponseReceivedListener(response => {
             const screen = response.notification.request.content.data?.screen;
