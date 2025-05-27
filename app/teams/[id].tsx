@@ -97,6 +97,8 @@ export default function TeamDetail() {
     const isDark = mode === 'dark';
     const [currentUser, setCurrentUser] = useState<any>(null);
     const isCreator = team?.leaderEmail === user?.email;
+    const isSubLeader = team?.subLeaderEmail === user?.email;
+    const isManager = isCreator || isSubLeader;
     const insets = useSafeAreaInsets();
     const [refreshing, setRefreshing] = useState(false);
 
@@ -311,7 +313,7 @@ export default function TeamDetail() {
 
         showToast('✅가입 신청 완료: 모임장에게 신청 메시지를 보냈습니다.');
         fetchTeam();  // ✅ 추가된 부분
-        router.back();
+        // router.back();
     };
 
     const openEditModal = () => {
@@ -864,7 +866,7 @@ export default function TeamDetail() {
                                 {team.membersList?.length || 0}명의 멤버
                             </Text>
                         </View>
-                        {isCreator && (
+                        {(isCreator || isSubLeader) && (
                             <TouchableOpacity
                                 onPress={openEditModal}
                                 style={{
@@ -1071,7 +1073,7 @@ export default function TeamDetail() {
                             )}
                         </View>
                         <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                            {isCreator && (
+                            {(isCreator || isSubLeader) && (
                                 <TouchableOpacity
                                     onPress={() => setDatePickerVisible(true)}
                                     style={{
@@ -1693,15 +1695,26 @@ export default function TeamDetail() {
                                     </View>
 
                                     {/* 설정 버튼 */}
-                                    {isCreator && member.email !== user.email && (
+                                    {isManager && member.email !== user.email && (
                                         <TouchableOpacity
                                             onPress={() => {
+                                                // 부모임장은 모임장을 관리할 수 없음
+                                                if (isSubLeader && member.email === team.leaderEmail) {
+                                                    return;
+                                                }
+
+                                                // 부모임장은 다른 부모임장을 관리할 수 없음
+                                                if (isSubLeader && member.email === team.subLeaderEmail) {
+                                                    return;
+                                                }
+
                                                 Alert.alert(
                                                     '멤버 관리',
                                                     `${member.name}님을 어떻게 하시겠습니까?`,
                                                     [
                                                         { text: '취소', style: 'cancel' },
-                                                        {
+                                                        // 부모임장 임명/해제는 모임장만 가능
+                                                        ...(isCreator ? [{
                                                             text: member.email === team.subLeaderEmail ? '부모임장 해제' : '부모임장 임명',
                                                             onPress: async () => {
                                                                 try {
@@ -1722,7 +1735,8 @@ export default function TeamDetail() {
                                                                     showToast('⚠️ 부모임장 설정에 실패했습니다.');
                                                                 }
                                                             }
-                                                        },
+                                                        }] : []),
+                                                        // 일반 멤버 강퇴는 모임장과 부모임장 모두 가능
                                                         {
                                                             text: '강퇴',
                                                             style: 'destructive',
@@ -1866,7 +1880,7 @@ export default function TeamDetail() {
                 {/* 하단 버튼 영역 */}
                 <View style={{ gap: spacing.md }}>
                     {/* 관리자 버튼 */}
-                {isCreator && (
+                    {isManager && (
                         <>
                         <TouchableOpacity
                             onPress={openEditModal}
@@ -1882,39 +1896,41 @@ export default function TeamDetail() {
                             </Text>
                         </TouchableOpacity>
 
+                        {isCreator && (
+                            <TouchableOpacity
+                                onPress={() => deleteTeam(team.id)}
+                                style={{
+                                    backgroundColor: colors.error,
+                                    paddingVertical: spacing.md,
+                                    borderRadius: radius.md,
+                                    alignItems: 'center',
+                                }}
+                            >
+                                <Text style={{ color: '#fff', fontSize: font.body, fontWeight: 'bold' }}>
+                                    🗑️ 모임 삭제하기
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+                        </>
+                    )}
+
+                    {/* 가입 신청 버튼 */}
+                    {!isFull && !isCreator && !team.membersList?.includes(user.email) && (
                         <TouchableOpacity
-                            onPress={() => deleteTeam(team.id)}
+                            onPress={alreadyRequested ? undefined : handleJoin}
+                            disabled={isFull || alreadyRequested}
                             style={{
-                                backgroundColor: colors.error,
+                                backgroundColor: isFull || alreadyRequested ? colors.border : colors.primary,
                                 paddingVertical: spacing.md,
                                 borderRadius: radius.md,
                                 alignItems: 'center',
                             }}
                         >
-                            <Text style={{ color: '#fff', fontSize: font.body, fontWeight: 'bold' }}>
-                                🗑️ 모임 삭제하기
+                            <Text style={{ color: '#fff', fontSize: font.body, fontWeight: '600' }}>
+                                {isFull ? '모집마감' : alreadyRequested ? '가입 신청 완료' : '가입 신청하기'}
                             </Text>
                         </TouchableOpacity>
-                        </>
-                )}
-
-                    {/* 가입 신청 버튼 */}
-                {!isFull && !isCreator && !team.membersList?.includes(user.email) && (
-                    <TouchableOpacity
-                        onPress={alreadyRequested ? undefined : handleJoin}
-                        disabled={isFull || alreadyRequested}
-                        style={{
-                            backgroundColor: isFull || alreadyRequested ? colors.border : colors.primary,
-                            paddingVertical: spacing.md,
-                            borderRadius: radius.md,
-                            alignItems: 'center',
-                        }}
-                    >
-                        <Text style={{ color: '#fff', fontSize: font.body, fontWeight: '600' }}>
-                            {isFull ? '모집마감' : alreadyRequested ? '가입 신청 완료' : '가입 신청하기'}
-                        </Text>
-                    </TouchableOpacity>
-                )}
+                    )}
                 </View>
             </ScrollView>
         </SafeAreaView>

@@ -1,20 +1,26 @@
-import React, {useEffect, useRef, useState} from 'react';
-import {
-    View, Text, TextInput, TouchableOpacity,
-    ScrollView, Alert, Platform, Modal, Dimensions,PanResponder,
-    KeyboardAvoidingView
-} from 'react-native';
-import { db } from '@/firebase/config';
-import { collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc, updateDoc, where, getDocs } from 'firebase/firestore';
-import { getCurrentUser } from '@/services/authService';
-import { useAppTheme } from '@/context/ThemeContext';
 import { useDesign } from '@/context/DesignSystem';
+import { useAppTheme } from '@/context/ThemeContext';
+import { db } from '@/firebase/config';
+import { getCurrentUser } from '@/services/authService';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {router,useLocalSearchParams} from "expo-router";
 import { format } from 'date-fns';
+import { router, useLocalSearchParams } from "expo-router";
+import { addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, updateDoc, where } from 'firebase/firestore';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+    Alert,
+    Dimensions,
+    KeyboardAvoidingView,
+    Modal,
+    PanResponder,
+    Platform,
+    ScrollView,
+    Text, TextInput, TouchableOpacity,
+    View
+} from 'react-native';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import Toast from "react-native-root-toast";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // 위치에 맞게 경로 수정
 
 const { height } = Dimensions.get('window');
@@ -215,6 +221,11 @@ export default function DevotionPage() {
         setRankingVisible(true);
     };
 
+    const handleDateConfirm = (date: Date) => {
+        setShowDatePicker(false);
+        if (date) setFilterDate(date);
+    };
+
     return (
         <View style={{ flex: 1, backgroundColor: colors.background, paddingTop:Platform.OS === 'android' ? insets.top : insets.top-10}}>
             <View
@@ -240,16 +251,16 @@ export default function DevotionPage() {
 
                 {/* 오른쪽 아이콘들 */}
                 <View style={{ flexDirection: 'row', gap: spacing.lg }}>
-                    {/* 랭킹 */}
-                    <TouchableOpacity onPress={loadRanking} style={{ alignItems: 'center' }}>
-                        <Ionicons name="trophy-outline" size={24} color={colors.primary} />
-                        <Text style={{ fontSize: 12, color: colors.primary, marginTop: 4 }}>랭킹</Text>
-                    </TouchableOpacity>
-
                     {/* 날짜 */}
                     <TouchableOpacity onPress={() => setShowDatePicker(true)} style={{ alignItems: 'center' }}>
                         <Ionicons name="calendar-outline" size={24} color={colors.primary} />
                         <Text style={{ fontSize: 12, color: colors.primary, marginTop: 4 }}>날짜</Text>
+                    </TouchableOpacity>
+
+                    {/* 랭킹 */}
+                    <TouchableOpacity onPress={loadRanking} style={{ alignItems: 'center' }}>
+                        <Ionicons name="trophy-outline" size={24} color={colors.primary} />
+                        <Text style={{ fontSize: 12, color: colors.primary, marginTop: 4 }}>랭킹</Text>
                     </TouchableOpacity>
 
                     {/* 작성 */}
@@ -278,17 +289,14 @@ export default function DevotionPage() {
                 />
             </View>
 
-            {showDatePicker && (
-                <DateTimePicker
-                    value={filterDate || new Date()}
-                    mode="date"
-                    display="default"
-                    onChange={(event, date) => {
-                        setShowDatePicker(false);
-                        if (date) setFilterDate(date);
-                    }}
-                />
-            )}
+            {/* 날짜 선택기 */}
+            <DateTimePickerModal
+                isVisible={showDatePicker}
+                mode="date"
+                onConfirm={handleDateConfirm}
+                onCancel={() => setShowDatePicker(false)}
+                display="inline"
+            />
 
             {(filterDate || filterUserName) && (
                 <TouchableOpacity onPress={clearFilters} style={{ alignSelf: 'flex-end', paddingRight: spacing.lg }}>
@@ -299,10 +307,62 @@ export default function DevotionPage() {
 
             <View {...panResponder.panHandlers} style={{ flex: 1 }}>
             <ScrollView contentContainerStyle={{ paddingLeft: spacing.lg,paddingRight: spacing.lg,paddingBottom: spacing.lg }}>
-                <View style={{ alignItems: 'center', marginVertical: 16 }}>
-                    <Text style={{ fontSize: 18, fontWeight: '600', color: colors.text }}>
-                        {`<${filterDate ? format(filterDate, 'yyyy-MM-dd') : ''}>`}
-                    </Text>
+                <View style={{ alignItems: 'center', marginVertical: 16, flexDirection: 'row', justifyContent: 'center' }}>
+                    <TouchableOpacity 
+                        onPress={() => {
+                            setFilterDate(prev => {
+                                const newDate = new Date(prev ?? new Date());
+                                newDate.setDate(newDate.getDate() - 1);
+                                return newDate;
+                            });
+                        }}
+                        style={{
+                            padding: 8,
+                            marginRight: 16,
+                        }}
+                    >
+                        <Ionicons name="chevron-back" size={24} color={colors.primary} />
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                        onPress={() => setShowDatePicker(true)}
+                        style={{ 
+                            flexDirection: 'row', 
+                            alignItems: 'center',
+                            backgroundColor: colors.surface,
+                            paddingVertical: 8,
+                            paddingHorizontal: 16,
+                            borderRadius: 20,
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.1,
+                            shadowRadius: 4,
+                            elevation: 3,
+                        }}>
+                        <Text style={{ 
+                            fontSize: 18, 
+                            fontWeight: '600', 
+                            color: colors.text,
+                        }}>
+                            {filterDate ? format(filterDate, 'yyyy-MM-dd') : ''}
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                        onPress={() => {
+                            setFilterDate(prev => {
+                                const newDate = new Date(prev ?? new Date());
+                                newDate.setDate(newDate.getDate() + 1);
+                                return newDate;
+                            });
+                        }}
+                        style={{
+                            padding: 8,
+                            marginLeft: 16,
+                        }}
+                    >
+                        <Ionicons name="chevron-forward" size={24} color={colors.primary} />
+                    </TouchableOpacity>
                 </View>
 
                 {posts.length === 0 && (
@@ -427,33 +487,99 @@ export default function DevotionPage() {
 
 
             <Modal visible={rankingVisible} animationType="slide" transparent>
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.7)' }}>
-                    <View style={{ width: '85%', maxHeight: height * 0.85, backgroundColor: colors.background, padding: spacing.lg, borderRadius: radius.lg }}>
-                        <Text style={{ color: colors.subtext, fontSize: 14, marginBottom: spacing.sm }}>
+                <View style={{ 
+                    flex: 1, 
+                    justifyContent: 'center', 
+                    alignItems: 'center', 
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)' 
+                }}>
+                    <View style={{ 
+                        width: '85%', 
+                        maxHeight: height * 0.85, 
+                        backgroundColor: colors.background, 
+                        padding: spacing.lg, 
+                        borderRadius: radius.lg,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.25,
+                        shadowRadius: 3.84,
+                        elevation: 5
+                    }}>
+                        <Text style={{ 
+                            color: colors.subtext, 
+                            fontSize: 14, 
+                            marginBottom: spacing.sm 
+                        }}>
                             📅 집계 기간: {rankingRangeText}
                         </Text>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg }}>
-                            <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.text }}>🏆 묵상 랭킹 (최근 7일)</Text>
+                        
+                        <View style={{ 
+                            flexDirection: 'row', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            marginBottom: spacing.lg 
+                        }}>
+                            <Text style={{ 
+                                fontSize: font.heading, 
+                                fontWeight: 'bold', 
+                                color: colors.text 
+                            }}>
+                                🏆 이번 주 묵상 랭킹
+                            </Text>
                             <TouchableOpacity onPress={() => setRankingVisible(false)}>
                                 <Ionicons name="close" size={24} color={colors.text} />
                             </TouchableOpacity>
                         </View>
 
                         {rankingData.length === 0 ? (
-                            <Text style={{ color: colors.subtext }}>랭킹 데이터가 없습니다.</Text>
+                            <View style={{ alignItems: 'center', padding: spacing.xl }}>
+                                <Text style={{ color: colors.subtext, marginBottom: spacing.md }}>
+                                    아직 이번 주 묵상 데이터가 없습니다
+                                </Text>
+                                <Text style={{ color: colors.subtext, fontSize: 12 }}>
+                                    매일 묵상을 작성하고 랭킹에 도전해보세요!
+                                </Text>
+                            </View>
                         ) : (
                             rankingData.map((item, index) => (
-                                <TouchableOpacity
+                                <View
                                     key={item.email}
-                                    onPress={() => {
-                                        setRankingVisible(false);
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        backgroundColor: colors.surface,
+                                        padding: spacing.md,
+                                        marginBottom: spacing.sm,
+                                        borderRadius: radius.md,
+                                        shadowColor: '#000',
+                                        shadowOffset: { width: 0, height: 1 },
+                                        shadowOpacity: 0.1,
+                                        shadowRadius: 2,
+                                        elevation: 2
                                     }}
-                                    style={{ marginBottom: spacing.md }}
                                 >
-                                    <Text key={item.name} style={{ fontSize: font.heading, color: colors.text, marginBottom: 4 }}>
-                                        {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`} {item.name} - {item.count}회
+                                    <Text style={{ 
+                                        fontSize: 24, 
+                                        marginRight: spacing.md 
+                                    }}>
+                                        {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}`}
                                     </Text>
-                                </TouchableOpacity>
+                                    <View>
+                                        <Text style={{ 
+                                            fontSize: font.body, 
+                                            fontWeight: 'bold',
+                                            color: colors.text 
+                                        }}>
+                                            {item.name}
+                                        </Text>
+                                        <Text style={{ 
+                                            fontSize: font.caption, 
+                                            color: colors.subtext 
+                                        }}>
+                                            이번 주 {item.count}회 작성
+                                        </Text>
+                                    </View>
+                                </View>
                             ))
                         )}
                     </View>
