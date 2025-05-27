@@ -74,7 +74,9 @@ interface LatestMessageInfo {
     text: string;
 }
 
-
+interface MembersList {
+    email: string;
+}
 
 interface TeamData {
     membersList: string[];
@@ -333,105 +335,55 @@ export default function TeamChat() {
         }
     }, [messages, highlightMessage]);
 
-    const getTeamData = useCallback(async () => {
-        try {
-            const teamDoc = await getDoc(doc(db, 'teams', teamId));
-            if (teamDoc.exists()) {
-                return teamDoc.data() as TeamData;
-            }
-        } catch (error) {
-            console.error('Error getting team data:', error);
-        }
-        return null;
-    }, [teamId]);
+    const handleSend = useCallback(async () => {
+        if (!input.trim() || !userEmail || isComposing) return;
 
-    const getActiveUsers = useCallback(async () => {
-        const snapshot = await getDocs(collection(db, 'userStatus'));
-        return snapshot.docs
-            .filter(doc => doc.data().currentScreen === 'chat' && doc.data().teamId === teamId)
-            .map(doc => doc.id);
-    }, [teamId]);
-
-    const notifyUsers = useCallback((teamData: TeamData, excludeEmails: string[]) => {
-        if (!teamData?.membersList) return [];
-        return teamData.membersList.filter(memberEmail =>
-            memberEmail !== userEmail && !excludeEmails.includes(memberEmail)
-        );
-    }, [userEmail]);
-
-    const getNotificationTokens = useCallback(async (emails: string[]) => {
-        const tokens: string[] = [];
-        const batches = [];
-
-        for (let i = 0; i < emails.length; i += BATCH_SIZE) {
-            batches.push(emails.slice(i, i + BATCH_SIZE));
-        }
-
-        await Promise.all(batches.map(async (batch) => {
-            const q = query(collection(db, 'expoTokens'), where('email', 'in', batch));
-            const snap = await getDocs(q);
-            snap.forEach(doc => {
-                const token = doc.data().token;
-                if (token) tokens.push(token);
-            });
-        }));
-
-        return tokens;
-    }, []);
-
-    const sendNotifications = useCallback(async (tokens: string[], teamName: string) => {
-        if (tokens.length === 0) return;
-
-        console.log('Sending notification with:', {
-            tokens,
-            teamName,
-            userName,
-            message: input.trim()
-        });
-
-        const notificationData = {
-            to: tokens,
-            title: teamName,
-            body: `${userName}: ${input.trim()}`,
-            sound: true,
-            priority: 'high',
-            badge: 1,
-            data: {
-                type: 'chat',
-                teamId: teamId,
-                teamName: teamName,
-                screen: `/teams/${teamId}/chat?name=${encodeURIComponent(teamName)}`,
-                senderName: userName,
-                message: input.trim(),
-            },
-            categoryId: 'chat',
-            channelId: 'chat',
-            _displayInForeground: true,
-            _category: 'chat',
-            ios: {
-                sound: true,
-                _displayInForeground: true,
-                shouldShowBanner: true,
-                shouldShowList: true
-            },
-            android: {
-                channelId: 'chat',
-                sound: true,
-                priority: 'high',
-                sticky: false,
-                vibrate: true
-            }
+        const now = new Date();
+        const messageData = {
+            senderEmail: userEmail,
+            senderName: userName,
+            text: input.trim(),
+            createdAt: serverTimestamp(),
+            replyTo: replyTo ? {
+                messageId: replyTo.id,
+                senderName: replyTo.senderName,
+                text: replyTo.text,
+            } : null,
         };
 
-        console.log('Full notification data:', notificationData);
-
         try {
-            const result = await sendPushNotification(notificationData);
-            console.log('Push notification result:', result);
+            setInput('');
+            setReplyTo(null);
+            setSelectedMessage(null);
+
+            // Create optimistic update with local timestamp
+            const newTempMessage = {
+                ...messageData,
+                id: `temp-${Date.now()}`,
+                createdAt: now,
+            };
+            setTempMessage(newTempMessage);
+            setMessages(prev => [...prev, newTempMessage]);
+
+            // Actual send
+            const docRef = await addDoc(collection(db, 'teams', teamId, 'chats'), messageData);
+            await handleNotifications();
+
+            // Update with real ID
+            setMessages(prev => prev.map(msg =>
+                msg.id === newTempMessage.id ? { ...msg, id: docRef.id } : msg
+            ));
+            setTempMessage(null);
         } catch (error) {
-            console.error('Push notification error:', error);
+            console.error('Failed to send message:', error);
+            // Revert optimistic update
+            if (tempMessage) {
+                setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
+                setTempMessage(null);
+            }
+            Alert.alert('메시지 전송 실패', '다시 시도해주세요.');
         }
-    }, [userName, input, teamId]);
+    }, [input, userEmail, userName, teamId, replyTo, isComposing, tempMessage]);
 
     const handleNotifications = useCallback(async () => {
         const teamSnap = await getDoc(doc(db, 'teams', teamId));
@@ -454,6 +406,42 @@ export default function TeamChat() {
         await updateBadgeCounts(notifyEmails);
     }, [teamId, userEmail, userName]);
 
+    const getActiveUsers = useCallback(async () => {
+        const snapshot = await getDocs(collection(db, 'userStatus'));
+        return snapshot.docs
+            .filter(doc => doc.data().currentScreen === 'chat' && doc.data().teamId === teamId)
+            .map(doc => doc.id);
+    }, [teamId]);
+
+    const getNotificationTokens = useCallback(async (emails: string[]) => {
+        const tokens: string[] = [];
+        const batches = [];
+
+        for (let i = 0; i < emails.length; i += BATCH_SIZE) {
+            batches.push(emails.slice(i, i + BATCH_SIZE));
+        }
+
+        await Promise.all(batches.map(async (batch) => {
+            const q = query(collection(db, 'expoTokens'), where('email', 'in', batch));
+            const snap = await getDocs(q);
+            snap.forEach(doc => {
+                const token = doc.data().token;
+                if (token) tokens.push(token);
+            });
+        }));
+
+        return tokens;
+    }, []);
+
+    const sendNotifications = useCallback(async (tokens: string[], teamName: string) => {
+        await sendPushNotification({
+            to: tokens,
+            title: teamName,
+            body: `${userName}: ${input.trim()}`,
+            data: { screen: 'chat', teamId },
+        });
+    }, [userName, input, teamId]);
+
     const updateBadgeCounts = useCallback(async (emails: string[]) => {
         await Promise.all(emails.map(email =>
             setDoc(
@@ -475,6 +463,14 @@ export default function TeamChat() {
         setShowNewMessageBanner(false);
         setLatestMsgInfo(null);
     }, [latestMsgInfo]);
+
+    // Fix type for membersList filter with proper typing
+    const notifyUsers = useCallback((teamData: TeamData, excludeEmails: string[]) => {
+        if (!teamData?.membersList) return [];
+        return teamData.membersList.filter((memberEmail: string) =>
+            memberEmail !== userEmail && !excludeEmails.includes(memberEmail)
+        );
+    }, [userEmail]);
 
     const safeScrollToMessage = useCallback((messageId: string) => {
         const index = messages.findIndex(msg => msg.id === messageId);
@@ -598,7 +594,7 @@ export default function TeamChat() {
 
         return (
             <Animated.View style={messageStyle}>
-                <MessageItem
+                <MessageItemComponent
                     item={item}
                     isMyMessage={isMyMessage}
                     showDate={showDate}
@@ -688,7 +684,7 @@ export default function TeamChat() {
                 .filter(member =>
                     member.email !== userEmail && // 본인 제외
                     (member.name.toLowerCase().includes(mentionQuery.toLowerCase()) ||
-                    member.email.toLowerCase().includes(mentionQuery.toLowerCase()))
+                        member.email.toLowerCase().includes(mentionQuery.toLowerCase()))
                 );
             setFilteredMembers(filtered);
         } else {
@@ -814,57 +810,6 @@ export default function TeamChat() {
         }
     };
 
-    const handleSend = useCallback(async () => {
-        if (!input.trim() || !userEmail || isComposing) return;
-
-        const now = new Date();
-        const messageData = {
-            senderEmail: userEmail,
-            senderName: userName,
-            text: input.trim(),
-            createdAt: serverTimestamp(),
-            replyTo: replyTo ? {
-                messageId: replyTo.id,
-                senderName: replyTo.senderName,
-                text: replyTo.text,
-            } : null,
-        };
-
-        try {
-            setInput('');
-            setReplyTo(null);
-            setSelectedMessage(null);
-
-            // Create optimistic update with local timestamp
-            const newTempMessage = {
-                ...messageData,
-                id: `temp-${Date.now()}`,
-                createdAt: now,
-            };
-            setTempMessage(newTempMessage);
-            setMessages(prev => [...prev, newTempMessage]);
-
-            // Actual send
-            const docRef = await addDoc(collection(db, 'teams', teamId, 'chats'), messageData);
-
-            // Send notifications using handleNotifications
-            await handleNotifications();
-
-            // Update with real ID
-            setMessages(prev => prev.map(msg =>
-                msg.id === newTempMessage.id ? { ...msg, id: docRef.id } : msg
-            ));
-            setTempMessage(null);
-        } catch (error) {
-            console.error('Message send error:', error);
-            if (tempMessage) {
-                setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
-                setTempMessage(null);
-            }
-            Alert.alert('메시지 전송 실패', '다시 시도해주세요.');
-        }
-    }, [input, userEmail, userName, teamId, replyTo, isComposing, tempMessage, handleNotifications]);
-
     if (loading) {
         return (
             <SafeAreaView style={{
@@ -980,24 +925,31 @@ export default function TeamChat() {
                     <FlatList
                         ref={flatListRef}
                         data={messages}
+                        keyExtractor={(item) => item.id}
                         renderItem={renderItem}
-                        keyExtractor={item => item.id}
-                        contentContainerStyle={{ paddingTop: 16 }}
-                        inverted={false}
-                        removeClippedSubviews={true}
-                        maxToRenderPerBatch={10}
-                        windowSize={15}
-                        initialNumToRender={20}
-                        onEndReachedThreshold={0.5}
+                        contentContainerStyle={styles.flatListContent}
+                        keyboardShouldPersistTaps="handled"
+                        keyboardDismissMode="interactive"
+                        removeClippedSubviews={false}
+                        initialNumToRender={INITIAL_RENDER_COUNT}
+                        maxToRenderPerBatch={MAX_BATCH_RENDER}
+                        windowSize={WINDOW_SIZE}
                         maintainVisibleContentPosition={{
                             minIndexForVisible: 0,
                             autoscrollToTopThreshold: 10,
                         }}
-                        ListEmptyComponent={
-                            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 100 }}>
-                                <Text style={{ color: colors.subtext }}>메시지가 없습니다</Text>
-                            </View>
-                        }
+                        onEndReachedThreshold={0.1}
+                        onEndReached={() => {
+                            // Load more messages if needed
+                        }}
+                        onLayout={() => {
+                            if (!didInitialScroll.current && messages.length > 0) {
+                                setTimeout(() => {
+                                    flatListRef.current?.scrollToEnd({ animated: false });
+                                    didInitialScroll.current = true;
+                                }, 100);
+                            }
+                        }}
                         onScroll={(event) => {
                             const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
                             const isBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - SCROLL_THRESHOLD;
@@ -1019,11 +971,6 @@ export default function TeamChat() {
                                 flatListRef.current?.scrollToEnd({ animated: !isKeyboardVisible });
                             }
                         }}
-                        getItemLayout={(data, index) => ({
-                            length: 70, // 예상되는 아이템 높이
-                            offset: 70 * index,
-                            index,
-                        })}
                     />
 
                     {showScrollToBottom && (
@@ -1209,7 +1156,7 @@ export default function TeamChat() {
 }
 
 // 멘션 하이라이트 컴포넌트
-const MentionText = memo(({ text, colors, isMyMessage }: { text: string; colors: any; isMyMessage: boolean }) => {
+const MentionTextComponent = memo(({ text, colors, isMyMessage }: { text: string; colors: any; isMyMessage: boolean }) => {
     const mentionRegex = /@([^\s]+)/g;
     const parts = [];
     let lastIndex = 0;
@@ -1250,7 +1197,9 @@ const MentionText = memo(({ text, colors, isMyMessage }: { text: string; colors:
     return parts.length > 0 ? <Text style={{ fontSize: 16 }}>{parts}</Text> : <Text style={{ fontSize: 16, color: isMyMessage ? '#000' : '#fff' }}>{text}</Text>;
 });
 
-const MessageItem = memo(({
+MentionTextComponent.displayName = 'MentionTextComponent';
+
+const MessageItemComponent = memo(({
     item,
     isMyMessage,
     showDate,
@@ -1321,7 +1270,7 @@ const MessageItem = memo(({
                             </Text>
                         </TouchableOpacity>
                     )}
-                    <MentionText text={item.text} colors={colors} isMyMessage={isMyMessage} />
+                    <MentionTextComponent text={item.text} colors={colors} isMyMessage={isMyMessage} />
                 </View>
                 <Text style={styles.time}>
                     {currentDate.toLocaleTimeString([], {
@@ -1333,6 +1282,8 @@ const MessageItem = memo(({
         </View>
     );
 });
+
+MessageItemComponent.displayName = 'MessageItemComponent';
 
 const styles = StyleSheet.create({
     safeArea: {
@@ -1570,8 +1521,3 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
 });
-
-
-
-
-
