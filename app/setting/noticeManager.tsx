@@ -228,7 +228,9 @@ export default function NoticeManager() {
     const renderItem = (item: any) => (
         <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm }}>
             <Text style={{ fontSize: font.body, fontWeight: 'bold', color: colors.text }}>{item.title}</Text>
-            {/*<Text style={{ fontSize: font.body, color: colors.subtext }}>{item.content}</Text>*/}
+            {item.type === 'notice' &&
+                (<Text style={{ fontSize: font.body, color: colors.subtext }}>{item.content}</Text>
+            )}
             {item.place && <Text style={{ fontSize: font.caption, color: colors.subtext }}>📍 {item.place}</Text>}
             {item.startDate?.seconds && item.endDate?.seconds && (
                 <Text style={{ fontSize: font.caption, color: colors.subtext }}>

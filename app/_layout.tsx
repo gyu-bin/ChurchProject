@@ -6,6 +6,7 @@ import { clearPrayers } from "@/redux/slices/prayerSlice";
 import { clearTeams } from "@/redux/slices/teamSlice";
 import { logoutUser } from "@/redux/slices/userSlice";
 import { store } from "@/redux/store";
+import { savePushTokenToFirestore } from "@/services/pushTokenService";
 import { sendWeeklyRankingPush } from "@/services/sendWeeklyRankingPush";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Device from 'expo-device';
@@ -14,13 +15,12 @@ import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { doc, onSnapshot } from "firebase/firestore";
 import React, { useEffect, useState } from 'react';
-import {AppState, useColorScheme} from 'react-native';
+import { AppState, useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { RootSiblingParent } from 'react-native-root-siblings';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux';
 import RootLayoutInner from './_layout-inner';
-import {savePushTokenToFirestore} from "@/services/pushTokenService";
 
 export default function RootLayout() {
     const colorScheme = useColorScheme();

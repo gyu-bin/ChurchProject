@@ -8,14 +8,14 @@ import { useAppDispatch } from '@/hooks/useRedux';
 import { clearPrayers } from "@/redux/slices/prayerSlice";
 import { clearTeams } from "@/redux/slices/teamSlice";
 import { logoutUser } from "@/redux/slices/userSlice";
-import { reauthenticate } from "@/services/authService";
 import { removeDeviceToken } from "@/services/registerPushToken";
 import { setScrollCallback } from "@/utils/scrollRefManager";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import bcrypt from "bcryptjs";
 import { useRouter } from 'expo-router';
-import { deleteDoc, doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { deleteDoc, doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+import LottieView from 'lottie-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     Alert, Modal,
@@ -30,8 +30,6 @@ import {
 } from 'react-native';
 import Toast from 'react-native-root-toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-import LottieView from 'lottie-react-native';
 
 import loading4 from '@/assets/lottie/Animation - 1747201330128.json';
 import loading3 from '@/assets/lottie/Animation - 1747201413764.json';
@@ -224,125 +222,649 @@ export default function SettingsScreen() {
         );
     };
 
+    // 재인증 함수 추가
+    const reauthenticate = async (email: string, password: string) => {
+        const userRef = doc(db, 'users', email);
+        const userSnap = await getDoc(userRef);
+        if (!userSnap.exists()) throw new Error('사용자를 찾을 수 없습니다.');
+
+        const userData = userSnap.data();
+        const isValid = await bcrypt.compare(password, userData.password);
+        if (!isValid) throw { code: 'auth/wrong-password' };
+
+        return true;
+    };
+
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? insets.top + 10 : 0 }}>
             <ScrollView
                 ref={scrollRef}
-                contentContainerStyle={{ paddingTop: spacing.lg, paddingBottom: 40, paddingHorizontal: horizontalMargin }} showsVerticalScrollIndicator={false}>
+                contentContainerStyle={{ 
+                    paddingHorizontal: 20,
+                    paddingBottom: 40 
+                }} 
+                showsVerticalScrollIndicator={false}
+            >
+                {/* 헤더 */}
+                <View style={{ 
+                    flexDirection: 'row', 
+                    alignItems: 'center',
+                    marginBottom: 32,
+                    marginTop: 12
+                }}>
+                    <Text style={{ 
+                        flex: 1,
+                        fontSize: 32, 
+                        fontWeight: '700', 
+                        color: colors.text 
+                    }}>
+                        설정
+                    </Text>
+                </View>
 
-                <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.text, marginBottom: spacing.lg }}>⚙️ 설정</Text>
-                {/* 👤 상단 프로필 카드 */}
+                {/* 프로필 카드 */}
                 {user && (
-
-                    <View
-                        style={{
-                            backgroundColor: colors.surface,
-                            borderRadius: 20,
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: 16,
-                            marginBottom: 20,
-                        }}
-                    >
-                        {/* 유저 정보 영역 */}
-                        <View>
-                            <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.text }}>{user?.name ?? '이름'}</Text>
-                            <Text style={{ fontSize: 14, color: colors.text, marginTop: 2 }}>{user?.email ?? '0000'}</Text>
-
-                            {/* 뱃지 */}
-                            <View style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
-                                {user?.division && (
-                                    <View
-                                        style={{
-                                            backgroundColor: '#E3F2FD',
-                                            paddingHorizontal: 8,
-                                            paddingVertical: 4,
-                                            borderRadius: 12,
-                                            marginRight: 4,
-                                        }}
-                                    >
-                                        <Text style={{ color: '#1976D2', fontSize: 12, fontWeight: 'bold' }}>
-                                            {user.division}
-                                        </Text>
-                                    </View>
-                                )}
-                                {user?.role && (
-                                    <View
-                                        style={{
-                                            backgroundColor: '#E8F5E9',
-                                            paddingHorizontal: 8,
-                                            paddingVertical: 4,
-                                            borderRadius: 12,
-                                            marginRight: 4,
-                                        }}
-                                    >
-                                        <Text style={{ color: '#2E7D32', fontSize: 12, fontWeight: 'bold' }}>
-                                            {user.role}
-                                        </Text>
-                                    </View>
-                                )}
-                                {user?.campus && (
-                                    <View style={{
-                                        backgroundColor: '#FDECEC',  // 연한 레드
-                                        paddingHorizontal: 8,
-                                        paddingVertical: 4,
-                                        borderRadius: 12,
-                                        marginRight: 4,
-                                    }}>
-                                        <Text style={{ color: '#ff9191', fontSize: 12, fontWeight: 'bold' }}>
-                                            {user.campus}
-                                        </Text>
-                                    </View>
-                                )}
-
+                    <View style={{
+                        backgroundColor: colors.surface,
+                        borderRadius: 24,
+                        padding: 20,
+                        marginBottom: 32,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.08,
+                        shadowRadius: 8,
+                        elevation: 3
+                    }}>
+                        <View style={{ 
+                            flexDirection: 'row', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'flex-start',
+                            marginBottom: 16
+                        }}>
+                            <View>
+                                <Text style={{ 
+                                    fontSize: 24, 
+                                    fontWeight: '700', 
+                                    color: colors.text,
+                                    marginBottom: 4
+                                }}>
+                                    {user?.name ?? '이름'}
+                                </Text>
+                                <Text style={{ 
+                                    fontSize: 15, 
+                                    color: colors.subtext 
+                                }}>
+                                    {user?.email ?? '이메일'}
+                                </Text>
                             </View>
+                            <TouchableOpacity
+                                onPress={handleEditToggle}
+                                style={{
+                                    backgroundColor: colors.primary + '15',
+                                    paddingVertical: 8,
+                                    paddingHorizontal: 12,
+                                    borderRadius: 12,
+                                }}
+                            >
+                                <Text style={{ 
+                                    color: colors.primary, 
+                                    fontSize: 14,
+                                    fontWeight: '600'
+                                }}>
+                                    프로필 수정
+                                </Text>
+                            </TouchableOpacity>
                         </View>
 
-                        {/* 수정 버튼 */}
-                        <TouchableOpacity
-                            onPress={handleEditToggle}
-                            style={{
-                                borderWidth: 1,
-                                borderColor: '#555',
-                                paddingVertical: 6,
-                                paddingHorizontal: 12,
-                                borderRadius: 12,
-                            }}
-                        >
-                            <Text style={{ color: colors.text, fontSize: 14 }}>✏️ 내 정보 수정</Text>
-                        </TouchableOpacity>
+                        {/* 뱃지 영역 */}
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                            {user?.division && (
+                                <View style={{
+                                    backgroundColor: '#E3F2FD',
+                                    paddingHorizontal: 10,
+                                    paddingVertical: 6,
+                                    borderRadius: 12
+                                }}>
+                                    <Text style={{ 
+                                        color: '#1976D2', 
+                                        fontSize: 13,
+                                        fontWeight: '600'
+                                    }}>
+                                        {user.division}
+                                    </Text>
+                                </View>
+                            )}
+                            {user?.role && (
+                                <View style={{
+                                    backgroundColor: '#E8F5E9',
+                                    paddingHorizontal: 10,
+                                    paddingVertical: 6,
+                                    borderRadius: 12
+                                }}>
+                                    <Text style={{ 
+                                        color: '#2E7D32', 
+                                        fontSize: 13,
+                                        fontWeight: '600'
+                                    }}>
+                                        {user.role}
+                                    </Text>
+                                </View>
+                            )}
+                            {user?.campus && (
+                                <View style={{
+                                    backgroundColor: '#FDECEC',
+                                    paddingHorizontal: 10,
+                                    paddingVertical: 6,
+                                    borderRadius: 12
+                                }}>
+                                    <Text style={{ 
+                                        color: '#ff9191', 
+                                        fontSize: 13,
+                                        fontWeight: '600'
+                                    }}>
+                                        {user.campus}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
                     </View>
                 )}
 
-                {/* 👤 내 정보 수정 모달 */}
+                {/* 일반 설정 섹션 */}
+                <View style={{ marginBottom: 32 }}>
+                    <Text style={{ 
+                        fontSize: 18, 
+                        fontWeight: '600', 
+                        color: colors.text,
+                        marginBottom: 16,
+                        paddingLeft: 4
+                    }}>
+                        일반
+                    </Text>
+                    
+                    <View style={{ gap: 12 }}>
+                        {/* 내 모임 관리 */}
+                        <TouchableOpacity
+                            onPress={() => router.push('/setting/joinTeams')}
+                            style={{
+                                backgroundColor: colors.surface,
+                                padding: 20,
+                                borderRadius: 16,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.06,
+                                shadowRadius: 6,
+                                elevation: 2
+                            }}
+                        >
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                <View style={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 20,
+                                    backgroundColor: '#d1fae5',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    <Ionicons name="accessibility-outline" size={20} color="#10b981" />
+                                </View>
+                                <Text style={{ fontSize: 16, color: colors.text }}>내 모임 관리</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={colors.subtext} />
+                        </TouchableOpacity>
+
+                        {/* 다크모드 */}
+                        <View style={{
+                            backgroundColor: colors.surface,
+                            padding: 20,
+                            borderRadius: 16,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.06,
+                            shadowRadius: 6,
+                            elevation: 2
+                        }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                <View style={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 20,
+                                    backgroundColor: isDark ? '#374151' : '#f3f4f6',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    <Ionicons 
+                                        name={isDark ? "moon" : "sunny"} 
+                                        size={20} 
+                                        color={isDark ? "#9ca3af" : "#6b7280"} 
+                                    />
+                                </View>
+                                <Text style={{ fontSize: 16, color: colors.text }}>다크모드</Text>
+                            </View>
+                            <ThemeToggle />
+                        </View>
+
+                        {/* 알림 설정 */}
+                        <View style={{
+                            backgroundColor: colors.surface,
+                            padding: 20,
+                            borderRadius: 16,
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.06,
+                            shadowRadius: 6,
+                            elevation: 2
+                        }}>
+                            <PushSettings />
+                        </View>
+                    </View>
+                </View>
+
+                {/* 관리자 설정 */}
+                {user?.role === '교역자' && (
+                    <View style={{ marginBottom: 32 }}>
+                        <Text style={{ 
+                            fontSize: 18, 
+                            fontWeight: '600', 
+                            color: colors.text,
+                            marginBottom: 16,
+                            paddingLeft: 4
+                        }}>
+                            관리자
+                        </Text>
+                        
+                        <View style={{ gap: 12 }}>
+                            {/* 공지사항 관리 */}
+                            <TouchableOpacity
+                                onPress={() => router.push('/setting/noticeManager')}
+                                style={{
+                                    backgroundColor: colors.surface,
+                                    padding: 20,
+                                    borderRadius: 16,
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    shadowColor: '#000',
+                                    shadowOffset: { width: 0, height: 2 },
+                                    shadowOpacity: 0.06,
+                                    shadowRadius: 6,
+                                    elevation: 2
+                                }}
+                            >
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                    <View style={{
+                                        width: 40,
+                                        height: 40,
+                                        borderRadius: 20,
+                                        backgroundColor: '#d1fae5',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}>
+                                        <Ionicons name="megaphone-outline" size={20} color="#10b981" />
+                                    </View>
+                                    <Text style={{ fontSize: 16, color: colors.text }}>공지사항 관리</Text>
+                                </View>
+                                <Ionicons name="chevron-forward" size={20} color={colors.subtext} />
+                            </TouchableOpacity>
+
+                            {/* 유튜브 영상 관리 */}
+                            <TouchableOpacity
+                                onPress={() => router.push('/setting/videoManager')}
+                                style={{
+                                    backgroundColor: colors.surface,
+                                    padding: 20,
+                                    borderRadius: 16,
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    shadowColor: '#000',
+                                    shadowOffset: { width: 0, height: 2 },
+                                    shadowOpacity: 0.06,
+                                    shadowRadius: 6,
+                                    elevation: 2
+                                }}
+                            >
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                    <View style={{
+                                        width: 40,
+                                        height: 40,
+                                        borderRadius: 20,
+                                        backgroundColor: '#fee2e2',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}>
+                                        <Ionicons name="videocam-outline" size={20} color="#ef4444" />
+                                    </View>
+                                    <Text style={{ fontSize: 16, color: colors.text }}>유튜브 영상 관리</Text>
+                                </View>
+                                <Ionicons name="chevron-forward" size={20} color={colors.subtext} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                )}
+
+                {/* 기타 설정 */}
+                <View style={{ marginBottom: 32 }}>
+                    <Text style={{ 
+                        fontSize: 18, 
+                        fontWeight: '600', 
+                        color: colors.text,
+                        marginBottom: 16,
+                        paddingLeft: 4
+                    }}>
+                        기타
+                    </Text>
+                    
+                    <View style={{ gap: 12 }}>
+                        {/* 피드백 */}
+                        <TouchableOpacity
+                            onPress={() => router.push('/setting/feedback')}
+                            style={{
+                                backgroundColor: colors.surface,
+                                padding: 20,
+                                borderRadius: 16,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.06,
+                                shadowRadius: 6,
+                                elevation: 2
+                            }}
+                        >
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                <View style={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 20,
+                                    backgroundColor: '#ddd6fe',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    <Ionicons name="chatbox-outline" size={20} color="#7c3aed" />
+                                </View>
+                                <Text style={{ fontSize: 16, color: colors.text }}>피드백 보내기</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={colors.subtext} />
+                        </TouchableOpacity>
+
+                        {/* 로그인된 기기 */}
+                        <TouchableOpacity
+                            onPress={() => setModalVisible(true)}
+                            style={{
+                                backgroundColor: colors.surface,
+                                padding: 20,
+                                borderRadius: 16,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.06,
+                                shadowRadius: 6,
+                                elevation: 2
+                            }}
+                        >
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                <View style={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 20,
+                                    backgroundColor: '#e0f2fe',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    <Ionicons name="phone-portrait-outline" size={20} color="#0284c7" />
+                                </View>
+                                <Text style={{ fontSize: 16, color: colors.text }}>로그인된 기기</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={colors.subtext} />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                {/* 계정 설정 */}
+                <View style={{ marginBottom: 32 }}>
+                    <Text style={{ 
+                        fontSize: 18, 
+                        fontWeight: '600', 
+                        color: colors.text,
+                        marginBottom: 16,
+                        paddingLeft: 4
+                    }}>
+                        계정
+                    </Text>
+                    
+                    <View style={{ gap: 12 }}>
+                        {/* 비밀번호 찾기 */}
+                        <TouchableOpacity
+                            onPress={() => router.push('/setting/ForgotPassword')}
+                            style={{
+                                backgroundColor: colors.surface,
+                                padding: 20,
+                                borderRadius: 16,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.06,
+                                shadowRadius: 6,
+                                elevation: 2
+                            }}
+                        >
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                <View style={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 20,
+                                    backgroundColor: '#fef3c7',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    <Ionicons name="key-outline" size={20} color="#d97706" />
+                                </View>
+                                <Text style={{ fontSize: 16, color: colors.text }}>비밀번호 찾기</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={colors.subtext} />
+                        </TouchableOpacity>
+
+                        {/* 회원 탈퇴 */}
+                        <TouchableOpacity
+                            onPress={handleDeleteAccount}
+                            style={{
+                                backgroundColor: colors.surface,
+                                padding: 20,
+                                borderRadius: 16,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.06,
+                                shadowRadius: 6,
+                                elevation: 2
+                            }}
+                        >
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                <View style={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 20,
+                                    backgroundColor: '#fee2e2',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                                </View>
+                                <Text style={{ fontSize: 16, color: colors.error }}>회원 탈퇴</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={colors.error} />
+                        </TouchableOpacity>
+
+                        {/* 로그아웃 */}
+                        <TouchableOpacity
+                            onPress={handleLogout}
+                            style={{
+                                backgroundColor: colors.surface,
+                                padding: 20,
+                                borderRadius: 16,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.06,
+                                shadowRadius: 6,
+                                elevation: 2
+                            }}
+                        >
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                <View style={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 20,
+                                    backgroundColor: '#fee2e2',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    <Ionicons name="log-out-outline" size={20} color="#ef4444" />
+                                </View>
+                                <Text style={{ fontSize: 16, color: colors.error }}>로그아웃</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={colors.error} />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                {/* 정회원 전환 모달 */}
+                {user?.role === '새가족' && (
+                    <Modal visible={showUpgradeModal} transparent animationType="fade">
+                        <View style={{
+                            flex: 1,
+                            backgroundColor: 'rgba(0,0,0,0.5)',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                        }}>
+                            <View style={{
+                                backgroundColor: colors.surface,
+                                borderRadius: 24,
+                                padding: 24,
+                                width: '85%',
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 4 },
+                                shadowOpacity: 0.1,
+                                shadowRadius: 12,
+                                elevation: 5
+                            }}>
+                                <Text style={{
+                                    fontSize: 20,
+                                    fontWeight: '600',
+                                    color: colors.text,
+                                    marginBottom: 8
+                                }}>
+                                    정회원 전환
+                                </Text>
+                                <Text style={{
+                                    fontSize: 15,
+                                    color: colors.subtext,
+                                    marginBottom: 24,
+                                    lineHeight: 20
+                                }}>
+                                    교역자나 목회자에게 확인받고{'\n'}정회원으로 전환해주세요.
+                                </Text>
+
+                                <TouchableOpacity
+                                    onPress={handleUpgrade}
+                                    style={{
+                                        backgroundColor: colors.primary,
+                                        paddingVertical: 16,
+                                        borderRadius: 16,
+                                        alignItems: 'center',
+                                        marginBottom: 12
+                                    }}
+                                >
+                                    <Text style={{ 
+                                        color: '#fff', 
+                                        fontSize: 16,
+                                        fontWeight: '600'
+                                    }}>
+                                        정회원 전환하기
+                                    </Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    onPress={() => setShowUpgradeModal(false)}
+                                    style={{
+                                        paddingVertical: 16,
+                                        alignItems: 'center'
+                                    }}
+                                >
+                                    <Text style={{ 
+                                        color: colors.subtext,
+                                        fontSize: 15
+                                    }}>
+                                        닫기
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </Modal>
+                )}
+
+                {/* 기존 모달들 유지 */}
+                <DeviceManager visible={modalVisible} onClose={() => setModalVisible(false)} />
+                {/* ... 나머지 모달들 ... */}
+
+                {/* 프로필 수정 모달 */}
                 <Modal visible={showEditProfile} transparent animationType="fade">
-                    <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
-                        <View style={{ width: '90%', backgroundColor: colors.surface, borderRadius: 20, padding: spacing.lg }}>
-                            {/* 타이틀 */}
+                    <View style={{ 
+                        flex: 1, 
+                        backgroundColor: 'rgba(0,0,0,0.5)', 
+                        justifyContent: 'center', 
+                        alignItems: 'center' 
+                    }}>
+                        <View style={{ 
+                            width: '90%', 
+                            backgroundColor: colors.surface, 
+                            borderRadius: 24,
+                            padding: 24,
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 4 },
+                            shadowOpacity: 0.1,
+                            shadowRadius: 12,
+                            elevation: 5
+                        }}>
                             <Text style={{
-                                fontSize: 20,
-                                fontWeight: 'bold',
-                                color: colors.primary,
-                                marginBottom: spacing.lg,
+                                fontSize: 24,
+                                fontWeight: '700',
+                                color: colors.text,
+                                marginBottom: 24,
                                 textAlign: 'center',
                             }}>
-                                ✏️ 내 정보 수정
+                                프로필 수정
                             </Text>
 
-                            {/* 일반 필드 */}
+                            {/* 입력 필드들 */}
                             {[
                                 { label: '이름', key: 'name' },
                                 { label: '이메일', key: 'email' },
                                 { label: '부서', key: 'division' },
                                 { label: '캠퍼스', key: 'campus' },
                             ].map(({ label, key }) => (
-                                <View key={key} style={{ marginBottom: spacing.md }}>
+                                <View key={key} style={{ marginBottom: 16 }}>
                                     <Text style={{
-                                        fontSize: font.caption,
+                                        fontSize: 15,
                                         color: colors.subtext,
                                         fontWeight: '600',
-                                        marginBottom: 4,
+                                        marginBottom: 8,
                                     }}>
                                         {label}
                                     </Text>
@@ -353,232 +875,272 @@ export default function SettingsScreen() {
                                         style={{
                                             borderWidth: 1,
                                             borderColor: colors.border,
-                                            borderRadius: 10,
-                                            paddingHorizontal: spacing.sm,
-                                            paddingVertical: Platform.OS === 'ios' ? 12 : 10,
+                                            borderRadius: 16,
+                                            paddingHorizontal: 16,
+                                            paddingVertical: Platform.OS === 'ios' ? 16 : 12,
                                             color: colors.text,
                                             backgroundColor: colors.card,
+                                            fontSize: 16
                                         }}
+                                        placeholderTextColor={colors.subtext}
                                     />
                                 </View>
                             ))}
 
-                            {/* 비밀번호 변경 토글 */}
+                            {/* 비밀번호 변경 버튼 */}
                             <TouchableOpacity
                                 onPress={() => setShowPasswordFields(prev => !prev)}
                                 style={{
-                                    backgroundColor: colors.border,
-                                    padding: spacing.sm,
-                                    borderRadius: 8,
+                                    backgroundColor: colors.primary + '15',
+                                    padding: 16,
+                                    borderRadius: 16,
                                     alignItems: 'center',
-                                    marginTop: spacing.md,
-                                    marginBottom: showPasswordFields ? spacing.sm : spacing.md,
+                                    marginBottom: 24,
                                 }}
                             >
-                                <Text style={{ color: colors.text }}>🔒 비밀번호 변경</Text>
+                                <Text style={{ 
+                                    color: colors.primary,
+                                    fontSize: 16,
+                                    fontWeight: '600'
+                                }}>
+                                    비밀번호 변경
+                                </Text>
                             </TouchableOpacity>
 
-                            <Modal visible={showPasswordFields} transparent animationType="fade">
-                                <View
-                                    style={{
-                                        flex: 1,
-                                        backgroundColor: 'rgba(0,0,0,0.5)',
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                    }}
-                                >
-                                    <View
-                                        style={{
-                                            width: '85%',
-                                            backgroundColor: colors.surface,
-                                            borderRadius: 16,
-                                            padding: spacing.lg,
-                                        }}
-                                    >
-                                        <Text
-                                            style={{
-                                                fontSize: font.body,
-                                                fontWeight: 'bold',
-                                                color: colors.text,
-                                                marginBottom: spacing.lg,
-                                            }}
-                                        >
-                                            🔒 비밀번호 변경
-                                        </Text>
-
-                                        {/* 👁 보기 상태 추가 */}
-                                        <View style={{ marginBottom: spacing.md }}>
-                                            <Text
-                                                style={{
-                                                    fontSize: font.caption,
-                                                    fontWeight: '600',
-                                                    color: colors.subtext,
-                                                    marginBottom: 4,
-                                                }}
-                                            >
-                                                기존 비밀번호
-                                            </Text>
-                                            <TextInput
-                                                placeholder="기존 비밀번호"
-                                                value={oldPassword}
-                                                onChangeText={setOldPassword}
-                                                secureTextEntry={!showPassword}
-                                                style={{
-                                                    borderWidth: 1,
-                                                    borderColor: colors.border,
-                                                    borderRadius: 10,
-                                                    padding: spacing.sm,
-                                                    color: colors.text,
-                                                    backgroundColor: colors.card,
-                                                }}
-                                            />
-                                        </View>
-
-                                        <View style={{ marginBottom: spacing.sm }}>
-                                            <Text
-                                                style={{
-                                                    fontSize: font.caption,
-                                                    fontWeight: '600',
-                                                    color: colors.subtext,
-                                                    marginBottom: 4,
-                                                }}
-                                            >
-                                                새 비밀번호
-                                            </Text>
-                                            <TextInput
-                                                placeholder="새 비밀번호"
-                                                value={newPassword}
-                                                onChangeText={setNewPassword}
-                                                secureTextEntry={!showPassword}
-                                                style={{
-                                                    borderWidth: 1,
-                                                    borderColor: colors.border,
-                                                    borderRadius: 10,
-                                                    padding: spacing.sm,
-                                                    color: colors.text,
-                                                    backgroundColor: colors.card,
-                                                }}
-                                            />
-                                        </View>
-
-                                        {/* 👁 보기 토글 */}
-                                        <TouchableOpacity onPress={() => setShowPassword(prev => !prev)} style={{ marginBottom: spacing.md }}>
-                                            <Text style={{ color: colors.primary }}>
-                                                {showPassword ? '🙈 숨기기' : '👁 보기'}
-                                            </Text>
-                                        </TouchableOpacity>
-
-                                        {/* 저장 버튼 */}
-                                        <TouchableOpacity
-                                            onPress={() => {
-                                                if (loading) return; // 로딩 중일 때 터치 무시
-                                                if (!user?.email || !oldPassword || !newPassword) {
-                                                    Alert.alert('입력 누락', '기존/새 비밀번호를 모두 입력해주세요.');
-                                                    return;
-                                                }
-
-                                                const randomIndex = Math.floor(Math.random() * loadingAnimations.length);
-                                                setLoadingAnimation(loadingAnimations[randomIndex]);
-                                                setLoading(true); // ✅ 1. 즉시 로딩 true → Modal 바로 뜰 수 있도록
-
-                                                // ✅ 2. UI 렌더링 우선 보장
-                                                setTimeout(async () => {
-                                                    try {
-                                                        await reauthenticate(user.email, oldPassword);
-
-                                                        const hashed = await bcrypt.hash(newPassword, 10);
-                                                        await updateDoc(doc(db, 'users', user.email), { password: hashed });
-
-                                                        const updatedUser = { ...user, password: hashed };
-                                                        await AsyncStorage.setItem('currentUser', JSON.stringify(updatedUser));
-
-                                                        setOldPassword('');
-                                                        setNewPassword('');
-                                                        setShowPasswordFields(false);
-
-                                                        setLoading(false); // ✅ 먼저 로딩 해제
-                                                        setShowPasswordFields(false);
-                                                        Toast.show('✅ 비밀번호가 변경되었습니다.', {
-                                                            duration: Toast.durations.SHORT,
-                                                            position: Toast.positions.BOTTOM,
-                                                        });
-                                                    } catch (err: any) {
-                                                        const message =
-                                                            err.code === 'auth/wrong-password'
-                                                                ? '기존 비밀번호가 일치하지 않습니다.'
-                                                                : err.message || '비밀번호 변경 중 오류가 발생했습니다.';
-                                                        Alert.alert('변경 실패', message);
-                                                    } finally {
-                                                        setTimeout(() => setLoading(false), 3000); // ✅ 최소 3초 로딩 유지
-                                                    }
-                                                }, 100); // ✅ UI 렌더링 확보 시간
-                                            }}
-                                            style={{
-                                                backgroundColor: loading ? colors.subtext : colors.primary, // 로딩 중일 때 색상 변경
-                                                paddingVertical: spacing.sm,
-                                                borderRadius: 8,
-                                                alignItems: 'center',
-                                                marginBottom: spacing.md,
-                                                opacity: loading ? 0.7 : 1, // 로딩 중일 때 투명도 추가
-                                            }}
-                                            disabled={loading}
-                                        >
-                                            <Text style={{ color: '#fff', fontWeight: 'bold' }}>
-                                                {loading ? '변경 중...' : '비밀번호 변경 저장'}
-                                            </Text>
-                                        </TouchableOpacity>
-
-                                        {/* 닫기 */}
-                                        <TouchableOpacity
-                                            onPress={() => {
-                                                setShowPasswordFields(false);
-                                                setOldPassword('');
-                                                setNewPassword('');
-                                            }}
-                                            style={{ alignItems: 'center' }}
-                                        >
-                                            <Text style={{ color: colors.subtext }}>닫기</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            </Modal>
-
-                            {/* 저장 */}
+                            {/* 저장 버튼 */}
                             <TouchableOpacity
                                 onPress={handleSaveProfile}
                                 style={{
                                     backgroundColor: colors.primary,
-                                    paddingVertical: spacing.md,
-                                    borderRadius: 12,
+                                    padding: 16,
+                                    borderRadius: 16,
                                     alignItems: 'center',
-                                    marginBottom: spacing.sm,
+                                    marginBottom: 12,
                                 }}
                             >
-                                <Text style={{ color: '#fff', fontWeight: 'bold' }}>💾 프로필 저장</Text>
+                                <Text style={{ 
+                                    color: '#fff',
+                                    fontSize: 16,
+                                    fontWeight: '600'
+                                }}>
+                                    저장하기
+                                </Text>
                             </TouchableOpacity>
 
-                            {/* 닫기 */}
-                            <TouchableOpacity onPress={() => setShowEditProfile(false)}
-                                              style={{
-                                                  paddingVertical: spacing.md,
-                                                  borderRadius: 12,
-                                                  alignItems: 'center',
-                                                  marginBottom: spacing.sm,
-                                              }}>
-                                <Text style={{ color: colors.subtext,fontSize: 15 }}>닫기</Text>
+                            {/* 닫기 버튼 */}
+                            <TouchableOpacity 
+                                onPress={() => setShowEditProfile(false)}
+                                style={{
+                                    padding: 16,
+                                    alignItems: 'center',
+                                }}
+                            >
+                                <Text style={{ 
+                                    color: colors.subtext,
+                                    fontSize: 16
+                                }}>
+                                    닫기
+                                </Text>
                             </TouchableOpacity>
                         </View>
                     </View>
                 </Modal>
 
+                {/* 비밀번호 변경 모달 */}
+                <Modal visible={showPasswordFields} transparent animationType="fade">
+                    <View style={{
+                        flex: 1,
+                        backgroundColor: 'rgba(0,0,0,0.5)',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                    }}>
+                        <View style={{
+                            width: '90%',
+                            backgroundColor: colors.surface,
+                            borderRadius: 24,
+                            padding: 24,
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 4 },
+                            shadowOpacity: 0.1,
+                            shadowRadius: 12,
+                            elevation: 5
+                        }}>
+                            <Text style={{
+                                fontSize: 24,
+                                fontWeight: '700',
+                                color: colors.text,
+                                marginBottom: 24,
+                            }}>
+                                비밀번호 변경
+                            </Text>
+
+                            <View style={{ marginBottom: 16 }}>
+                                <Text style={{
+                                    fontSize: 15,
+                                    color: colors.subtext,
+                                    fontWeight: '600',
+                                    marginBottom: 8,
+                                }}>
+                                    기존 비밀번호
+                                </Text>
+                                <TextInput
+                                    placeholder="기존 비밀번호 입력"
+                                    value={oldPassword}
+                                    onChangeText={setOldPassword}
+                                    secureTextEntry={!showPassword}
+                                    style={{
+                                        borderWidth: 1,
+                                        borderColor: colors.border,
+                                        borderRadius: 16,
+                                        paddingHorizontal: 16,
+                                        paddingVertical: Platform.OS === 'ios' ? 16 : 12,
+                                        color: colors.text,
+                                        backgroundColor: colors.card,
+                                        fontSize: 16
+                                    }}
+                                    placeholderTextColor={colors.subtext}
+                                />
+                            </View>
+
+                            <View style={{ marginBottom: 16 }}>
+                                <Text style={{
+                                    fontSize: 15,
+                                    color: colors.subtext,
+                                    fontWeight: '600',
+                                    marginBottom: 8,
+                                }}>
+                                    새 비밀번호
+                                </Text>
+                                <TextInput
+                                    placeholder="새 비밀번호 입력"
+                                    value={newPassword}
+                                    onChangeText={setNewPassword}
+                                    secureTextEntry={!showPassword}
+                                    style={{
+                                        borderWidth: 1,
+                                        borderColor: colors.border,
+                                        borderRadius: 16,
+                                        paddingHorizontal: 16,
+                                        paddingVertical: Platform.OS === 'ios' ? 16 : 12,
+                                        color: colors.text,
+                                        backgroundColor: colors.card,
+                                        fontSize: 16
+                                    }}
+                                    placeholderTextColor={colors.subtext}
+                                />
+                            </View>
+
+                            {/* 비밀번호 보기/숨기기 토글 */}
+                            <TouchableOpacity 
+                                onPress={() => setShowPassword(prev => !prev)} 
+                                style={{ 
+                                    marginBottom: 24,
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    gap: 8
+                                }}
+                            >
+                                <Ionicons 
+                                    name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                                    size={20} 
+                                    color={colors.primary} 
+                                />
+                                <Text style={{ color: colors.primary }}>
+                                    {showPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
+                                </Text>
+                            </TouchableOpacity>
+
+                            {/* 변경 버튼 */}
+                            <TouchableOpacity
+                                onPress={() => {
+                                    if (loading) return;
+                                    if (!user?.email || !oldPassword || !newPassword) {
+                                        Alert.alert('입력 누락', '기존/새 비밀번호를 모두 입력해주세요.');
+                                        return;
+                                    }
+
+                                    const randomIndex = Math.floor(Math.random() * loadingAnimations.length);
+                                    setLoadingAnimation(loadingAnimations[randomIndex]);
+                                    setLoading(true);
+
+                                    setTimeout(async () => {
+                                        try {
+                                            await reauthenticate(user.email, oldPassword);
+                                            const hashed = await bcrypt.hash(newPassword, 10);
+                                            await updateDoc(doc(db, 'users', user.email), { password: hashed });
+                                            const updatedUser = { ...user, password: hashed };
+                                            await AsyncStorage.setItem('currentUser', JSON.stringify(updatedUser));
+
+                                            setOldPassword('');
+                                            setNewPassword('');
+                                            setShowPasswordFields(false);
+                                            setLoading(false);
+                                            Toast.show('✅ 비밀번호가 변경되었습니다.', {
+                                                duration: Toast.durations.SHORT,
+                                                position: Toast.positions.BOTTOM,
+                                            });
+                                        } catch (err: any) {
+                                            const message =
+                                                err.code === 'auth/wrong-password'
+                                                    ? '기존 비밀번호가 일치하지 않습니다.'
+                                                    : err.message || '비밀번호 변경 중 오류가 발생했습니다.';
+                                            Alert.alert('변경 실패', message);
+                                        } finally {
+                                            setTimeout(() => setLoading(false), 3000);
+                                        }
+                                    }, 100);
+                                }}
+                                style={{
+                                    backgroundColor: loading ? colors.subtext : colors.primary,
+                                    padding: 16,
+                                    borderRadius: 16,
+                                    alignItems: 'center',
+                                    marginBottom: 12,
+                                    opacity: loading ? 0.7 : 1,
+                                }}
+                                disabled={loading}
+                            >
+                                <Text style={{ 
+                                    color: '#fff',
+                                    fontSize: 16,
+                                    fontWeight: '600'
+                                }}>
+                                    {loading ? '변경 중...' : '비밀번호 변경하기'}
+                                </Text>
+                            </TouchableOpacity>
+
+                            {/* 닫기 버튼 */}
+                            <TouchableOpacity
+                                onPress={() => {
+                                    setShowPasswordFields(false);
+                                    setOldPassword('');
+                                    setNewPassword('');
+                                }}
+                                style={{
+                                    padding: 16,
+                                    alignItems: 'center',
+                                }}
+                            >
+                                <Text style={{ 
+                                    color: colors.subtext,
+                                    fontSize: 16
+                                }}>
+                                    닫기
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </Modal>
+
+                {/* 로딩 모달 */}
                 {loading && (
                     <Modal visible={true} transparent animationType="fade">
                         <View style={{
                             flex: 1,
                             justifyContent: 'center',
                             alignItems: 'center',
-                            backgroundColor: 'rgba(0,0,0,0.4)',
-                            zIndex: 9999, // 최상단에 표시되도록 zIndex 추가
+                            backgroundColor: 'rgba(0,0,0,0.5)',
+                            zIndex: 9999,
                         }}>
                             {loadingAnimation && (
                                 <LottieView
@@ -588,244 +1150,17 @@ export default function SettingsScreen() {
                                     style={{ width: 200, height: 200 }}
                                 />
                             )}
-                            <Text style={{ color: '#fff', marginTop: 16 }}>비밀번호 변경 중...</Text>
+                            <Text style={{ 
+                                color: '#fff', 
+                                marginTop: 16,
+                                fontSize: 16
+                            }}>
+                                비밀번호 변경 중...
+                            </Text>
                         </View>
                     </Modal>
                 )}
 
-                <TouchableOpacity
-                    onPress={() => router.push('/setting/joinTeams')}
-                    style={{
-                        backgroundColor: colors.surface,
-                        padding: spacing.md,
-                        borderRadius: 16,
-                        marginBottom: spacing.sm,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                    }}
-                >
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <View style={{
-                            backgroundColor: '#d1fae5', // 연한 녹색 배경
-                            borderRadius: 100,
-                            padding: 6,
-                            marginRight: 10,
-                        }}>
-                            <Ionicons name="accessibility-outline" size={18} color="#10b981" />
-                        </View>
-                        <Text style={{ fontSize: 16, color: colors.text }}>내 모임 관리</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color={colors.subtext} />
-                </TouchableOpacity>
-
-                {/* 다크모드 */}
-                <View
-                    style={{
-                        backgroundColor: colors.surface,
-                        padding: spacing.md,
-                        borderRadius: 16,
-                        marginBottom: spacing.md,
-                        flexDirection: 'row',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                    }}
-                >
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text }}>
-                            {isDark ? '🌙' : '☀️'} 다크모드
-                        </Text>
-                    </View>
-                    <ThemeToggle />
-                </View>
-
-                {/* 📖 오늘의 말씀 알림 */}
-                <PushSettings />
-
-                {user?.role === '교역자' && (
-                <TouchableOpacity
-                    onPress={() => router.push('/setting/noticeManager')}
-                    style={{
-                        backgroundColor: colors.surface,
-                        padding: spacing.md,
-                        borderRadius: 16,
-                        marginBottom: spacing.sm,
-                    }}
-                >
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <View style={{
-                            backgroundColor: '#d1fae5', // 연한 녹색 배경
-                            borderRadius: 100,
-                            padding: 6,
-                            marginRight: 10,
-                        }}>
-                            <Ionicons name="megaphone-outline" size={18} color="#10b981" />
-                        </View>
-                        <Text style={{ fontSize: 16, color: colors.text }}>공지사항 관리</Text>
-                    </View>
-                </TouchableOpacity>
-                )}
-
-                {/*역할 변경*/}
-                {user?.role === '새가족' && (
-                    <>
-                        <TouchableOpacity
-                            onPress={() => setShowUpgradeModal(true)}
-                            style={{
-                                marginTop: 24,
-                                backgroundColor: colors.primary,
-                                padding: spacing.md,
-                                borderRadius: radius.md,
-                                alignItems: 'center',
-                            }}
-                        >
-                            <Text style={{ color: '#fff', fontWeight: 'bold' }}>🙌 정회원이 되었나요?</Text>
-                        </TouchableOpacity>
-
-                        <Modal visible={showUpgradeModal} transparent animationType="fade">
-                            <View style={{
-                                flex: 1,
-                                backgroundColor: 'rgba(0,0,0,0.5)',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                            }}>
-                                <View style={{
-                                    backgroundColor: colors.surface,
-                                    padding: spacing.lg,
-                                    borderRadius: radius.lg,
-                                    width: '80%',
-                                }}>
-                                    <Text style={{
-                                        fontSize: font.body,
-                                        fontWeight: '600',
-                                        color: colors.text,
-                                        marginBottom: spacing.md,
-                                    }}>
-                                        교역자나 목회자에게 확인받고 정회원으로 전환해주세요.
-                                    </Text>
-
-                                    <TouchableOpacity
-                                        onPress={handleUpgrade}
-                                        style={{
-                                            backgroundColor: colors.primary,
-                                            paddingVertical: spacing.md,
-                                            borderRadius: radius.md,
-                                            alignItems: 'center',
-                                            marginBottom: spacing.md,
-                                        }}
-                                    >
-                                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>✅ 정회원 전환</Text>
-                                    </TouchableOpacity>
-
-                                    <TouchableOpacity
-                                        onPress={() => setShowUpgradeModal(false)}
-                                        style={{
-                                            alignItems: 'center',
-                                            paddingVertical: spacing.sm,
-                                        }}
-                                    >
-                                        <Text style={{ color: colors.subtext }}>취소</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        </Modal>
-                    </>
-                )}
-
-                {/* 📝 피드백 */}
-                <TouchableOpacity
-                    onPress={() => router.push('/setting/feedback')}
-                    style={{
-                        backgroundColor: colors.surface,
-                        padding: spacing.md,
-                        borderRadius: 16,
-                        marginBottom: spacing.sm,
-                    }}
-                >
-                    <Text style={{ fontSize: 16, color: colors.text }}>📝 피드백 보내기</Text>
-                </TouchableOpacity>
-
-                {/* 📺 유튜브 영상 관리 (교역자 전용) */}
-                {user?.role === '교역자' && (
-                    <TouchableOpacity
-                        onPress={() => router.push('/setting/videoManager')}
-                        style={{
-                            backgroundColor: colors.primary,
-                            padding: spacing.md,
-                            borderRadius: 16,
-                            marginBottom: spacing.md,
-                            alignItems: 'center',
-                        }}
-                    >
-                        <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>
-                            📺 유튜브 영상 관리
-                        </Text>
-                    </TouchableOpacity>
-                )}
-
-                {/* 📱 로그인된 기기 보기 */}
-                <View style={{
-                    backgroundColor: colors.surface,
-                    borderRadius: radius.lg,
-                    padding: spacing.md,
-                    marginVertical: spacing.sm,
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.05,
-                    shadowRadius: 6,
-                    elevation: 2,
-                }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Text style={{ fontSize: font.body, fontWeight: '600', color: colors.text }}>📱 로그인된 기기 보기</Text>
-                        <TouchableOpacity onPress={() => setModalVisible(true)}>
-                            <Text style={{ color: colors.primary, fontWeight: '600' }}>목록 보기</Text>
-                        </TouchableOpacity>
-                    </View>
-                    <DeviceManager visible={modalVisible} onClose={() => setModalVisible(false)} />
-                </View>
-
-                <TouchableOpacity onPress={() => router.push('/setting/ForgotPassword')}
-                    style={{
-                        backgroundColor: colors.surface,
-                        padding: spacing.md,
-                        borderRadius: 16,
-                        borderWidth: 1,
-                        borderColor: colors.error,
-                        alignItems: 'center',
-                        marginBottom: spacing.md,
-                    }}
-                >
-                    <Text style={{ color: colors.error, fontWeight: 'bold' }}>비밀번호를 잊으셨나요</Text>
-                </TouchableOpacity>
-
-                {/* ❌ 회원 탈퇴 */}
-                <TouchableOpacity
-                    onPress={handleDeleteAccount}
-                    style={{
-                        backgroundColor: colors.surface,
-                        padding: spacing.md,
-                        borderRadius: 16,
-                        borderWidth: 1,
-                        borderColor: colors.error,
-                        alignItems: 'center',
-                        marginBottom: spacing.md,
-                    }}
-                >
-                    <Text style={{ color: colors.error, fontWeight: 'bold' }}>❌ 회원 탈퇴</Text>
-                </TouchableOpacity>
-
-                {/* 🚪 로그아웃 */}
-                <TouchableOpacity
-                    onPress={handleLogout}
-                    style={{
-                        backgroundColor: colors.error,
-                        padding: spacing.md,
-                        borderRadius: 16,
-                        alignItems: 'center',
-                    }}
-                >
-                    <Text style={{ color: '#fff', fontWeight: 'bold' }}>로그아웃</Text>
-                </TouchableOpacity>
             </ScrollView>
         </SafeAreaView>
     );

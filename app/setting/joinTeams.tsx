@@ -1,17 +1,22 @@
+import { useDesign } from '@/context/DesignSystem';
+import { useAppTheme } from '@/context/ThemeContext';
+import { db } from '@/firebase/config';
+import { getCurrentUser } from '@/services/authService';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { arrayRemove, collection, deleteDoc, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
-    View, Text, FlatList, ActivityIndicator,
-    TouchableOpacity, Alert, Platform, SafeAreaView
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Platform, SafeAreaView,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import { getCurrentUser } from '@/services/authService';
-import { collection, getDocs, query, where, updateDoc, doc, arrayRemove, deleteDoc } from 'firebase/firestore';
-import { db } from '@/firebase/config';
-import { useDesign } from '@/context/DesignSystem';
-import { useRouter } from 'expo-router';
-import { useAppTheme } from '@/context/ThemeContext';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-root-toast';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function JoinedTeams() {
     const [teams, setTeams] = useState<any[]>([]);
@@ -125,21 +130,64 @@ export default function JoinedTeams() {
                     paddingTop: Platform.OS === 'android' ? insets.top + 20 : insets.top,
                 }}
             >
-                <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingBottom: 30 }}>
-                    <TouchableOpacity onPress={() => router.back()}>
-                        <Ionicons name="arrow-back" size={24} color={colors.text} />
-                    </TouchableOpacity>
-                    <Text style={{
-                        fontSize: font.heading,
-                        fontWeight: '600',
-                        color: colors.text,
-                        textAlign: 'center',
-                        flex: 1
-                    }}>내모임 관리</Text>
+                <View style={{ paddingHorizontal: 20 }}>
+                    <View style={{ 
+                        flexDirection: 'row', 
+                        alignItems: 'center', 
+                        marginBottom: 32
+                    }}>
+                        <TouchableOpacity 
+                            onPress={() => router.back()}
+                            style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: 20,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: colors.surface,
+                                marginRight: 16
+                            }}
+                        >
+                            <Ionicons name="arrow-back" size={24} color={colors.text} />
+                        </TouchableOpacity>
+                        <Text style={{
+                            fontSize: 28,
+                            fontWeight: '600',
+                            color: colors.text
+                        }}>
+                            내 모임
+                        </Text>
+                    </View>
                 </View>
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
-                <Text style={{ color: colors.subtext }}>가입한 모임이 없습니다.</Text>
-            </View>
+                <View style={{ 
+                    flex: 1, 
+                    justifyContent: 'center', 
+                    alignItems: 'center', 
+                    backgroundColor: colors.background,
+                    paddingBottom: '15%'
+                }}>
+                    <Text style={{ 
+                        fontSize: 18, 
+                        color: colors.subtext,
+                        marginBottom: 8
+                    }}>
+                        아직 가입한 모임이 없어요
+                    </Text>
+                    <TouchableOpacity
+                        onPress={() => router.push('/teams')}
+                        style={{
+                            backgroundColor: colors.primary,
+                            paddingVertical: 12,
+                            paddingHorizontal: 20,
+                            borderRadius: 12,
+                            marginTop: 16
+                        }}
+                    >
+                        <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
+                            모임 찾아보기
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             </SafeAreaView>
         );
     }
@@ -152,23 +200,62 @@ export default function JoinedTeams() {
                 paddingTop: Platform.OS === 'android' ? insets.top + 20 : insets.top,
             }}
         >
-            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingBottom: 30 }}>
-                <TouchableOpacity onPress={() => router.back()}>
-                    <Ionicons name="arrow-back" size={24} color={colors.text} />
-                </TouchableOpacity>
-                <Text style={{
-                    fontSize: font.heading,
-                    fontWeight: '600',
-                    color: colors.text,
-                    textAlign: 'center',
-                    flex: 1
-                }}>내모임 관리</Text>
+            <View style={{ paddingHorizontal: 20 }}>
+                <View style={{ 
+                    flexDirection: 'row', 
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 32
+                }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <TouchableOpacity 
+                            onPress={() => router.back()}
+                            style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: 20,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: colors.surface,
+                                marginRight: 16
+                            }}
+                        >
+                            <Ionicons name="arrow-back" size={24} color={colors.text} />
+                        </TouchableOpacity>
+                        <Text style={{
+                            fontSize: 28,
+                            fontWeight: '600',
+                            color: colors.text
+                        }}>
+                            내 모임
+                        </Text>
+                    </View>
+                    <TouchableOpacity
+                        onPress={handleLeave}
+                        style={{
+                            backgroundColor: selectMode ? colors.error : colors.surface,
+                            paddingVertical: 8,
+                            paddingHorizontal: 16,
+                            borderRadius: 20,
+                            flexDirection: 'row',
+                            alignItems: 'center'
+                        }}
+                    >
+                        <Text style={{ 
+                            color: selectMode ? '#fff' : colors.text,
+                            fontSize: 15,
+                            fontWeight: '500'
+                        }}>
+                            {selectMode ? (selectedIds.length > 0 ? '탈퇴하기' : '취소') : '선택하기'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <FlatList
                 data={teams}
                 keyExtractor={(item) => item.id}
-                contentContainerStyle={{ padding: spacing.md }}
+                contentContainerStyle={{ padding: 20 }}
                 renderItem={({ item }) => {
                     const selected = selectedIds.includes(item.id);
                     return (
@@ -182,60 +269,90 @@ export default function JoinedTeams() {
                             }}
                             style={{
                                 backgroundColor: colors.surface,
-                                padding: spacing.md,
-                                marginBottom: spacing.sm,
-                                borderRadius: radius.lg,
+                                padding: 20,
+                                marginBottom: 12,
+                                borderRadius: 24,
                                 borderWidth: selected ? 2 : 0,
                                 borderColor: selected ? colors.primary : 'transparent',
                                 flexDirection: 'row',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
                                 shadowColor: '#000',
-                                shadowOpacity: 0.05,
-                                shadowRadius: 4,
-                                elevation: 2,
+                                shadowOpacity: 0.08,
+                                shadowRadius: 8,
+                                shadowOffset: {
+                                    width: 0,
+                                    height: 4
+                                },
+                                elevation: 3
                             }}
                         >
-                            <View style={{ flexShrink: 1 }}>
-                                <Text style={{ fontSize: font.body, color: colors.text, fontWeight: 'bold' }}>
-                                    {item.name}
-                                </Text>
-                                <Text style={{ color: colors.subtext, marginTop: 4 }}>
-                                    멤버 수: {item.membersList?.length ?? 0}명
-                                </Text>
-                                {item.leaderEmail === userEmail && (
-                                    <Text style={{ color: colors.primary, fontWeight: 'bold', marginLeft: 8 }}>
-                                        👑 모임장
+                            <View style={{ flex: 1 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                                    <Text style={{ 
+                                        fontSize: 18, 
+                                        fontWeight: '600',
+                                        color: colors.text,
+                                        marginRight: 8
+                                    }}>
+                                        {item.name}
                                     </Text>
-                                )}
+                                    {item.leaderEmail === userEmail && (
+                                        <View style={{
+                                            backgroundColor: '#fef3c7',
+                                            paddingHorizontal: 8,
+                                            paddingVertical: 4,
+                                            borderRadius: 12
+                                        }}>
+                                            <Text style={{ 
+                                                color: '#d97706',
+                                                fontSize: 13,
+                                                fontWeight: '600'
+                                            }}>
+                                                모임장
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
+                                <Text style={{ 
+                                    color: colors.subtext,
+                                    fontSize: 15
+                                }}>
+                                    멤버 {item.membersList?.length ?? 0}명
+                                </Text>
                             </View>
 
-                            {selectMode && (
-                                <Ionicons
-                                    name={selected ? 'checkbox' : 'square-outline'}
-                                    size={24}
-                                    color={selected ? colors.primary : colors.subtext}
-                                />
+                            {selectMode ? (
+                                <View style={{
+                                    width: 24,
+                                    height: 24,
+                                    borderRadius: 12,
+                                    borderWidth: 2,
+                                    borderColor: selected ? colors.primary : colors.border,
+                                    backgroundColor: selected ? colors.primary : 'transparent',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    {selected && (
+                                        <Ionicons name="checkmark" size={16} color="#fff" />
+                                    )}
+                                </View>
+                            ) : (
+                                <View style={{
+                                    width: 32,
+                                    height: 32,
+                                    borderRadius: 16,
+                                    backgroundColor: colors.primary + '10',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+                                </View>
                             )}
                         </TouchableOpacity>
                     );
                 }}
             />
-
-            <TouchableOpacity
-                onPress={handleLeave}
-                style={{
-                    margin: spacing.md,
-                    backgroundColor: colors.primary,
-                    padding: spacing.md,
-                    borderRadius: radius.lg,
-                    alignItems: 'center',
-                }}
-            >
-                <Text style={{ color: '#fff', fontWeight: 'bold' }}>
-                    {selectMode ? '탈퇴하기' : '탈퇴'}
-                </Text>
-            </TouchableOpacity>
         </SafeAreaView>
     );
 }

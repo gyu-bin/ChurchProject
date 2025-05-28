@@ -1,29 +1,41 @@
 // ✅ 완전체: 요청사항 반영된 HomeScreen 전체 코드
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import {
-    View, Text, SafeAreaView, FlatList, RefreshControl,
-    TouchableOpacity, Image, Alert, Linking,
-    Dimensions, Platform,ScrollView
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { verses } from '@/assets/verses';
-import {
-    collection, addDoc, getDocs, query, where, onSnapshot, deleteDoc, doc, orderBy
-} from 'firebase/firestore';
-import { db } from '@/firebase/config';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import PrayerModal from '@/app/prayerPage/prayerModal';
-import { StatusBar } from 'expo-status-bar';
-import { useAppTheme } from '@/context/ThemeContext';
-import { useDesign } from '@/context/DesignSystem';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PrayerListModal from '@/app/prayerPage/allPrayer';
-import {showToast} from "@/utils/toast";
-import { useAppDispatch } from '@/hooks/useRedux';
-import { setScrollRef } from '@/redux/slices/scrollRefSlice';
-import { setScrollCallback } from '@/utils/scrollRefManager';
 import HomeNotices from "@/app/prayerPage/noticePage";
+import PrayerModal from '@/app/prayerPage/prayerModal';
+import { verses } from '@/assets/verses';
+import { useDesign } from '@/context/DesignSystem';
+import { useAppTheme } from '@/context/ThemeContext';
+import { db } from '@/firebase/config';
+import { useAppDispatch } from '@/hooks/useRedux';
+import { setScrollCallback } from '@/utils/scrollRefManager';
+import { showToast } from "@/utils/toast";
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import {
+    addDoc,
+    collection,
+    deleteDoc, doc,
+    getDocs,
+    onSnapshot,
+    query, where
+} from 'firebase/firestore';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    Alert,
+    Dimensions,
+    FlatList,
+    Image,
+    Linking,
+    Platform,
+    RefreshControl,
+    SafeAreaView,
+    Text,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SIDE_MARGIN = 16;
@@ -285,6 +297,13 @@ export default function HomeScreen() {
                         <Text style={{ fontSize: 14, color: theme.colors.subtext }}>({verse.reference})</Text>
                     </View>
 
+
+
+                    {/*  알림 페이지*/}
+                        <View style={{ backgroundColor: theme.colors.surface,borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
+                            <HomeNotices />
+                        </View>
+
                         <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, shadowColor: '#000', shadowOpacity: 0.08, shadowOffset: { width: 0, height: 2 }, elevation: 3 }}>
                             <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, paddingLeft: '3%', paddingTop: '3%' }}>📺 추천 설교</Text>
 
@@ -373,9 +392,11 @@ export default function HomeScreen() {
                             )}
                         </View>
 
-                    {/*  알림 페이지*/}
-                        <View style={{ backgroundColor: theme.colors.surface,borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
-                            <HomeNotices />
+                        <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
+                            <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>💬 AI에게 신앙 질문하기</Text>
+                            <TouchableOpacity onPress={() => router.push('/AiChatPage')} style={{ backgroundColor: theme.colors.primary, padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 }}>
+                                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>🤖 질문하러 가기</Text>
+                            </TouchableOpacity>
                         </View>
 
                     <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
@@ -395,12 +416,7 @@ export default function HomeScreen() {
                         </TouchableOpacity>
                     </View>
 
-                        <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
-                            <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>💬 AI에게 신앙 질문하기</Text>
-                            <TouchableOpacity onPress={() => router.push('/AiChatPage')} style={{ backgroundColor: theme.colors.primary, padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 }}>
-                                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>🤖 질문하러 가기</Text>
-                            </TouchableOpacity>
-                        </View>
+
 
                 </View>
                 )}
