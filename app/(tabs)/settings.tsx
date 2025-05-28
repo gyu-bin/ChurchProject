@@ -60,10 +60,9 @@ export default function SettingsScreen() {
     const [oldPassword, setOldPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [showPasswordFields, setShowPasswordFields] = useState(false);
-    const [passwordStage, setPasswordStage] = useState<'verify' | 'new'>('verify');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [loadingAnimation, setLoadingAnimation] = useState<any>(null); // 선택된 애니메이션
+    const [loadingAnimation, setLoadingAnimation] = useState<any>(null);
     const loadingAnimations = [loading1, loading2, loading3, loading4];
 
     // const [notificationModalVisible, setNotificationModalVisible] = useState(false); // ✅ 알림 모달 상태
@@ -235,28 +234,66 @@ export default function SettingsScreen() {
         return true;
     };
 
+    // 비밀번호 변경 핸들러
+    const handlePasswordChange = async () => {
+        if (loading) return;
+        if (!user?.email || !oldPassword || !newPassword) {
+            Alert.alert('입력 누락', '기존/새 비밀번호를 모두 입력해주세요.');
+            return;
+        }
+
+        const randomIndex = Math.floor(Math.random() * loadingAnimations.length);
+        setLoadingAnimation(loadingAnimations[randomIndex]);
+        setLoading(true);
+
+        try {
+            await reauthenticate(user.email, oldPassword);
+            const hashed = await bcrypt.hash(newPassword, 10);
+            await updateDoc(doc(db, 'users', user.email), { password: hashed });
+            const updatedUser = { ...user, password: hashed };
+            await AsyncStorage.setItem('currentUser', JSON.stringify(updatedUser));
+
+            setOldPassword('');
+            setNewPassword('');
+            setShowPasswordFields(false);
+            setLoading(false);
+            Toast.show('✅ 비밀번호가 변경되었습니다.', {
+                duration: Toast.durations.SHORT,
+                position: Toast.positions.BOTTOM,
+            });
+        } catch (err: any) {
+            const message =
+                err.code === 'auth/wrong-password'
+                    ? '기존 비밀번호가 일치하지 않습니다.'
+                    : err.message || '비밀번호 변경 중 오류가 발생했습니다.';
+            Alert.alert('변경 실패', message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? insets.top + 10 : 0 }}>
             <ScrollView
                 ref={scrollRef}
-                contentContainerStyle={{ 
+                contentContainerStyle={{
                     paddingHorizontal: 20,
-                    paddingBottom: 40 
-                }} 
+                    paddingBottom: 40
+                }}
                 showsVerticalScrollIndicator={false}
             >
                 {/* 헤더 */}
-                <View style={{ 
-                    flexDirection: 'row', 
+                <View style={{
+                    flexDirection: 'row',
                     alignItems: 'center',
                     marginBottom: 32,
                     marginTop: 12
                 }}>
-                    <Text style={{ 
+                    <Text style={{
                         flex: 1,
-                        fontSize: 32, 
-                        fontWeight: '700', 
-                        color: colors.text 
+                        fontSize: 32,
+                        fontWeight: '700',
+                        color: colors.text
                     }}>
                         설정
                     </Text>
@@ -275,24 +312,24 @@ export default function SettingsScreen() {
                         shadowRadius: 8,
                         elevation: 3
                     }}>
-                        <View style={{ 
-                            flexDirection: 'row', 
-                            justifyContent: 'space-between', 
+                        <View style={{
+                            flexDirection: 'row',
+                            justifyContent: 'space-between',
                             alignItems: 'flex-start',
                             marginBottom: 16
                         }}>
                             <View>
-                                <Text style={{ 
-                                    fontSize: 24, 
-                                    fontWeight: '700', 
+                                <Text style={{
+                                    fontSize: 24,
+                                    fontWeight: '700',
                                     color: colors.text,
                                     marginBottom: 4
                                 }}>
                                     {user?.name ?? '이름'}
                                 </Text>
-                                <Text style={{ 
-                                    fontSize: 15, 
-                                    color: colors.subtext 
+                                <Text style={{
+                                    fontSize: 15,
+                                    color: colors.subtext
                                 }}>
                                     {user?.email ?? '이메일'}
                                 </Text>
@@ -306,8 +343,8 @@ export default function SettingsScreen() {
                                     borderRadius: 12,
                                 }}
                             >
-                                <Text style={{ 
-                                    color: colors.primary, 
+                                <Text style={{
+                                    color: colors.primary,
                                     fontSize: 14,
                                     fontWeight: '600'
                                 }}>
@@ -325,8 +362,8 @@ export default function SettingsScreen() {
                                     paddingVertical: 6,
                                     borderRadius: 12
                                 }}>
-                                    <Text style={{ 
-                                        color: '#1976D2', 
+                                    <Text style={{
+                                        color: '#1976D2',
                                         fontSize: 13,
                                         fontWeight: '600'
                                     }}>
@@ -341,8 +378,8 @@ export default function SettingsScreen() {
                                     paddingVertical: 6,
                                     borderRadius: 12
                                 }}>
-                                    <Text style={{ 
-                                        color: '#2E7D32', 
+                                    <Text style={{
+                                        color: '#2E7D32',
                                         fontSize: 13,
                                         fontWeight: '600'
                                     }}>
@@ -357,8 +394,8 @@ export default function SettingsScreen() {
                                     paddingVertical: 6,
                                     borderRadius: 12
                                 }}>
-                                    <Text style={{ 
-                                        color: '#ff9191', 
+                                    <Text style={{
+                                        color: '#ff9191',
                                         fontSize: 13,
                                         fontWeight: '600'
                                     }}>
@@ -372,16 +409,16 @@ export default function SettingsScreen() {
 
                 {/* 일반 설정 섹션 */}
                 <View style={{ marginBottom: 32 }}>
-                    <Text style={{ 
-                        fontSize: 18, 
-                        fontWeight: '600', 
+                    <Text style={{
+                        fontSize: 18,
+                        fontWeight: '600',
                         color: colors.text,
                         marginBottom: 16,
                         paddingLeft: 4
                     }}>
                         일반
                     </Text>
-                    
+
                     <View style={{ gap: 12 }}>
                         {/* 내 모임 관리 */}
                         <TouchableOpacity
@@ -439,10 +476,10 @@ export default function SettingsScreen() {
                                     alignItems: 'center',
                                     justifyContent: 'center'
                                 }}>
-                                    <Ionicons 
-                                        name={isDark ? "moon" : "sunny"} 
-                                        size={20} 
-                                        color={isDark ? "#9ca3af" : "#6b7280"} 
+                                    <Ionicons
+                                        name={isDark ? "moon" : "sunny"}
+                                        size={20}
+                                        color={isDark ? "#9ca3af" : "#6b7280"}
                                     />
                                 </View>
                                 <Text style={{ fontSize: 16, color: colors.text }}>다크모드</Text>
@@ -469,16 +506,16 @@ export default function SettingsScreen() {
                 {/* 관리자 설정 */}
                 {user?.role === '교역자' && (
                     <View style={{ marginBottom: 32 }}>
-                        <Text style={{ 
-                            fontSize: 18, 
-                            fontWeight: '600', 
+                        <Text style={{
+                            fontSize: 18,
+                            fontWeight: '600',
                             color: colors.text,
                             marginBottom: 16,
                             paddingLeft: 4
                         }}>
                             관리자
                         </Text>
-                        
+
                         <View style={{ gap: 12 }}>
                             {/* 공지사항 관리 */}
                             <TouchableOpacity
@@ -551,16 +588,16 @@ export default function SettingsScreen() {
 
                 {/* 기타 설정 */}
                 <View style={{ marginBottom: 32 }}>
-                    <Text style={{ 
-                        fontSize: 18, 
-                        fontWeight: '600', 
+                    <Text style={{
+                        fontSize: 18,
+                        fontWeight: '600',
                         color: colors.text,
                         marginBottom: 16,
                         paddingLeft: 4
                     }}>
                         기타
                     </Text>
-                    
+
                     <View style={{ gap: 12 }}>
                         {/* 피드백 */}
                         <TouchableOpacity
@@ -629,19 +666,20 @@ export default function SettingsScreen() {
                         </TouchableOpacity>
                     </View>
                 </View>
+                <DeviceManager visible={modalVisible} onClose={() => setModalVisible(false)} />
 
                 {/* 계정 설정 */}
                 <View style={{ marginBottom: 32 }}>
-                    <Text style={{ 
-                        fontSize: 18, 
-                        fontWeight: '600', 
+                    <Text style={{
+                        fontSize: 18,
+                        fontWeight: '600',
                         color: colors.text,
                         marginBottom: 16,
                         paddingLeft: 4
                     }}>
                         계정
                     </Text>
-                    
+
                     <View style={{ gap: 12 }}>
                         {/* 비밀번호 찾기 */}
                         <TouchableOpacity
@@ -791,8 +829,8 @@ export default function SettingsScreen() {
                                         marginBottom: 12
                                     }}
                                 >
-                                    <Text style={{ 
-                                        color: '#fff', 
+                                    <Text style={{
+                                        color: '#fff',
                                         fontSize: 16,
                                         fontWeight: '600'
                                     }}>
@@ -807,7 +845,7 @@ export default function SettingsScreen() {
                                         alignItems: 'center'
                                     }}
                                 >
-                                    <Text style={{ 
+                                    <Text style={{
                                         color: colors.subtext,
                                         fontSize: 15
                                     }}>
@@ -819,21 +857,19 @@ export default function SettingsScreen() {
                     </Modal>
                 )}
 
-                {/* 기존 모달들 유지 */}
-                <DeviceManager visible={modalVisible} onClose={() => setModalVisible(false)} />
-                {/* ... 나머지 모달들 ... */}
+
 
                 {/* 프로필 수정 모달 */}
                 <Modal visible={showEditProfile} transparent animationType="fade">
-                    <View style={{ 
-                        flex: 1, 
-                        backgroundColor: 'rgba(0,0,0,0.5)', 
-                        justifyContent: 'center', 
-                        alignItems: 'center' 
+                    <View style={{
+                        flex: 1,
+                        backgroundColor: 'rgba(0,0,0,0.5)',
+                        justifyContent: 'center',
+                        alignItems: 'center'
                     }}>
-                        <View style={{ 
-                            width: '90%', 
-                            backgroundColor: colors.surface, 
+                        <View style={{
+                            width: '90%',
+                            backgroundColor: colors.surface,
                             borderRadius: 24,
                             padding: 24,
                             shadowColor: '#000',
@@ -889,7 +925,10 @@ export default function SettingsScreen() {
 
                             {/* 비밀번호 변경 버튼 */}
                             <TouchableOpacity
-                                onPress={() => setShowPasswordFields(prev => !prev)}
+                                onPress={() => {
+                                    setShowPasswordFields(true);
+                                    setShowEditProfile(false);  // 프로필 수정 모달 닫기
+                                }}
                                 style={{
                                     backgroundColor: colors.primary + '15',
                                     padding: 16,
@@ -918,7 +957,7 @@ export default function SettingsScreen() {
                                     marginBottom: 12,
                                 }}
                             >
-                                <Text style={{ 
+                                <Text style={{
                                     color: '#fff',
                                     fontSize: 16,
                                     fontWeight: '600'
@@ -928,14 +967,14 @@ export default function SettingsScreen() {
                             </TouchableOpacity>
 
                             {/* 닫기 버튼 */}
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 onPress={() => setShowEditProfile(false)}
                                 style={{
                                     padding: 16,
                                     alignItems: 'center',
                                 }}
                             >
-                                <Text style={{ 
+                                <Text style={{
                                     color: colors.subtext,
                                     fontSize: 16
                                 }}>
@@ -1031,19 +1070,19 @@ export default function SettingsScreen() {
                             </View>
 
                             {/* 비밀번호 보기/숨기기 토글 */}
-                            <TouchableOpacity 
-                                onPress={() => setShowPassword(prev => !prev)} 
-                                style={{ 
+                            <TouchableOpacity
+                                onPress={() => setShowPassword(prev => !prev)}
+                                style={{
                                     marginBottom: 24,
                                     flexDirection: 'row',
                                     alignItems: 'center',
                                     gap: 8
                                 }}
                             >
-                                <Ionicons 
-                                    name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                                    size={20} 
-                                    color={colors.primary} 
+                                <Ionicons
+                                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                                    size={20}
+                                    color={colors.primary}
                                 />
                                 <Text style={{ color: colors.primary }}>
                                     {showPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
@@ -1052,44 +1091,7 @@ export default function SettingsScreen() {
 
                             {/* 변경 버튼 */}
                             <TouchableOpacity
-                                onPress={() => {
-                                    if (loading) return;
-                                    if (!user?.email || !oldPassword || !newPassword) {
-                                        Alert.alert('입력 누락', '기존/새 비밀번호를 모두 입력해주세요.');
-                                        return;
-                                    }
-
-                                    const randomIndex = Math.floor(Math.random() * loadingAnimations.length);
-                                    setLoadingAnimation(loadingAnimations[randomIndex]);
-                                    setLoading(true);
-
-                                    setTimeout(async () => {
-                                        try {
-                                            await reauthenticate(user.email, oldPassword);
-                                            const hashed = await bcrypt.hash(newPassword, 10);
-                                            await updateDoc(doc(db, 'users', user.email), { password: hashed });
-                                            const updatedUser = { ...user, password: hashed };
-                                            await AsyncStorage.setItem('currentUser', JSON.stringify(updatedUser));
-
-                                            setOldPassword('');
-                                            setNewPassword('');
-                                            setShowPasswordFields(false);
-                                            setLoading(false);
-                                            Toast.show('✅ 비밀번호가 변경되었습니다.', {
-                                                duration: Toast.durations.SHORT,
-                                                position: Toast.positions.BOTTOM,
-                                            });
-                                        } catch (err: any) {
-                                            const message =
-                                                err.code === 'auth/wrong-password'
-                                                    ? '기존 비밀번호가 일치하지 않습니다.'
-                                                    : err.message || '비밀번호 변경 중 오류가 발생했습니다.';
-                                            Alert.alert('변경 실패', message);
-                                        } finally {
-                                            setTimeout(() => setLoading(false), 3000);
-                                        }
-                                    }, 100);
-                                }}
+                                onPress={handlePasswordChange}
                                 style={{
                                     backgroundColor: loading ? colors.subtext : colors.primary,
                                     padding: 16,
@@ -1100,7 +1102,7 @@ export default function SettingsScreen() {
                                 }}
                                 disabled={loading}
                             >
-                                <Text style={{ 
+                                <Text style={{
                                     color: '#fff',
                                     fontSize: 16,
                                     fontWeight: '600'
@@ -1115,6 +1117,7 @@ export default function SettingsScreen() {
                                     setShowPasswordFields(false);
                                     setOldPassword('');
                                     setNewPassword('');
+                                    setShowEditProfile(true);  // 프로필 수정 모달로 돌아가기
                                 }}
                                 style={{
                                     padding: 16,
@@ -1125,7 +1128,7 @@ export default function SettingsScreen() {
                                     color: colors.subtext,
                                     fontSize: 16
                                 }}>
-                                    닫기
+                                    프로필 수정으로 돌아가기
                                 </Text>
                             </TouchableOpacity>
                         </View>
@@ -1150,8 +1153,8 @@ export default function SettingsScreen() {
                                     style={{ width: 200, height: 200 }}
                                 />
                             )}
-                            <Text style={{ 
-                                color: '#fff', 
+                            <Text style={{
+                                color: '#fff',
                                 marginTop: 16,
                                 fontSize: 16
                             }}>
