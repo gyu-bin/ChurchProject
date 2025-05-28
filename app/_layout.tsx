@@ -14,12 +14,13 @@ import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { doc, onSnapshot } from "firebase/firestore";
 import React, { useEffect, useState } from 'react';
-import { useColorScheme } from 'react-native';
+import {AppState, useColorScheme} from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { RootSiblingParent } from 'react-native-root-siblings';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux';
 import RootLayoutInner from './_layout-inner';
+import {savePushTokenToFirestore} from "@/services/pushTokenService";
 
 export default function RootLayout() {
     const colorScheme = useColorScheme();
@@ -27,39 +28,57 @@ export default function RootLayout() {
     const router = useRouter();
     const [isAppReady, setIsAppReady] = useState(false);
 
-    useEffect(() => {
-        const initializeApp = async () => {
-            try {
-                if (Device.isDevice) {
-                    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    const initializeApp = async () => {
+        try {
+            if (Device.isDevice) {
+                const { status: existingStatus } = await Notifications.getPermissionsAsync();
+                let finalStatus = existingStatus;
 
-                    if (existingStatus !== 'granted') {
-                        const { status: finalStatus } = await Notifications.requestPermissionsAsync();
-                        console.log('알림 최종 상태:', finalStatus);
-
-                        if (finalStatus !== 'granted') {
-                            console.warn('❗️알림 권한이 거부되었습니다.');
-                        }
-                    } else {
-                        console.log('✅ 알림 권한 허용됨');
-                    }
+                if (existingStatus !== 'granted') {
+                    const permission = await Notifications.requestPermissionsAsync();
+                    finalStatus = permission.status;
+                    // console.log('알림 최종 상태:', finalStatus);
                 }
 
-                /*const userRaw = await AsyncStorage.getItem('currentUser');
-                const alreadyLoggedIn = Boolean(userRaw);*/
+                if (finalStatus === 'granted') {
+                    // console.log('✅ 알림 권한 허용됨');
 
-                // 👇 시스템 권한 팝업 이후 UI가 렌더되도록 잠시 대기
-                setTimeout(() => {
-                    setIsAppReady(true);
-                }, 300);
-            } catch (e) {
-                console.error('앱 초기화 중 오류:', e);
-                setIsAppReady(true);
+                    const tokenData = await Notifications.getExpoPushTokenAsync();
+                    const expoPushToken = tokenData.data;
+                    // console.log('📦 Expo Push Token:', expoPushToken);
+
+                    await savePushTokenToFirestore(expoPushToken);
+                } else {
+                    // console.warn('❗️알림 권한이 거부되었습니다.');
+                }
             }
-        };
 
+            setTimeout(() => {
+                setIsAppReady(true);
+            }, 300);
+        } catch (e) {
+            console.error('앱 초기화 중 오류:', e);
+            setIsAppReady(true);
+        }
+    };
+
+    // ✅ 기존 최초 1회 실행
+    useEffect(() => {
         initializeApp();
     }, []);
+
+    // ✅ 앱이 포그라운드에 올 때마다 다시 실행
+    useEffect(() => {
+        const subscription = AppState.addEventListener('change', (state) => {
+            if (state === 'active') {
+                initializeApp();
+            }
+        });
+
+        return () => subscription.remove();
+    }, []);
+
+
 
     useEffect(() => {
         // ✅ 앱이 실행 중일 때 알림 클릭 감지
