@@ -10,16 +10,15 @@ import { useRouter } from 'expo-router';
 import LottieView from 'lottie-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
     FlatList,
     Keyboard,
     KeyboardAvoidingView,
     Platform,
     SafeAreaView,
+    StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    TouchableWithoutFeedback,
     View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -151,95 +150,88 @@ export default function FaithChatPage() {
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderBottomWidth: 0.5, borderColor: colors.border, backgroundColor: colors.background }}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <View style={[styles.header, { 
+                borderColor: colors.border,
+                backgroundColor: colors.background 
+            }]}>
                 <TouchableOpacity onPress={() => router.back()}>
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={{ fontSize: font.heading, fontWeight: '600', color: colors.text, marginLeft: 8, flex: 1, textAlign: 'center' }}>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>
                     💬 AI 신앙상담
                 </Text>
                 <View style={{ width: 24 }} />
             </View>
 
-            <TouchableWithoutFeedback onPress={dismissKeyboard}>
-                <KeyboardAvoidingView
-                    style={{ flex: 1 }}
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-                >
-                    <View style={{ flex: 1 }}>
-                        <FlatList
-                            ref={flatListRef}
-                            data={messages}
-                            keyExtractor={(_, index) => index.toString()}
-                            renderItem={({ item }) => (
-                                <View style={{
-                                    alignSelf: item.role === 'user' ? 'flex-end' : 'flex-start',
-                                    backgroundColor: item.role === 'user' ? '#fcdc3c' : '#2f2f2f',
-                                    padding: 10,
-                                    borderRadius: 16,
-                                    marginBottom: 10,
-                                    maxWidth: '80%',
-                                    marginHorizontal: 16,
-                                }}>
-                                    <Text style={{ color: item.role === 'user' ? '#000' : '#fff' }}>{item.content}</Text>
-                                </View>
-                            )}
-                            onScroll={(e) => {
-                                const offsetY = e.nativeEvent.contentOffset.y;
-                                const contentHeight = e.nativeEvent.contentSize.height;
-                                const layoutHeight = e.nativeEvent.layoutMeasurement.height;
-
-                                // 30px 이상 위로 스크롤되면 버튼 표시
-                                if (contentHeight - offsetY - layoutHeight > 30) {
-                                    setShowScrollToBottom(true);
-                                } else {
-                                    setShowScrollToBottom(false);
-                                }
-                            }}
-                            contentContainerStyle={{
-                                paddingTop: 16,
-                                paddingBottom: 10, // 입력창 높이 + 여유
-                                flexGrow: 1,        // 💡 이거 없으면 스크롤 안 됨
-                            }}
-                            keyboardShouldPersistTaps="handled"
-                        />
-
-                        <View style={{
-                            flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 8,
-                            borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.background
-                        }}>
-                            <TextInput
-                                value={question}
-                                onChangeText={setQuestion}
-                                placeholder="메시지를 입력하세요"
-                                placeholderTextColor={colors.subtext}
-                                style={{
-                                    flex: 1,
-                                    backgroundColor: colors.surface,
-                                    borderRadius: 20,
-                                    paddingHorizontal: 16,
-                                    paddingVertical: 10,
-                                    fontSize: 16,
-                                    color: colors.text,
-                                }}
-                            />
-                            <TouchableOpacity onPress={handleAsk} disabled={!question.trim()} style={{ marginLeft: 8 }}>
-                                <Ionicons name="send" size={24} color={question.trim() ? colors.primary : colors.border} />
-                            </TouchableOpacity>
+            <KeyboardAvoidingView
+                style={[styles.keyboardAvoidingView, { backgroundColor: colors.background }]}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+            >
+                <FlatList
+                    ref={flatListRef}
+                    data={messages}
+                    keyExtractor={(_, index) => index.toString()}
+                    contentContainerStyle={[styles.flatListContent, { backgroundColor: colors.background }]}
+                    renderItem={({ item }) => (
+                        <View style={[
+                            styles.messageContainer,
+                            {
+                                alignSelf: item.role === 'user' ? 'flex-end' : 'flex-start',
+                                backgroundColor: item.role === 'user' ? '#fcdc3c' : colors.primary,
+                            }
+                        ]}>
+                            <Text style={{ 
+                                color: item.role === 'user' ? '#000' : '#fff',
+                                fontSize: 16
+                            }}>
+                                {item.content}
+                            </Text>
                         </View>
-                    </View>
-                </KeyboardAvoidingView>
-            </TouchableWithoutFeedback>
+                    )}
+                    onScroll={(e) => {
+                        const offsetY = e.nativeEvent.contentOffset.y;
+                        const contentHeight = e.nativeEvent.contentSize.height;
+                        const layoutHeight = e.nativeEvent.layoutMeasurement.height;
+                        setShowScrollToBottom(contentHeight - offsetY - layoutHeight > 30);
+                    }}
+                />
+
+                <View style={[styles.inputContainer, { 
+                    borderColor: colors.border,
+                    backgroundColor: colors.background 
+                }]}>
+                    <TextInput
+                        value={question}
+                        onChangeText={setQuestion}
+                        placeholder="메시지를 입력하세요"
+                        placeholderTextColor={colors.subtext}
+                        style={[styles.input, { 
+                            backgroundColor: colors.surface,
+                            color: colors.text,
+                            maxHeight: 100
+                        }]}
+                        multiline
+                    />
+                    <TouchableOpacity 
+                        onPress={handleAsk} 
+                        disabled={!question.trim()}
+                        style={styles.sendButton}
+                    >
+                        <Ionicons 
+                            name="send" 
+                            size={24} 
+                            color={question.trim() ? colors.primary : colors.border} 
+                        />
+                    </TouchableOpacity>
+                </View>
+            </KeyboardAvoidingView>
 
             {showOverlay && (
-                <View style={{
-                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                    backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 1000
-                }}>
-                    <LottieView source={currentLottie} autoPlay loop style={{ width: 240, height: 240 }} />
-                    <Text style={{ color: '#fff', marginTop: 20, fontSize: 16, fontWeight: '600' }}>
+                <View style={styles.overlay}>
+                    <LottieView source={currentLottie} autoPlay loop style={styles.lottie} />
+                    <Text style={styles.loadingText}>
                         답변을 생성 중입니다...
                     </Text>
                 </View>
@@ -247,27 +239,94 @@ export default function FaithChatPage() {
 
             {showScrollToBottom && (
                 <TouchableOpacity
-                    onPress={() => {
-                        flatListRef.current?.scrollToOffset({ offset: 99999, animated: true });
-                    }}
-                    style={{
-                        position: 'absolute',
-                        bottom: '20%',          // ⬅ 화면 하단 10% 위치
-                        left: 0,
-                        right: 0,
-                        alignItems: 'center',   // ⬅ 가운데 정렬
-                        zIndex: 1000,
-                    }}
+                    onPress={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                    style={styles.scrollToBottomButton}
                 >
-                    <View style={{
-                        backgroundColor: '#ccc',   // 회색 배경
-                        borderRadius: 24,
-                        padding: 12,
-                    }}>
-                        <Ionicons name="arrow-down" size={20} color="#000" />
+                    <View style={[styles.scrollToBottomButtonInner, {
+                        backgroundColor: colors.surface
+                    }]}>
+                        <Ionicons name="arrow-down" size={20} color={colors.text} />
                     </View>
                 </TouchableOpacity>
             )}
         </SafeAreaView>
     );
 }
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        paddingTop: Platform.OS === 'android' ? 25 : 0
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomWidth: 0.5
+    },
+    headerTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        flex: 1,
+        textAlign: 'center'
+    },
+    keyboardAvoidingView: {
+        flex: 1
+    },
+    flatListContent: {
+        padding: 16,
+        flexGrow: 1
+    },
+    messageContainer: {
+        padding: 12,
+        borderRadius: 16,
+        marginBottom: 8,
+        maxWidth: '80%'
+    },
+    inputContainer: {
+        flexDirection: 'row',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderTopWidth: 1,
+        alignItems: 'flex-end'
+    },
+    input: {
+        flex: 1,
+        borderRadius: 20,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        fontSize: 16
+    },
+    sendButton: {
+        marginLeft: 8,
+        paddingBottom: 10
+    },
+    overlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000
+    },
+    lottie: {
+        width: 240,
+        height: 240
+    },
+    loadingText: {
+        color: '#fff',
+        marginTop: 20,
+        fontSize: 16,
+        fontWeight: '600'
+    },
+    scrollToBottomButton: {
+        position: 'absolute',
+        bottom: 80,
+        right: 20,
+        zIndex: 1000
+    },
+    scrollToBottomButtonInner: {
+        borderRadius: 24,
+        padding: 12
+    }
+});

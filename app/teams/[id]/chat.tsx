@@ -927,7 +927,12 @@ export default function TeamChat() {
                         data={messages}
                         keyExtractor={(item) => item.id}
                         renderItem={renderItem}
-                        contentContainerStyle={styles.flatListContent}
+                        contentContainerStyle={[styles.flatListContent, {
+                            padding: 12,
+                            paddingBottom: 20,
+                            flexGrow: 1,
+                            justifyContent: 'flex-end'
+                        }]}
                         keyboardShouldPersistTaps="handled"
                         keyboardDismissMode="interactive"
                         removeClippedSubviews={false}
@@ -964,11 +969,6 @@ export default function TeamChat() {
                                     setLastSeenMessageId(lastMsgId);
                                     seenMessages.current.add(lastMsgId);
                                 }
-                            }
-                        }}
-                        onContentSizeChange={(width, height) => {
-                            if (isAtBottomRef.current) {
-                                flatListRef.current?.scrollToEnd({ animated: !isKeyboardVisible });
                             }
                         }}
                     />
@@ -1297,11 +1297,11 @@ const styles = StyleSheet.create({
     },
     chatContainer: {
         flex: 1,
+        justifyContent: 'flex-end'
     },
     flatListContent: {
-        padding: 12,
-        paddingBottom: 20,
         flexGrow: 1,
+        justifyContent: 'flex-end'
     },
     header: {
         height: 56,

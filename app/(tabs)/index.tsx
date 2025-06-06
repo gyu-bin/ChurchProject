@@ -1,4 +1,3 @@
-// ✅ 완전체: 요청사항 반영된 HomeScreen 전체 코드
 import PrayerListModal from '@/app/prayerPage/allPrayer';
 import HomeNotices from "@/app/prayerPage/noticePage";
 import PrayerModal from '@/app/prayerPage/prayerModal';
