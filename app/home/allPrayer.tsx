@@ -1,16 +1,17 @@
+import { useDesign } from '@/app/context/DesignSystem';
+import { useAppTheme } from '@/app/context/ThemeContext';
 import React, { useEffect, useState } from 'react';
 import {
-    Modal,
-    SafeAreaView,
-    View,
-    Text,
-    FlatList,
-    TouchableOpacity,
     Dimensions,
-    RefreshControl, Platform,
+    FlatList,
+    Modal,
+    Platform,
+    RefreshControl,
+    SafeAreaView,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { useAppTheme } from '@/context/ThemeContext';
-import { useDesign } from '@/context/DesignSystem';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface PrayerItem {

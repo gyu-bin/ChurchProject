@@ -1,7 +1,7 @@
 // screens/DepartmentsScreen.tsx
 
-import { useDesign } from '@/context/DesignSystem';
-import { useAppTheme } from '@/context/ThemeContext';
+import { useDesign } from '@/app/context/DesignSystem';
+import { useAppTheme } from '@/app/context/ThemeContext';
 import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import {

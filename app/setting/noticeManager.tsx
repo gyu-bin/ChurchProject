@@ -1,22 +1,30 @@
 // ✅ 공지사항/일정 관리 페이지 (모달 등록 + 다크모드 + 리프레시 + 입력 시 유동 화면 대응)
-import React, { useEffect, useState, useCallback } from 'react';
-import {
-    View, Text, TouchableOpacity, FlatList, Modal, TextInput,
-    Platform, Alert, KeyboardAvoidingView, ScrollView, Dimensions,
-    SafeAreaView, RefreshControl, useColorScheme
-} from 'react-native';
-import { TabView, SceneMap, TabBar } from 'react-native-tab-view';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { collection, getDocs, updateDoc, deleteDoc, doc, addDoc } from 'firebase/firestore';
+import { useDesign } from '@/app/context/DesignSystem';
 import { db } from '@/firebase/config';
-import { useAppTheme } from '@/context/ThemeContext';
-import { useDesign } from '@/context/DesignSystem';
-import DateTimePickerModal from 'react-native-modal-datetime-picker';
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { addDoc, collection, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+    Alert,
+    Dimensions,
+    FlatList,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    RefreshControl,
+    SafeAreaView,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    useColorScheme,
+    View
+} from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import Toast from "react-native-root-toast";
-import {Ionicons} from "@expo/vector-icons";
-import {router} from "expo-router";
-import {useSafeAreaInsets} from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SceneMap, TabBar, TabView } from 'react-native-tab-view';
 const initialLayout = { width: Dimensions.get('window').width };
 
 type Notice = {

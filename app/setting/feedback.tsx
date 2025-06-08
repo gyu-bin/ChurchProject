@@ -1,23 +1,23 @@
+import { useDesign } from '@/app/context/DesignSystem';
+import { useAppTheme } from '@/app/context/ThemeContext';
+import { db } from '@/firebase/config';
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from "expo-router";
+import { addDoc, collection } from 'firebase/firestore';
 import React, { useState } from 'react';
 import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
     Alert,
-    ScrollView,
     KeyboardAvoidingView,
     Platform,
     SafeAreaView,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAppTheme } from '@/context/ThemeContext';
-import { useDesign } from '@/context/DesignSystem';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { addDoc, collection } from 'firebase/firestore';
-import { db } from '@/firebase/config';
-import {Ionicons} from "@expo/vector-icons";
-import {router} from "expo-router";
 
 export default function SettingsFeedbackScreen() {
     const insets = useSafeAreaInsets();

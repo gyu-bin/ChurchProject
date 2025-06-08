@@ -1,8 +1,8 @@
 import DeviceManager from '@/components/DeviceManager';
 import ThemeToggle from "@/components/ThemeToggle";
 import PushSettings from "@/components/VerseNotificationSettings";
-import { useDesign } from '@/context/DesignSystem';
-import { useAppTheme } from '@/context/ThemeContext';
+import { useDesign } from '@/app/context/DesignSystem';
+import { useAppTheme } from '@/app/context/ThemeContext';
 import { db } from '@/firebase/config';
 import { useAppDispatch } from '@/hooks/useRedux';
 import { clearPrayers } from "@/redux/slices/prayerSlice";
@@ -937,7 +937,7 @@ export default function SettingsScreen() {
                                     marginBottom: 24,
                                 }}
                             >
-                                <Text style={{ 
+                                <Text style={{
                                     color: colors.primary,
                                     fontSize: 16,
                                     fontWeight: '600'
@@ -1124,7 +1124,7 @@ export default function SettingsScreen() {
                                     alignItems: 'center',
                                 }}
                             >
-                                <Text style={{ 
+                                <Text style={{
                                     color: colors.subtext,
                                     fontSize: 16
                                 }}>

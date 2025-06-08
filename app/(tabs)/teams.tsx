@@ -1,5 +1,5 @@
 import SkeletonBox from '@/components/Skeleton';
-import { useDesign } from '@/context/DesignSystem';
+import { useDesign } from '@/app/context/DesignSystem';
 import { db } from '@/firebase/config';
 import { setScrollCallback } from '@/utils/scrollRefManager';
 import { Ionicons } from '@expo/vector-icons';

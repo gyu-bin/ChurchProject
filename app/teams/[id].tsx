@@ -1,6 +1,6 @@
 //app/teams/[id].tsx
-import { useDesign } from '@/context/DesignSystem';
-import { useAppTheme } from '@/context/ThemeContext';
+import { useDesign } from '@/app/context/DesignSystem';
+import { useAppTheme } from '@/app/context/ThemeContext';
 import { db } from '@/firebase/config';
 import { getCurrentUser } from '@/services/authService';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
@@ -781,14 +781,13 @@ export default function TeamDetail() {
                             공유하기
                         </Text>
                     </View>
-                    {team.membersList?.includes(user?.email) && (
                         <View style={{ alignItems: 'center' }}>
                             <TouchableOpacity
                                 onPress={handleEnterChat}
                                 style={{ padding: 8, position: 'relative' }}
                             >
                                 <Ionicons name="chatbubble-outline" size={24} color={colors.text} />
-                        {chatBadgeCount > 0 && (
+                            {chatBadgeCount > 0 && (
                                     <View style={{
                                     position: 'absolute',
                                         top: 6,
@@ -809,7 +808,7 @@ export default function TeamDetail() {
                                 </Text>
                             </View>
                         )}
-                </TouchableOpacity>
+                        </TouchableOpacity>
                             <Text style={{
                                 fontSize: 10,
                                 color: colors.subtext,
@@ -818,7 +817,6 @@ export default function TeamDetail() {
                                 채팅방
                             </Text>
                         </View>
-                    )}
                 </View>
             </View>
 
@@ -1675,7 +1673,7 @@ export default function TeamDetail() {
                                 >
                                     <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                                         <Text style={{
-                                            color: member.email === team.leaderEmail ? colors.primary : 
+                                            color: member.email === team.leaderEmail ? colors.primary :
                                                   member.email === team.subLeaderEmail ? colors.primary : colors.text,
                                             fontWeight: (member.email === team.leaderEmail || member.email === team.subLeaderEmail) ? 'bold' : 'normal',
                                             fontSize: font.body,
@@ -1689,7 +1687,7 @@ export default function TeamDetail() {
                                             color: colors.subtext,
                                             marginLeft: spacing.sm,
                                         }}>
-                                            {member.email === team.leaderEmail ? '(모임장)' : 
+                                            {member.email === team.leaderEmail ? '(모임장)' :
                                              member.email === team.subLeaderEmail ? '(부모임장)' : ''}
                                         </Text>
                                     </View>

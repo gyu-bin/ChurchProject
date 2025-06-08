@@ -1,19 +1,18 @@
+import { useDesign } from '@/app/context/DesignSystem';
+import { useAppTheme } from '@/app/context/ThemeContext';
 import React from 'react';
 import {
+    Keyboard,
+    KeyboardAvoidingView,
     Modal,
+    Platform,
     SafeAreaView,
-    View,
     Text,
     TextInput,
     TouchableOpacity,
-    StyleSheet,
-    KeyboardAvoidingView,
-    Platform,
-    Keyboard,
     TouchableWithoutFeedback,
+    View
 } from 'react-native';
-import { useAppTheme } from '@/context/ThemeContext';
-import { useDesign } from '@/context/DesignSystem';
 
 interface PrayerModalProps {
     visible: boolean;

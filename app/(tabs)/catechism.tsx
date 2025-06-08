@@ -7,8 +7,8 @@ import PagerView from 'react-native-pager-view';
 import largerData from '@/assets/catechism/largerCatechism.json';
 import shorterData from '@/assets/catechism/shorterCatechism.json';
 import sgData from '@/assets/catechism/catechism.json';
-import { useAppTheme } from '@/context/ThemeContext';
-import { useDesign } from '@/context/DesignSystem';
+import { useAppTheme } from '@/app/context/ThemeContext';
+import { useDesign } from '@/app/context/DesignSystem';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const categories = [

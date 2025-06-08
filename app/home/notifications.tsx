@@ -1,24 +1,38 @@
-import React, { useCallback, useEffect, useState, useRef } from 'react';
-import {
-    View, Text, TouchableOpacity, Modal, Alert,
-    SafeAreaView, Platform, RefreshControl, Keyboard, TouchableWithoutFeedback,KeyboardAvoidingView
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-    collection, getDocs, query, where, doc,
-    updateDoc, deleteDoc, arrayUnion, increment, onSnapshot
-} from 'firebase/firestore';
+import { useDesign } from '@/app/context/DesignSystem';
+import { useAppTheme } from '@/app/context/ThemeContext';
 import { db } from '@/firebase/config';
-import { format } from 'date-fns';
-import { useRouter } from 'expo-router';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
-import { useAppTheme } from '@/context/ThemeContext';
-import { useDesign } from '@/context/DesignSystem';
-import Toast from 'react-native-root-toast';
+import { showToast } from "@/utils/toast";
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { format } from 'date-fns';
+import { router } from 'expo-router';
+import {
+    arrayUnion,
+    collection,
+    deleteDoc,
+    doc,
+    getDocs,
+    increment, onSnapshot,
+    query,
+    updateDoc,
+    where
+} from 'firebase/firestore';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    Alert,
+    Keyboard,
+    KeyboardAvoidingView,
+    Modal,
+    Platform, RefreshControl,
+    SafeAreaView,
+    Text, TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
+} from 'react-native';
+import Toast from 'react-native-root-toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SwipeListView } from 'react-native-swipe-list-view';
-import {showToast} from "@/utils/toast";
 
 interface NotificationItem {
     id: string;
@@ -43,7 +57,6 @@ export default function NotificationsScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const openedRowRef = useRef<any>(null); // ✅ 열린 row 추적
     const insets = useSafeAreaInsets();
-    const router = useRouter();
     const { colors, spacing, font, radius } = useDesign();
     const { mode } = useAppTheme();
     const horizontalPadding = 20;
@@ -88,12 +101,18 @@ export default function NotificationsScreen() {
                 return;
             }
             if (notification.type === 'team_join_approved' && notification.teamId) {
-                router.push(`/teams/${notification.teamId}`);
+                router.push({
+                    pathname: "/components/pages/teams/[id]",
+                    params: { id: notification.teamId }
+                } as any);
                 await deleteDoc(doc(db, 'notifications', notification.id));
                 return;
             }
             if (notification.type === 'open_meditation_ranking') {
-                router.push('/prayerPage/DailyBible?showRanking=true');
+                router.push({
+                    pathname: "/components/pages/home/DailyBible",
+                    params: { showRanking: 'true' }
+                } as any);
                 await deleteDoc(doc(db, 'notifications', notification.id));
                 return;
             }
@@ -119,7 +138,6 @@ export default function NotificationsScreen() {
                     to: selectedNotification.applicantEmail,
                     message: `"${selectedNotification.teamName}" 모임에 가입이 승인되었습니다.`,
                     type: 'team_join_approved',
-                    link: `/teams/${selectedNotification.teamId}`,
                     teamId: selectedNotification.teamId,
                     teamName: selectedNotification.teamName,
                     applicantEmail: selectedNotification.applicantEmail,

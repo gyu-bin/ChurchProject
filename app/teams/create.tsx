@@ -1,18 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import {
-    View, Text, TextInput, TouchableOpacity,
-    SafeAreaView, Alert, KeyboardAvoidingView,
-    Platform, ScrollView
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import {addDoc, collection, getDocs, query, updateDoc, where} from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
+import { addDoc, collection, updateDoc } from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
+import {
+    Alert, KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    Text, TextInput, TouchableOpacity,
+    View
+} from 'react-native';
 // import { sendNotification, sendPushNotification } from '@/services/notificationService';
-import { useDesign } from '@/context/DesignSystem';
-import {Ionicons} from "@expo/vector-icons";
-import {useSafeAreaInsets} from "react-native-safe-area-context";
-import {showToast} from "@/utils/toast";
+import { useDesign } from '@/app/context/DesignSystem';
+import { showToast } from "@/utils/toast";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 // import { useAppTheme } from '@/context/ThemeContext';
 
 export default function CreateTeam() {

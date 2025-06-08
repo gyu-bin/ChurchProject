@@ -1,20 +1,30 @@
 // ✅ 드래그 정렬 + 순서 저장 + 순서 표시 + NaN 방지 VideoManager
+import { useDesign } from '@/app/context/DesignSystem';
+import { useAppTheme } from '@/app/context/ThemeContext';
+import { db } from '@/firebase/config';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import {
+    addDoc,
+    collection,
+    deleteDoc, doc,
+    getDocs,
+    updateDoc
+} from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
-    View, Text, TextInput, Image, TouchableOpacity, Alert,
-    SafeAreaView, KeyboardAvoidingView, Platform, Keyboard
+    Alert,
+    Image,
+    Keyboard,
+    KeyboardAvoidingView, Platform,
+    SafeAreaView,
+    Text, TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
-import { db } from '@/firebase/config';
-import {
-    collection, addDoc, getDocs, deleteDoc, doc, updateDoc
-} from 'firebase/firestore';
-import { useAppTheme } from '@/context/ThemeContext';
-import { useDesign } from '@/context/DesignSystem';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-root-toast';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ✅ 영상 타입 정의
 type VideoItem = {

@@ -1,7 +1,7 @@
 // ✅ 전체적으로 정리된 FaithChatPage (키보드 올라올 때 FlatList 함께 올라오게 수정)
 
-import { useDesign } from '@/context/DesignSystem';
-import { useAppTheme } from '@/context/ThemeContext';
+import { useDesign } from '@/app/context/DesignSystem';
+import { useAppTheme } from '@/app/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';

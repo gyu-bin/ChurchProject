@@ -1,9 +1,9 @@
-import PrayerListModal from '@/app/prayerPage/allPrayer';
-import HomeNotices from "@/app/prayerPage/noticePage";
-import PrayerModal from '@/app/prayerPage/prayerModal';
+import PrayerListModal from '@/app/home/allPrayer';
+import HomeNotices from "@/app/home/noticePage";
+import PrayerModal from '@/app/home/prayerModal';
 import { verses } from '@/assets/verses';
-import { useDesign } from '@/context/DesignSystem';
-import { useAppTheme } from '@/context/ThemeContext';
+import { useDesign } from '@/app/context/DesignSystem';
+import { useAppTheme } from '@/app/context/ThemeContext';
 import { db } from '@/firebase/config';
 import { useAppDispatch } from '@/hooks/useRedux';
 import { setScrollCallback } from '@/utils/scrollRefManager';
@@ -279,7 +279,7 @@ export default function HomeScreen() {
                         <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.primary }}>
                             🙏 안녕하세요{user?.name ? ` ${user.name}님!` : '!'}
                         </Text>
-                        <TouchableOpacity onPress={() => router.push('/notifications')} style={{ position: 'relative' }}>
+                        <TouchableOpacity onPress={() => router.push('/home/notifications')} style={{ position: 'relative' }}>
                             <Ionicons name="notifications-outline" size={24} color={theme.colors.text} />
                             {notifications.length > 0 && (
                                 <View style={{ position: 'absolute', top: -6, right: -6, backgroundColor: theme.colors.primary, borderRadius: 12, minWidth: 20, height: 20, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
@@ -393,7 +393,7 @@ export default function HomeScreen() {
 
                         <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
                             <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>💬 AI에게 신앙 질문하기</Text>
-                            <TouchableOpacity onPress={() => router.push('/AiChatPage')} style={{ backgroundColor: theme.colors.primary, padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 }}>
+                            <TouchableOpacity onPress={() => router.push('/home/AiChatPage')} style={{ backgroundColor: theme.colors.primary, padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 }}>
                                 <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>🤖 질문하러 가기</Text>
                             </TouchableOpacity>
                         </View>
@@ -410,7 +410,7 @@ export default function HomeScreen() {
 
                     <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
                         <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>📝 매일묵상</Text>
-                        <TouchableOpacity onPress={()=>router.push('/prayerPage/DailyBible')} style={{ backgroundColor: theme.colors.primary, padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 }}>
+                        <TouchableOpacity onPress={()=>router.push('/home/DailyBible')} style={{ backgroundColor: theme.colors.primary, padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 }}>
                             <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>🤝 매일묵상 나누기</Text>
                         </TouchableOpacity>
                     </View>

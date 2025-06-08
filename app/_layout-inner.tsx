@@ -7,13 +7,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { useFonts } from 'expo-font';
 import { View, ActivityIndicator } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { useAppTheme } from '@/context/ThemeContext';
+import { useAppTheme } from '@/app/context/ThemeContext';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
-    shouldSetBadge: false,
+    shouldSetBadge: true,
     shouldShowBanner: true,
     shouldShowList: true,
   }),
@@ -36,10 +36,12 @@ export default function RootLayoutInner() {
     );
   }
 
+  //로그인 안될시 intro화면으로
   if (!user && pathname !== '/intro' && !pathname.startsWith('/auth')) {
     return <Redirect href="/intro" />;
   }
 
+  //로그인이 되었아면 /홈으로
   if (user && pathname.startsWith('/auth')) {
     return <Redirect href="/" />;
   }
@@ -53,9 +55,9 @@ export default function RootLayoutInner() {
           <Stack.Screen name="intro" options={{ headerShown: false }} />
           <Stack.Screen name="teams" options={{ headerShown: false }} />
           <Stack.Screen name="department/[campus]/[division]/index" options={{ headerShown: false }} />
-          <Stack.Screen name="notifications" options={{ headerShown: false }} />
-          <Stack.Screen name="prayerPage/DailyBible" options={{ headerShown: false }} />
-          <Stack.Screen name="AiChatPage" options={{ headerShown: false }} />
+          <Stack.Screen name="home/notifications" options={{ headerShown: false }} />
+          <Stack.Screen name="home/DailyBible" options={{ headerShown: false }} />
+          <Stack.Screen name="home/AiChatPage" options={{ headerShown: false }} />
           <Stack.Screen name="setting/videoManager" options={{ headerShown: false }} />
           <Stack.Screen name="setting/joinTeams" options={{ headerShown: false }} />
           <Stack.Screen name="setting/noticeManager" options={{ headerShown: false }} />

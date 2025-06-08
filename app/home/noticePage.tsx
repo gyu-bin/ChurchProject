@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import {collection, getDocs, onSnapshot, orderBy, query, where} from 'firebase/firestore';
+import { useDesign } from "@/app/context/DesignSystem";
 import { db } from '@/firebase/config';
-import {useDesign} from "@/context/DesignSystem";
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
 type Notice = {
     id: string;

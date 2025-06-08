@@ -1,8 +1,8 @@
 import React, { useLayoutEffect } from 'react';
 import {View, Text, TouchableOpacity, SafeAreaView, Alert, Platform} from 'react-native';
 import {router, useLocalSearchParams, useNavigation} from 'expo-router';
-import { useAppTheme } from '@/context/ThemeContext';
-import { useDesign } from '@/context/DesignSystem';
+import { useAppTheme } from '@/app/context/ThemeContext';
+import { useDesign } from '@/app/context/DesignSystem';
 import {Ionicons} from "@expo/vector-icons";
 
 export default function DivisionScreen() {

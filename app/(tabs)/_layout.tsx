@@ -1,22 +1,22 @@
-import {Tabs, usePathname} from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import React, {useRef} from 'react';
-import { Platform } from 'react-native';
-import { useAppTheme } from '@/context/ThemeContext';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {useAppSelector} from "@/hooks/useRedux";
-import {RootState} from "@/redux/store";
+import { useAppSelector } from "@/hooks/useRedux";
+import { RootState } from "@/redux/store";
 import { getScrollCallback } from '@/utils/scrollRefManager';
+import { Ionicons } from '@expo/vector-icons';
+import { Tabs, usePathname } from 'expo-router';
+import React, { useRef } from 'react';
+import { Platform, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {useAppTheme} from "@/app/context/ThemeContext";
 
 export default function TabLayout() {
     const { mode } = useAppTheme();
     const isDark = mode === 'dark';
     const insets = useSafeAreaInsets();
 
-    const tabBarBackgroundColor = isDark ? '#1f2937' : '#ffffff';
-    const tabBarBorderColor = isDark ? '#374151' : '#e5e7eb';
+    const tabBarBackgroundColor = isDark ? '#1a1a1a' : '#ffffff';
+    const tabBarBorderColor = isDark ? '#2d2d2d' : '#e5e7eb';
     const tabBarTextActive = '#2563eb';
-    const tabBarTextInactive = isDark ? '#9ca3af' : '#999999';
+    const tabBarTextInactive = isDark ? '#666666' : '#999999';
     const pathname = usePathname(); // ✅ 여기에 있어야 함
     const scrollRefMap = useAppSelector((state: RootState) => state.scrollRef.refMap); // ✅ 여기도
     const lastPressTimestamps = useRef<Record<string, number>>({}); // ✅ 이 부분도
@@ -41,20 +41,20 @@ export default function TabLayout() {
                     tabBarIcon: ({ color, size }) => {
                         let iconName: keyof typeof Ionicons.glyphMap = 'home';
                         switch (route.name) {
-                            case 'index':
-                                iconName = 'home-outline';
-                                break;
                             case 'catechism':
                                 iconName = 'book-outline';
                                 break;
                             case 'departments':
                                 iconName = 'business-outline';
                                 break;
+                            case 'index':
+                                iconName = 'home-outline';
+                                break;
                             case 'teams':
                                 iconName = 'people-outline';
                                 break;
                             case 'settings':
-                                iconName = 'settings-outline';
+                                iconName = 'accessibility-outline';
                                 break;
                         }
                         return <Ionicons name={iconName} size={size} color={color} />;
@@ -63,8 +63,49 @@ export default function TabLayout() {
             }}
         >
             <Tabs.Screen
+                name="catechism"
+                options={{ title: '교리문답' }}
+                listeners={{
+                    tabPress: () => {
+                        if (pathname === '/') {
+                            const cb = getScrollCallback('catechism');
+                            cb?.();
+                        }
+                    },
+                }}
+            />
+            <Tabs.Screen
+                name="departments"
+                options={{ title: '부서' }}
+                listeners={{
+                    tabPress: () => {
+                        if (pathname === '/') {
+                            const cb = getScrollCallback('departments');
+                            cb?.();
+                        }
+                    },
+                }}
+            />
+            <Tabs.Screen
                 name="index"
-                options={{ title: '홈' }}
+                options={{
+                    title: '',
+                    tabBarIcon: ({ color, size }) => (
+                        <View style={{
+                            width: 60,
+                            height: 60,
+                            backgroundColor: '#6366f1',
+                            borderRadius: 30,
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            marginBottom: 20,
+                            borderWidth: 4,
+                            borderColor: '#ffffff'
+                        }}>
+                            <Ionicons name="home-outline" size={size} color="#ffffff" />
+                        </View>
+                    ),
+                }}
                 listeners={{
                     tabPress: () => {
                         if (pathname === '/') {
@@ -75,45 +116,25 @@ export default function TabLayout() {
                 }}
             />
             <Tabs.Screen
-                name="catechism"
-                options={{ title: '교리문답' }}
-                listeners={{
-                    tabPress: () => {
-                                 if (pathname === '/') {
-                                     const cb = getScrollCallback('index');
-                                     cb?.();
-                                 }
-                             },
-                }}/>
-            <Tabs.Screen
-                name="departments"
-                options={{ title: '부서' }}
-                listeners={{
-                             tabPress: () => {
-                                 if (pathname === '/') {
-                                     const cb = getScrollCallback('index');
-                                     cb?.();
-                                 }
-                             },
-                }}/>
-            <Tabs.Screen
                 name="teams"
                 options={{ title: '소모임' }}
                 listeners={{
                     tabPress: () => {
                         const cb = getScrollCallback('teams');
-                        cb?.(); // 👈 이 부분이 핵심입니다
+                        cb?.();
                     },
-                }}/>
+                }}
+            />
             <Tabs.Screen
                 name="settings"
-                options={{ title: '설정' }}
+                options={{ title: '마이페이지' }}
                 listeners={{
                     tabPress: () => {
                         const cb = getScrollCallback('settings');
-                        cb?.(); // 👈 이 부분이 핵심입니다
+                        cb?.();
                     },
-                }}/>
+                }}
+            />
         </Tabs>
     );
 }

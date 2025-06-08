@@ -1,14 +1,18 @@
+import { useDesign } from '@/app/context/DesignSystem';
+import { db } from '@/firebase/config';
+import { Ionicons } from '@expo/vector-icons';
+import bcrypt from 'bcryptjs';
+import { useNavigation } from 'expo-router';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import React, { useState } from 'react';
 import {
-    View, Text, TextInput, TouchableOpacity,
-    StyleSheet, Alert, SafeAreaView, Platform
+    Alert,
+    Platform,
+    SafeAreaView,
+    StyleSheet,
+    Text, TextInput, TouchableOpacity,
+    View
 } from 'react-native';
-import { getDoc, doc, updateDoc } from 'firebase/firestore';
-import { useNavigation } from 'expo-router';
-import { db } from '@/firebase/config';
-import bcrypt from 'bcryptjs';
-import { useDesign } from '@/context/DesignSystem';
-import { Ionicons } from '@expo/vector-icons';
 
 export default function ForgotPasswordScreen() {
     const [email, setEmail] = useState('');
