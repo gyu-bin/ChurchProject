@@ -207,6 +207,8 @@ export default function TeamChat() {
             hide.remove();
         };
     }, [insets.bottom]);
+
+
     useEffect(() => {
         let appStateListener: any;
 
@@ -1022,8 +1024,8 @@ export default function TeamChat() {
                     style={[
                         styles.inputContainer,
                         {// 🧠 여백 배경 안 보이게
-                            // backgroundColor: 'pink',
-                            paddingBottom: animatedPadding, // ✅ 키보드 반응
+                            backgroundColor: 'pink',
+                            paddingBottom: Platform.OS==='android' ? animatedPadding : 0, // ✅ 키보드 반응
                         }
                     ]}
                 >
