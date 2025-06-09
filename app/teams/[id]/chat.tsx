@@ -157,7 +157,7 @@ export default function TeamChat() {
     const [user, setUser] = useState<any>(null);
     const [notificationEnabled, setNotificationEnabled] = useState(true);
     const [loading, setLoading] = useState(true);
-
+    const animatedPadding = useRef(new Animated.Value(insets.bottom)).current;
     useEffect(() => {
         getCurrentUser().then(user => {
             if (user?.email) setUserEmail(user.email);
@@ -177,15 +177,36 @@ export default function TeamChat() {
         return () => clearTimeout(timeout);
     }, [messages]);
 
-    useEffect(() => {
+    /*useEffect(() => {
         const show = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardVisible(true));
         const hide = Keyboard.addListener('keyboardDidHide', () => setIsKeyboardVisible(false));
         return () => {
             show.remove();
             hide.remove();
         };
-    }, []);
+    }, []);*/
+    useEffect(() => {
+        const show = Keyboard.addListener('keyboardDidShow', e => {
+            Animated.timing(animatedPadding, {
+                toValue: 0, // 키보드 올라오면 여백 없앰
+                duration: 150,
+                useNativeDriver: false,
+            }).start();
+        });
 
+        const hide = Keyboard.addListener('keyboardDidHide', () => {
+            Animated.timing(animatedPadding, {
+                toValue: 0,
+                duration: 150,
+                useNativeDriver: false,
+            }).start();
+        });
+
+        return () => {
+            show.remove();
+            hide.remove();
+        };
+    }, [insets.bottom]);
     useEffect(() => {
         let appStateListener: any;
 
@@ -997,61 +1018,71 @@ export default function TeamChat() {
                     )}
                 </View>
 
-                <View style={styles.inputContainer}>
-                    {replyTo && (
-                        <View style={styles.replyPreview}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.replyPreviewName}>
-                                    {replyTo.senderName}에게 답장
-                                </Text>
-                                <Text
-                                    numberOfLines={2}
-                                    ellipsizeMode="tail"
-                                    style={styles.replyPreviewText}
-                                >
-                                    {replyTo.text}
-                                </Text>
+                <Animated.View
+                    style={[
+                        styles.inputContainer,
+                        {// 🧠 여백 배경 안 보이게
+                            // backgroundColor: 'pink',
+                            paddingBottom: animatedPadding, // ✅ 키보드 반응
+                        }
+                    ]}
+                >
+                    <View style={{ backgroundColor: 'blue'}}>
+                        {replyTo && (
+                            <View style={styles.replyPreview}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.replyPreviewName}>
+                                        {replyTo.senderName}에게 답장
+                                    </Text>
+                                    <Text
+                                        numberOfLines={2}
+                                        ellipsizeMode="tail"
+                                        style={styles.replyPreviewText}
+                                    >
+                                        {replyTo.text}
+                                    </Text>
+                                </View>
+                                <TouchableOpacity onPress={() => setReplyTo(null)} style={styles.replyCloseButton}>
+                                    <Ionicons name="close" size={18} color="#444" />
+                                </TouchableOpacity>
                             </View>
-                            <TouchableOpacity onPress={() => setReplyTo(null)} style={styles.replyCloseButton}>
-                                <Ionicons name="close" size={18} color="#444" />
+                        )}
+
+                        <View style={[styles.inputBar, { backgroundColor: colors.surface }]}>
+                            <TextInput
+                                ref={inputRef}
+                                value={input}
+                                onChangeText={handleTextChange}
+                                placeholder="메시지를 입력하세요"
+                                style={[
+                                    styles.input,
+                                    {
+                                        backgroundColor: colors.background,
+                                        color: colors.text,
+                                        height: inputHeight,
+                                    }
+                                ]}
+                                placeholderTextColor={colors.subtext}
+                                multiline
+                                onContentSizeChange={handleContentSizeChange}
+                            />
+                            <TouchableOpacity
+                                onPress={handleSend}
+                                disabled={!input.trim()}
+                                style={[
+                                    styles.sendButton,
+                                    { opacity: input.trim() ? 1 : 0.4 }
+                                ]}
+                            >
+                                <Ionicons
+                                    name="send"
+                                    size={24}
+                                    color={input.trim() ? colors.primary : '#999'}
+                                />
                             </TouchableOpacity>
                         </View>
-                    )}
-
-                    <View style={[styles.inputBar, { backgroundColor: colors.surface }]}>
-                        <TextInput
-                            ref={inputRef}
-                            value={input}
-                            onChangeText={handleTextChange}
-                            placeholder="메시지를 입력하세요"
-                            style={[
-                                styles.input,
-                                {
-                                    backgroundColor: colors.background,
-                                    color: colors.text,
-                                    height: inputHeight,
-                                }
-                            ]}
-                            placeholderTextColor={colors.subtext}
-                            multiline
-                            onContentSizeChange={handleContentSizeChange}
-                        />
-                        <TouchableOpacity
-                            onPress={handleSend}
-                            disabled={!input.trim()}
-                            style={[
-                                styles.sendButton,
-                                { opacity: input.trim() ? 1 : 0.4 }
-                            ]}
-                        >
-                            <Ionicons
-                                name="send"
-                                size={24}
-                                color={input.trim() ? colors.primary : '#999'}
-                            />
-                        </TouchableOpacity>
                     </View>
-                </View>
+                </Animated.View>
             </KeyboardAvoidingView>
 
             <Modal
