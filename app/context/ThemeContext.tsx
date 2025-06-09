@@ -30,14 +30,14 @@ export const lightTheme: Colors = {
 };
 
 export const darkTheme: Colors = {
-    background: '#111827',
-    surface: '#1F2937',
+    background: '#1a1a1a',
+    surface: '#2a2a2a',
     primary: '#3B82F6',
     secondary: '#60A5FA',
     text: '#F9FAFB',
     subtext: '#9CA3AF',
-    border: '#374151',
-    card: '#374151',
+    border: '#333333',
+    card: '#2a2a2a',
     error: '#EF4444',
     placeholder: '#6B7280',
     success: '#22C55E',
