@@ -1050,7 +1050,9 @@ export default function TeamChat() {
                             </View>
                         )}
 
-                        <View style={[styles.inputBar, { backgroundColor: colors.surface }]}>
+                        <View style={[styles.inputBar, {
+                            backgroundColor: colors.background
+                        }]}>
                             <TextInput
                                 ref={inputRef}
                                 value={input}
@@ -1059,7 +1061,7 @@ export default function TeamChat() {
                                 style={[
                                     styles.input,
                                     {
-                                        backgroundColor: colors.background,
+                                        backgroundColor: colors.surface,
                                         color: colors.text,
                                         height: inputHeight,
                                     }
