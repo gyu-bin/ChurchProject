@@ -1,30 +1,31 @@
-import React, {useEffect, useState} from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { login } from '@/services/authService';
+import { registerDevice } from '@/services/registerDevice';
+import { registerPushToken } from '@/services/registerPushToken';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
+import LottieView from 'lottie-react-native';
+import React, { useEffect, useState } from 'react';
 import {
-    View,
+    Alert,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    Alert,
-    StyleSheet,
-    SafeAreaView,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView, Modal,
+    View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { login } from '@/services/authService';
-import { registerPushToken } from '@/services/registerPushToken';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from '@/hooks/useAuth';
-import { registerDevice } from '@/services/registerDevice';
 import Toast from "react-native-root-toast"; // 경로는 실제 위치에 맞게
-import LottieView from 'lottie-react-native';
 
-import loading1 from '@/assets/lottie/Animation - 1747201461030.json'
-import loading2 from '@/assets/lottie/Animation - 1747201431992.json'
-import loading3 from '@/assets/lottie/Animation - 1747201413764.json'
-import loading4 from '@/assets/lottie/Animation - 1747201330128.json'
-import {Ionicons} from "@expo/vector-icons";
+import loading4 from '@/assets/lottie/Animation - 1747201330128.json';
+import loading3 from '@/assets/lottie/Animation - 1747201413764.json';
+import loading2 from '@/assets/lottie/Animation - 1747201431992.json';
+import loading1 from '@/assets/lottie/Animation - 1747201461030.json';
+import { Ionicons } from "@expo/vector-icons";
 
 
 export default function LoginScreen() {
@@ -166,7 +167,7 @@ export default function LoginScreen() {
                         </Modal>
 
                         <TouchableOpacity
-                            onPress={() => router.push('/setting/ForgotPassword')}
+                            onPress={() => router.push('/auth/ForgotPassword')}
                             style={{
                                 backgroundColor: '#fff5f5',
                                 paddingVertical: 14,

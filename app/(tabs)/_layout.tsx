@@ -1,3 +1,4 @@
+import { useAppTheme } from "@/app/context/ThemeContext";
 import { useAppSelector } from "@/hooks/useRedux";
 import { RootState } from "@/redux/store";
 import { getScrollCallback } from '@/utils/scrollRefManager';
@@ -6,7 +7,6 @@ import { Tabs, usePathname } from 'expo-router';
 import React, { useRef } from 'react';
 import { Platform, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {useAppTheme} from "@/app/context/ThemeContext";
 
 export default function TabLayout() {
     const { mode } = useAppTheme();
@@ -41,7 +41,7 @@ export default function TabLayout() {
                     tabBarIcon: ({ color, size }) => {
                         let iconName: keyof typeof Ionicons.glyphMap = 'home';
                         switch (route.name) {
-                            case 'catechism':
+                            case 'nanum':
                                 iconName = 'book-outline';
                                 break;
                             case 'departments':
@@ -63,26 +63,22 @@ export default function TabLayout() {
             }}
         >
             <Tabs.Screen
-                name="catechism"
-                options={{ title: '교리문답' }}
+                name="teams"
+                options={{ title: '모임' }}
                 listeners={{
                     tabPress: () => {
-                        if (pathname === '/') {
-                            const cb = getScrollCallback('catechism');
-                            cb?.();
-                        }
+                        const cb = getScrollCallback('teams');
+                        cb?.();
                     },
                 }}
             />
             <Tabs.Screen
-                name="departments"
-                options={{ title: '부서' }}
+                name="nanum"
+                options={{ title: '나눔' }}
                 listeners={{
                     tabPress: () => {
-                        if (pathname === '/') {
-                            const cb = getScrollCallback('departments');
-                            cb?.();
-                        }
+                        const cb = getScrollCallback('nanum');
+                        cb?.();
                     },
                 }}
             />
@@ -116,12 +112,14 @@ export default function TabLayout() {
                 }}
             />
             <Tabs.Screen
-                name="teams"
-                options={{ title: '소모임' }}
+                name="departments"
+                options={{ title: '부서활동' }}
                 listeners={{
                     tabPress: () => {
-                        const cb = getScrollCallback('teams');
-                        cb?.();
+                        if (pathname === '/') {
+                            const cb = getScrollCallback('departments');
+                            cb?.();
+                        }
                     },
                 }}
             />

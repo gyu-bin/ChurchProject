@@ -23,6 +23,7 @@ export default function CreateTeam() {
     const [description, setDescription] = useState('');
     const [leader, setLeader] = useState('');
     const [creatorEmail, setCreatorEmail] = useState('');
+    const [isUnlimited, setIsUnlimited] = useState(false); // ✅ 무제한 상태
     const [role, setRole] = useState('');
     const [memberCount, setMemberCount] = useState('');
     const router = useRouter();
@@ -51,10 +52,15 @@ export default function CreateTeam() {
             return;
         }
 
-        const max = parseInt(memberCount);
-        if (isNaN(max) || max < 2 || max > 99) {
-            Alert.alert('입력 오류', '참여 인원 수는 2명 이상 99명 이하로 설정해주세요.');
-            return;
+        let max: number|null = null;
+        if (!isUnlimited) {
+            max = parseInt(memberCount);
+            if (isNaN(max) || max < 2 || max > 99) {
+                Alert.alert('입력 오류', '참여 인원 수는 2명 이상 99명 이하로 설정해주세요.');
+                return;
+            }
+        } else {
+            max = -1; // 무제한
         }
 
         try {
@@ -129,36 +135,29 @@ export default function CreateTeam() {
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background,paddingTop: Platform.OS === 'android' ? 30 : 0 }}>
+            {/* 상단 화살표 + 소모임생성 한 줄 */}
             <View
                 style={{
                     flexDirection: 'row',
                     alignItems: 'center',
+                    justifyContent: 'center',
                     paddingHorizontal: spacing.lg,
                     marginTop: Platform.OS === 'android' ? insets.top : spacing.md,
+                    marginBottom: spacing.lg,
                 }}
             >
-                <TouchableOpacity onPress={() => router.back()}>
+                <TouchableOpacity onPress={() => router.back()} style={{ position: 'absolute', left: 0 }}>
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={{ fontSize: font.body, fontWeight: '600', color: colors.text, marginLeft: 8 }}>
-                    소모임 목록
+                <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.text, textAlign: 'center' }}>
+                    소모임 생성
                 </Text>
             </View>
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
                 <ScrollView contentContainerStyle={{ padding: spacing.lg, flexGrow: 1 }}>
-                    <Text style={{
-                        fontSize: font.heading,
-                        fontWeight: 'bold',
-                        marginBottom: spacing.lg,
-                        textAlign: 'center',
-                        color: colors.text
-                    }}>
-                        📝 소모임 생성
-                    </Text>
-
                     <TextInput
                         placeholder="모임명 (예: 러닝크루)"
                         placeholderTextColor={colors.placeholder}
@@ -197,23 +196,53 @@ export default function CreateTeam() {
                         }}
                     />
 
-                    <TextInput
-                        placeholder="최대 인원 수 (예: 5)"
-                        keyboardType="numeric"
-                        value={memberCount}
-                        onChangeText={setMemberCount}
-                        placeholderTextColor={colors.placeholder}
-                        style={{
-                            backgroundColor: colors.surface,
-                            padding: spacing.md,
-                            borderRadius: radius.md,
-                            borderWidth: 1,
-                            borderColor: colors.border,
-                            marginBottom: spacing.md,
-                            color: colors.text,
-                            fontSize: font.body,
-                        }}
-                    />
+                    {/* 최대 인원수 + 무제한 체크박스 */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
+                        <TextInput
+                            placeholder="최대 인원 수 (예: 5)"
+                            keyboardType="numeric"
+                            value={isUnlimited ? '∞' : memberCount}
+                            onChangeText={setMemberCount}
+                            placeholderTextColor={colors.placeholder}
+                            editable={!isUnlimited}
+                            style={{
+                                flex: 1,
+                                backgroundColor: colors.surface,
+                                padding: spacing.md,
+                                borderRadius: radius.md,
+                                borderWidth: 1,
+                                borderColor: colors.border,
+                                color: colors.text,
+                                fontSize: font.body,
+                                opacity: isUnlimited ? 0.5 : 1,
+                                marginRight: 12,
+                            }}
+                        />
+                        <TouchableOpacity
+                            onPress={() => setIsUnlimited(prev => !prev)}
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                paddingVertical: 6,
+                                paddingHorizontal: 10,
+                                borderRadius: 8,
+                                backgroundColor: isUnlimited ? colors.primary + '15' : 'transparent',
+                            }}
+                        >
+                            <Ionicons
+                                name={isUnlimited ? 'checkbox' : 'square-outline'}
+                                size={20}
+                                color={isUnlimited ? colors.primary : colors.subtext}
+                            />
+                            <Text style={{
+                                color: colors.text,
+                                marginLeft: 6,
+                                fontSize: font.body
+                            }}>
+                                무제한
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
 
                     <TouchableOpacity
                         onPress={handleSubmit}

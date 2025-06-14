@@ -1,14 +1,21 @@
-import React, { useEffect, useRef, useState } from 'react';
-import {
-    View, Text, TouchableOpacity, Modal, FlatList, SafeAreaView, Platform, Dimensions
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import PagerView from 'react-native-pager-view';
+import { useDesign } from '@/app/context/DesignSystem';
+import sgData from '@/assets/catechism/catechism.json';
 import largerData from '@/assets/catechism/largerCatechism.json';
 import shorterData from '@/assets/catechism/shorterCatechism.json';
-import sgData from '@/assets/catechism/catechism.json';
-import { useAppTheme } from '@/app/context/ThemeContext';
-import { useDesign } from '@/app/context/DesignSystem';
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+    Dimensions,
+    FlatList,
+    Modal,
+    Platform,
+    SafeAreaView,
+    Text, TouchableOpacity,
+    View
+} from 'react-native';
+import PagerView from 'react-native-pager-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const categories = [
@@ -27,7 +34,7 @@ export default function CatechismPage() {
     const [categoryModal, setCategoryModal] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [initialized, setInitialized] = useState(false);
-
+    const router = useRouter();
     const { colors, font, spacing, radius } = useDesign();
     const insets = useSafeAreaInsets();
 
@@ -104,14 +111,23 @@ export default function CatechismPage() {
     };
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background,paddingTop: Platform.OS === 'android' ? insets.top + 10 : 0 }}>
-            <TouchableOpacity
-                onPress={() => setCategoryModal(true)}
-                style={{ alignItems: 'center', marginBottom: spacing.sm}}
-            >
-                <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.primary }}>
-                    {selectedCategory.label} ▾
-                </Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm, position: 'relative' }}>
+                <TouchableOpacity
+                    onPress={() => router.back()}
+                    style={{ position: 'absolute', left: 0, padding: 8, zIndex: 1 }}
+                >
+                    <Ionicons name="arrow-back" size={24} color={colors.text} />
+                </TouchableOpacity>
+                <View style={{ flex: 1, alignItems: 'center' }}>
+                    <TouchableOpacity
+                        onPress={() => setCategoryModal(true)}
+                    >
+                        <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.primary }}>
+                            {selectedCategory.label} ▾
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
 
             <TouchableOpacity
                 onPress={openQuestionModal}

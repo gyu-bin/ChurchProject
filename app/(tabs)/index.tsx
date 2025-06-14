@@ -1,40 +1,40 @@
-import PrayerListModal from '@/app/home/allPrayer';
-import HomeNotices from "@/app/home/noticePage";
-import PrayerModal from '@/app/home/prayerModal';
-import { verses } from '@/assets/verses';
 import { useDesign } from '@/app/context/DesignSystem';
 import { useAppTheme } from '@/app/context/ThemeContext';
+import BannerCarousel from '@/app/home/homeBanner';
+import HomeNotices from "@/app/home/noticePage";
+import catechismData from '@/assets/catechism/catechism.json';
+import { verses } from '@/assets/verses';
 import { db } from '@/firebase/config';
 import { useAppDispatch } from '@/hooks/useRedux';
 import { setScrollCallback } from '@/utils/scrollRefManager';
-import { showToast } from "@/utils/toast";
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import {
-    addDoc,
     collection,
-    deleteDoc, doc,
     getDocs,
     onSnapshot,
     query, where
 } from 'firebase/firestore';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    Alert,
     Dimensions,
     FlatList,
     Image,
-    Linking,
+    Modal,
     Platform,
+    Pressable,
     RefreshControl,
     SafeAreaView,
     Text,
+    TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
+import { Calendar } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SIDE_MARGIN = 16;
@@ -51,6 +51,20 @@ type Prayer = {
         toDate: () => Date;
     };
 };
+
+// 일정(이벤트) 타입 명시
+interface EventNotice {
+    id: string;
+    title: string;
+    content?: string;
+    place?: string;
+    time?: string;
+    startDate?: { seconds: number };
+    endDate?: { seconds: number };
+    bannerImage?: string;
+    banner?: string;
+    type: 'banner';
+}
 
 export default function HomeScreen() {
     const router = useRouter();
@@ -78,45 +92,20 @@ export default function HomeScreen() {
     const [videoData, setVideoData] = useState<any[]>([]);
 
     const mainListRef = useRef<FlatList>(null);
+    const [quickModal, setQuickModal] = useState<null | 'verse' | 'calendar' | 'catechism' | 'ai'>(null);
+
+    // 일정(이벤트) 데이터 상태 추가
+    const [banners, setBanners] = useState<EventNotice[]>([]);
+    // 달력 마킹용
+    const [markedDates, setMarkedDates] = useState<any>({});
+    // 일정 상세 모달
+    const [selectedDate, setSelectedDate] = useState<string | null>(null);
+    const [selectedEvents, setSelectedEvents] = useState<EventNotice[]>([]);
+
     useEffect(() => {
         setScrollCallback('index', () => {
             mainListRef.current?.scrollToOffset({ offset: 0, animated: true });
         });
-    }, []);
-
-
-    useEffect(() => {
-        const fetchVideos = async () => {
-            const snapshot = await getDocs(collection(db, 'videos'));
-            const data = snapshot.docs.map((doc) => {
-                const raw = doc.data();
-                const url = raw.url;
-                const match = url.match(/v=([^&]+)/);
-                const id = match ? match[1] : '';
-
-                return {
-                    id: doc.id,
-                    videoId: id,
-                    thumbnail: `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
-                    url,
-                    order: raw.order ?? 0,
-                };
-            });
-
-            const sorted = data.sort((a, b) => a.order - b.order);
-
-            const withDummy = sorted.length >= 2
-                ? [
-                    { ...sorted[sorted.length - 1], id: `left-${sorted[sorted.length - 1].id}` },
-                    ...sorted,
-                    { ...sorted[0], id: `right-${sorted[0].id}` },
-                ]
-                : [...sorted];
-
-            setVideoData(withDummy);
-        };
-
-        fetchVideos(); // ✅ 함수 호출 필요
     }, []);
 
     useEffect(() => {
@@ -133,23 +122,6 @@ export default function HomeScreen() {
     const scrollToIndex = (index: number, animated = true) => {
         flatListRef.current?.scrollToIndex({ index, animated });
     };
-
-    const handleScrollEnd = (e: any) => {
-        const offsetX = e.nativeEvent.contentOffset.x;
-        const index = Math.round(offsetX / ITEM_WIDTH);
-        if (index === 0) {
-            scrollToIndex(videoData.length - 2, false);
-            setCurrentIndex(videoData.length - 2);
-        } else if (index === videoData.length - 1) {
-            scrollToIndex(1, false);
-            setCurrentIndex(1);
-        } else {
-            setCurrentIndex(index);
-        }
-    };
-
-    const goToNext = () => scrollToIndex(currentIndex + 1);
-    const goToPrev = () => scrollToIndex(currentIndex - 1);
 
     useEffect(() => {
         const loadUser = async () => {
@@ -224,61 +196,109 @@ export default function HomeScreen() {
         setRefreshing(false);
     }, [videoData]); // ✅ 의존성 추가
 
-    const fetchPublicPrayers = async () => {
-        const q = query(collection(db, 'prayer_requests'), where('visibility', '==', 'all'));
-        const snapshot = await getDocs(q);
-        setPublicPrayers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        setViewModalVisible(true);
-    };
+    const goToEvent = (id: string) => {
+        router.push({
+          pathname: '/home/BannerDetail/event',
+          params: { id },
+        });
+      };
 
-    const submitPrayer = async () => {
-        if (!title || !content) {
-            Alert.alert('모든 항목을 작성해주세요');
-            return;
-        }
-        try {
-            await addDoc(collection(db, 'prayer_requests'), {
-                name: user?.name || '익명',
-                title,
-                content,
-                email: currentUser?.email,
-                visibility,
-                createdAt: new Date(),
-            });
-            showToast('🙏 기도제목이 제출되었습니다.');
-            setModalVisible(false);
-            setTitle('');
-            setContent('');
-            setVisibility('all');
-            fetchPrayers();
-            router.replace('/');
-        } catch (err: any) {
-            Alert.alert('제출 실패', err.message);
-        }
-    };
-
-    const deletePrayer = async (id: string) => {
-        Alert.alert('삭제 확인', '정말 이 기도제목을 삭제하시겠습니까?', [
-            { text: '취소', style: 'cancel' },
-            {
-                text: '삭제', style: 'destructive', onPress: async () => {
-                    await deleteDoc(doc(db, 'prayer_requests', id));
-                    setPrayers(prev => prev.filter(p => p.id !== id));
+    // 일정 데이터 실시간 구독
+    useEffect(() => {
+        const noticeQ = query(
+            collection(db, 'notice'),
+            where('type', '==', 'banner') 
+        );
+        const unsub = onSnapshot(noticeQ, (snapshot) => {
+            const noticeList = snapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...(doc.data()),
+            })) as EventNotice[];
+            setBanners(noticeList);
+            // 마킹 데이터 생성
+            const marks: any = {};
+            noticeList.forEach(ev => {
+                // startDate ~ endDate 지원
+                const start = ev.startDate?.seconds ? new Date(ev.startDate.seconds * 1000) : null;
+                const end = ev.endDate?.seconds ? new Date(ev.endDate.seconds * 1000) : start;
+                if (start) {
+                    let d = new Date(start);
+                    while (d <= (end || start)) {
+                        const key = d.toISOString().split('T')[0];
+                        marks[key] = marks[key] || { marked: true, dots: [{ color: '#2563eb' }] };
+                        d.setDate(d.getDate() + 1);
+                    }
                 }
-            }
-        ]);
+            });
+            setMarkedDates(marks);
+        });
+        return () => unsub();
+    }, []);
+
+    // 캘린더 날짜 클릭 핸들러
+    const handleDayPress = (day: any) => {
+        const dateStr = day.dateString;
+        const dayEvents = banners.filter(ev => {
+            const start = ev.startDate?.seconds ? new Date(ev.startDate.seconds * 1000) : null;
+            const end = ev.endDate?.seconds ? new Date(ev.endDate.seconds * 1000) : start;
+            if (!start) return false;
+            const d = new Date(dateStr);
+            d.setHours(0,0,0,0);
+            start.setHours(0,0,0,0); // Set start time to 0
+            if (end) end.setHours(0,0,0,0); // Set end time to 0 if not null
+            return d >= start && d <= (end || start);
+        });
+        setSelectedDate(dateStr);
+        setSelectedEvents(dayEvents);
+    };
+
+    const handleScrollEnd = (e: any) => {
+        const contentOffset = e.nativeEvent.contentOffset.x;
+        const viewSize = e.nativeEvent.layoutMeasurement.width;
+        const pageNum = Math.round(contentOffset / viewSize);
+        setCurrentIndex(pageNum + 1);
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: Platform.OS === 'android' ? insets.top+10 : 0 }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>
             <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
             <FlatList
                 ref={mainListRef}
                 ListHeaderComponent={(<View style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.primary }}>
-                            🙏 안녕하세요{user?.name ? ` ${user.name}님!` : '!'}
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <View style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: 20,
+                                overflow: 'hidden',
+                                backgroundColor: '#fff',
+                                shadowColor: '#000',
+                                shadowOffset: {
+                                    width: 0,
+                                    height: 2,
+                                },
+                                shadowOpacity: 0.1,
+                                shadowRadius: 4,
+                                elevation: 3,
+                            }}>
+                                <Image 
+                                    source={require('@/assets/logoVer1.png')}
+                                    style={{ width: '100%', height: '100%' }}
+                                    resizeMode="cover"
+                                />
+                            </View>
+                            <Text style={{
+                                fontSize: 30,
+                                fontWeight: '700',
+                                color: '#4cc9f0',
+                                marginLeft: 12,
+                                letterSpacing: 1,
+                                textShadowColor: 'rgba(76, 201, 240, 0.3)',
+                                textShadowOffset: { width: 0, height: 2 },
+                                textShadowRadius: 4,
+                            }}>Xion</Text>
+                        </View>
                         <TouchableOpacity onPress={() => router.push('/home/notifications')} style={{ position: 'relative' }}>
                             <Ionicons name="notifications-outline" size={24} color={theme.colors.text} />
                             {notifications.length > 0 && (
@@ -287,118 +307,58 @@ export default function HomeScreen() {
                                 </View>
                             )}
                         </TouchableOpacity>
+                    </View> 
+
+                    {/* 메인 대시보드 */}
+                    {/* <View>
+                        <TouchableOpacity onPress={goToEvent} activeOpacity={0.9} style={{ margin: 5, marginBottom: 0 }}>
+                            <ImageBackground
+                             source={{ uri: events[0]?.bannerImage || 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80' }}
+                             style={{ borderRadius: 18, overflow: 'hidden', minHeight: 300, justifyContent: 'flex-end' }}
+                            imageStyle={{ borderRadius: 18 }}
+                        >
+                          <View style={{ backgroundColor: 'rgba(0,0,0,0.32)', padding: 20, borderBottomLeftRadius: 18, borderBottomRightRadius: 18 }}>
+                            <Text style={{ color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 6 }}>{events[0]?.title || '2025 여름 수련회 신청 오픈!'}</Text>
+                            <Text style={{ color: '#fff', fontSize: 15, marginBottom: 10 }}>{events[0]?.content || '지금 바로 신청하고 다양한 혜택을 받아보세요.'}</Text>
+                          <View style={{ alignSelf: 'flex-start', backgroundColor: theme.colors.primary, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 7 }}>
+                            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15 }}>자세히 보기</Text>
+                        </View>
+                        </View>
+                        </ImageBackground>
+                        </TouchableOpacity>
+                    </View> */}
+
+                    {banners?.length > 0 && (
+                        <BannerCarousel events={banners} goToEvent={goToEvent} theme={theme} />
+                    )}
+
+                    <View>
+                        <Text>교회활동</Text>
                     </View>
-
-                    {/* 말씀 및 캐러셀 */}
-                    <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, maxHeight: 200, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
-                        <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>📖 오늘의 말씀</Text>
-                        <Text style={{ fontSize: 17, fontStyle: 'italic', color: theme.colors.subtext }}>{verse.verse}</Text>
-                        <Text style={{ fontSize: 14, color: theme.colors.subtext }}>({verse.reference})</Text>
-                    </View>
-
-
-
-                    {/*  알림 페이지*/}
+                    
+                    <View>
+                        <Text>교회 공지</Text>
                         <View style={{ backgroundColor: theme.colors.surface,borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
                             <HomeNotices />
                         </View>
+                    </View>
 
-                        <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, shadowColor: '#000', shadowOpacity: 0.08, shadowOffset: { width: 0, height: 2 }, elevation: 3 }}>
-                            <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, paddingLeft: '3%', paddingTop: '3%' }}>📺 추천 설교</Text>
-
-                            <View style={{ position: 'relative', paddingTop: '3%', paddingBottom: '2%' }}>
-                                {initialIndex !== null && (
-                                    <FlatList
-                                        key={listKey}
-                                        ref={flatListRef}
-                                        data={videoData}
-                                        horizontal
-                                        pagingEnabled
-                                        initialScrollIndex={initialIndex}
-                                        decelerationRate="fast"
-                                        snapToInterval={ITEM_WIDTH}
-                                        getItemLayout={(data, index) => ({
-                                            length: ITEM_WIDTH,
-                                            offset: ITEM_WIDTH * index,
-                                            index,
-                                        })}
-                                        contentContainerStyle={{ paddingHorizontal: SIDE_SPACING }}
-                                        showsHorizontalScrollIndicator={false}
-                                        onMomentumScrollEnd={handleScrollEnd}
-                                        renderItem={({ item }) => (
-                                            <View style={{ width: ITEM_WIDTH }}>
-                                                <TouchableOpacity
-                                                    onPress={() => {
-                                                        Alert.alert(
-                                                            '🎥 유튜브로 이동',
-                                                            '해당 영상을 유튜브에서 시청하시겠습니까?',
-                                                            [
-                                                                { text: '❌ 취소', style: 'cancel' },
-                                                                {
-                                                                    text: '✅ 확인',
-                                                                    onPress: () => Linking.openURL(item.url),
-                                                                    style: 'default',
-                                                                },
-                                                            ],
-                                                            { cancelable: true }
-                                                        );
-                                                    }}
-                                                >
-                                                    <Image
-                                                        source={{ uri: item.thumbnail }}
-                                                        style={{
-                                                            width: '92%',
-                                                            aspectRatio: 16 / 9,
-                                                            borderRadius: 14,
-                                                            backgroundColor: '#ccc',
-                                                        }}
-                                                        resizeMode="cover"
-                                                    />
-                                                </TouchableOpacity>
-                                            </View>
-                                        )}
-                                    />
-                                )}
-
-                                {/* 좌우 버튼 */}
-                                <TouchableOpacity onPress={goToPrev} style={{ position: 'absolute', top: '40%', left: 4, zIndex: 10, backgroundColor: '#00000055', padding: 8, borderRadius: 20 }}>
-                                    <Ionicons name="chevron-back" size={20} color="#fff" />
-                                </TouchableOpacity>
-                                <TouchableOpacity onPress={goToNext} style={{ position: 'absolute', top: '40%', right: 4, zIndex: 10, backgroundColor: '#00000055', padding: 8, borderRadius: 20 }}>
-                                    <Ionicons name="chevron-forward" size={20} color="#fff" />
-                                </TouchableOpacity>
-                            </View>
-
-                            {/* 🔘 인디케이터 추가 위치 */}
-                            {videoData.length > 2 && (
-                                <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 6, marginBottom: 8 }}>
-                                    {videoData.slice(1, videoData.length - 1).map((_, i) => {
-                                        const isActive = i + 1 === currentIndex;
-                                        return (
-                                            <View
-                                                key={i}
-                                                style={{
-                                                    width: 8,
-                                                    height: 8,
-                                                    borderRadius: 4,
-                                                    marginHorizontal: 4,
-                                                    backgroundColor: isActive ? theme.colors.primary : theme.colors.border,
-                                                }}
-                                            />
-                                        );
-                                    })}
-                                </View>
-                            )}
-                        </View>
-
-                        <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
+                    {/* 퀵메뉴 */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginVertical: 24 }}>
+                        <QuickMenuButton icon="💕" label="오늘의 말씀" onPress={() => router.push('/home/todayVerse')} />
+                        <QuickMenuButton icon="📅" label="캘린더" onPress={() => setQuickModal('calendar')} />
+                        <QuickMenuButton icon="📖" label="교리" onPress={() => router.push('/home/catechism')} />
+                        <QuickMenuButton icon="🤖" label="AI로 질문" onPress={() => router.push('/home/AiChatPage')} />
+                    </View>
+                
+                        {/* <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
                             <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>💬 AI에게 신앙 질문하기</Text>
                             <TouchableOpacity onPress={() => router.push('/home/AiChatPage')} style={{ backgroundColor: theme.colors.primary, padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 }}>
                                 <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>🤖 질문하러 가기</Text>
                             </TouchableOpacity>
-                        </View>
+                        </View> */}
 
-                    <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
+                    {/* <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
                         <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>📝 기도제목</Text>
                         <TouchableOpacity onPress={() => setModalVisible(true)} style={{ backgroundColor: theme.colors.primary, padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 }}>
                             <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>🙏 기도제목 나누기</Text>
@@ -413,7 +373,7 @@ export default function HomeScreen() {
                         <TouchableOpacity onPress={()=>router.push('/home/DailyBible')} style={{ backgroundColor: theme.colors.primary, padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 }}>
                             <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>🤝 매일묵상 나누기</Text>
                         </TouchableOpacity>
-                    </View>
+                    </View> */}
 
 
 
@@ -425,7 +385,7 @@ export default function HomeScreen() {
                 renderItem={() => <View />}
             />
 
-            <PrayerModal
+            {/* <PrayerModal
                 visible={modalVisible}
                 onClose={() => setModalVisible(false)}
                 onSubmit={submitPrayer}
@@ -445,9 +405,110 @@ export default function HomeScreen() {
                 currentUser={currentUser}
                 onClose={() => setViewModalVisible(false)}
                 onDelete={deletePrayer}
-            />
+            /> */}
 
+            {/* 오늘의 말씀 모달 */}
+            <Modal visible={quickModal === 'verse'} transparent animationType="fade" onRequestClose={() => setQuickModal(null)}>
+                <Pressable style={{ flex:1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent:'center', alignItems:'center' }} onPress={() => setQuickModal(null)}>
+                    <View style={{ backgroundColor:'#fff', borderRadius:20, padding:28, minWidth:260, alignItems:'center', shadowColor:'#000', shadowOpacity:0.1, shadowRadius:12 }}>
+                        <Text style={{ fontSize:20, fontWeight:'bold', marginBottom:8 }}>오늘의 말씀</Text>
+                        <Text style={{ fontSize:16, color:'#222', marginBottom:4 }}>{verse.verse}</Text>
+                        <Text style={{ fontSize:14, color:'#888' }}>{verse.reference}</Text>
+                    </View>
+                </Pressable>
+            </Modal>
+            {/* 캘린더 모달 */}
+            <Modal visible={quickModal === 'calendar'} transparent animationType="fade" onRequestClose={() => setQuickModal(null)}>
+                <Pressable style={{ flex:1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent:'center', alignItems:'center' }} onPress={() => setQuickModal(null)}>
+                    <View style={{ backgroundColor: theme.colors.surface, borderRadius:20, padding:24, minWidth:400, alignItems:'center', shadowColor:'#000', shadowOpacity:0.3, shadowRadius:12 }}>
+                        <Text style={{ fontSize:20, fontWeight:'bold', marginBottom:12, color: theme.colors.text }}>캘린더</Text>
+                        <Calendar
+                            style={{ borderRadius: 12, width: 320 }}
+                            theme={{
+                                backgroundColor: theme.colors.surface,
+                                calendarBackground: theme.colors.surface,
+                                textSectionTitleColor: theme.colors.subtext,
+                                selectedDayBackgroundColor: theme.colors.primary,
+                                selectedDayTextColor: '#fff',
+                                todayTextColor: theme.colors.primary,
+                                dayTextColor: theme.colors.text,
+                                textDisabledColor: '#ccc',
+                                arrowColor: theme.colors.primary,
+                                monthTextColor: theme.colors.primary,
+                            }}
+                            markedDates={markedDates}
+                            markingType="multi-dot"
+                            onDayPress={handleDayPress}
+                        />
+                        {/* 달력 하단에 일정 리스트/안내 */}
+                        {selectedDate && (
+                            <View style={{ width: 320, marginTop: 18, backgroundColor: theme.colors.card, borderRadius: 14, padding: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 }}>
+                                <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.primary, marginBottom: 10 }}>{selectedDate} 일정</Text>
+                                {selectedEvents.length > 0 ? (
+                                    selectedEvents.map(ev => (
+                                        <View key={ev.id} style={{ marginBottom: 16, borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingBottom: 10 }}>
+                                            <Text style={{ fontSize:15, fontWeight:'600', color: theme.colors.text, marginBottom: 4 }}>{ev.title}</Text>
+                                            {ev.place && <Text style={{ color: theme.colors.subtext, marginBottom: 2 }}>장소: {ev.place}</Text>}
+                                            {ev.time && <Text style={{ color: theme.colors.subtext, marginBottom: 2 }}>시간: {ev.time}</Text>}
+                                            {ev.content && <Text style={{ color: theme.colors.text, marginBottom: 2 }}>{ev.content}</Text>}
+                                            <Text style={{ color: theme.colors.subtext, fontSize: 13 }}>
+                                                {ev.startDate?.seconds ? new Date(ev.startDate.seconds * 1000).toLocaleDateString('ko-KR') : ''}
+                                                {ev.endDate?.seconds && ev.endDate?.seconds !== ev.startDate?.seconds ? ` ~ ${new Date(ev.endDate.seconds * 1000).toLocaleDateString('ko-KR')}` : ''}
+                                            </Text>
+                                        </View>
+                                    ))
+                                ) : (
+                                    <Text style={{ color: theme.colors.subtext, textAlign: 'center', marginVertical: 12 }}>일정이 없습니다.</Text>
+                                )}
+                            </View>
+                        )}
+                    </View>
+                </Pressable>
+            </Modal>
+            {/* 교리문답 모달 */}
+            <Modal visible={quickModal === 'catechism'} transparent animationType="fade" onRequestClose={() => setQuickModal(null)}>
+                <Pressable style={{ flex:1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent:'center', alignItems:'center' }} onPress={() => setQuickModal(null)}>
+                    <View style={{ backgroundColor:'#fff', borderRadius:20, padding:24, minWidth:280, alignItems:'center', shadowColor:'#000', shadowOpacity:0.1, shadowRadius:12 }}>
+                        <Text style={{ fontSize:20, fontWeight:'bold', marginBottom:12 }}>교리문답</Text>
+                        {catechismData.slice(0, 3).map((item, idx) => (
+                            <View key={idx} style={{ marginBottom:10 }}>
+                                <Text style={{ fontWeight:'bold', color:'#2563eb' }}>{item.question}</Text>
+                                <Text style={{ color:'#222' }}>{item.answer}</Text>
+                            </View>
+                        ))}
+                    </View>
+                </Pressable>
+            </Modal>
+            {/* AI로 질문하기 모달 */}
+            <Modal visible={quickModal === 'ai'} transparent animationType="fade" onRequestClose={() => setQuickModal(null)}>
+                <Pressable style={{ flex:1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent:'center', alignItems:'center' }} onPress={() => setQuickModal(null)}>
+                    <View style={{ backgroundColor:'#fff', borderRadius:20, padding:24, minWidth:280, alignItems:'center', shadowColor:'#000', shadowOpacity:0.1, shadowRadius:12 }}>
+                        <Text style={{ fontSize:20, fontWeight:'bold', marginBottom:12 }}>AI로 질문하기</Text>
+                        <Text style={{ color:'#888', marginBottom:8 }}>아래에 질문을 입력해보세요!</Text>
+                        <View style={{ flexDirection:'row', alignItems:'center', marginTop:8 }}>
+                            <TextInput placeholder="질문을 입력하세요" style={{ borderWidth:1, borderColor:'#eee', borderRadius:8, padding:8, minWidth:160, marginRight:8 }} />
+                            <TouchableOpacity style={{ backgroundColor:'#2563eb', borderRadius:8, padding:8 }}>
+                                <Text style={{ color:'#fff', fontWeight:'bold' }}>전송</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </Pressable>
+            </Modal>
 
         </SafeAreaView>
+    );
+}
+
+// 퀵 메뉴 버튼 컴포넌트
+function QuickMenuButton({ icon, label, onPress }: { icon: React.ReactNode | string, label: string, onPress: () => void }) {
+    return (
+        <TouchableOpacity onPress={onPress} style={{ alignItems: 'center', width: 72 }}>
+            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#f5f6fa', justifyContent: 'center', alignItems: 'center', marginBottom: 6, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }}>
+                {typeof icon === 'string' ? (
+                    <Text style={{ fontSize: 30 }}>{icon}</Text>
+                ) : icon}
+            </View>
+            <Text style={{ color: '#2d3748', fontSize: 15, fontWeight: '500' }}>{label}</Text>
+        </TouchableOpacity>
     );
 }

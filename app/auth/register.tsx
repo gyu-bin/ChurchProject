@@ -1,24 +1,29 @@
 // ✅ Firebase Auth 기반 회원가입 + Firestore 사용자 정보 저장 + 비밀번호 보기 토글
 
-import React, { useRef, useState } from 'react';
-import {
-    View, Text, TextInput, TouchableOpacity,
-    StyleSheet, Alert, Animated, Dimensions,
-    SafeAreaView, KeyboardAvoidingView, Platform, Modal,
-} from 'react-native';
 import { db } from '@/firebase/config';
-import { doc, setDoc } from 'firebase/firestore';
-import { useRouter } from 'expo-router';
 import { registerPushToken } from '@/services/registerPushToken';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import bcrypt from "bcryptjs";
+import { useRouter } from 'expo-router';
+import { doc, setDoc } from 'firebase/firestore';
 import LottieView from 'lottie-react-native';
+import React, { useRef, useState } from 'react';
+import {
+    Alert, Animated, Dimensions,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    SafeAreaView,
+    StyleSheet,
+    Text, TextInput, TouchableOpacity,
+    View,
+} from 'react-native';
 
-import loading1 from '@/assets/lottie/Animation - 1747201461030.json'
-import loading2 from '@/assets/lottie/Animation - 1747201431992.json'
-import loading3 from '@/assets/lottie/Animation - 1747201413764.json'
-import loading4 from '@/assets/lottie/Animation - 1747201330128.json'
-import {useAuth} from "@/hooks/useAuth";
+import loading4 from '@/assets/lottie/Animation - 1747201330128.json';
+import loading3 from '@/assets/lottie/Animation - 1747201413764.json';
+import loading2 from '@/assets/lottie/Animation - 1747201431992.json';
+import loading1 from '@/assets/lottie/Animation - 1747201461030.json';
+import { useAuth } from "@/hooks/useAuth";
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const campuses = ['문래', '신촌'];
@@ -38,7 +43,7 @@ export default function RegisterSlideScreen() {
 
     const { reload } = useAuth(); // 컴포넌트 상단에서 선언
 
-    const steps = ['email', 'password', 'confirm', 'name', 'campus', 'division', 'role'] as const;
+    const steps = ['email', 'password', 'confirm', 'name', 'role','campus', 'division', ] as const;
 
     if (!bcrypt.setRandomFallback) {
         console.warn('⚠️ bcryptjs 버전이 올바르지 않습니다.');

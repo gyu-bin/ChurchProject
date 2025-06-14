@@ -1,13 +1,12 @@
 // app/_layout-inner.tsx
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack, Redirect, usePathname } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { useAuth } from '@/hooks/useAuth';
-import { useFonts } from 'expo-font';
-import { View, ActivityIndicator } from 'react-native';
-import * as Notifications from 'expo-notifications';
 import { useAppTheme } from '@/app/context/ThemeContext';
+import { useAuth } from '@/hooks/useAuth';
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { useFonts } from 'expo-font';
+import * as Notifications from 'expo-notifications';
+import { Redirect, Stack, usePathname } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { ActivityIndicator, View } from 'react-native';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -52,6 +51,7 @@ export default function RootLayoutInner() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="auth/login" options={{ headerShown: false }} />
           <Stack.Screen name="auth/register" options={{ headerShown: false }} />
+          <Stack.Screen name="auth/ForgotPassword" options={{ headerShown: false }} />
           <Stack.Screen name="intro" options={{ headerShown: false }} />
           <Stack.Screen name="teams" options={{ headerShown: false }} />
           <Stack.Screen name="department/[campus]/[division]/index" options={{ headerShown: false }} />
@@ -63,6 +63,9 @@ export default function RootLayoutInner() {
           <Stack.Screen name="setting/noticeManager" options={{ headerShown: false }} />
           <Stack.Screen name="setting/feedback" options={{ headerShown: false }} />
           <Stack.Screen name="setting/ForgotPassword" options={{ headerShown: false }} />
+          <Stack.Screen name="home/catechism" options={{ headerShown: false }} />
+          <Stack.Screen name="home/todayVerse" options={{ headerShown: false }} />
+          <Stack.Screen name="home/BannerDetail/event" options={{ headerShown: false }} />
         </Stack>
         <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
       </ThemeProvider>

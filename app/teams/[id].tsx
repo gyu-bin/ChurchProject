@@ -107,6 +107,7 @@ export default function TeamDetail() {
     const [editName, setEditName] = useState('');
     const [editDescription, setEditDescription] = useState('');
     const [editCapacity, setEditCapacity] = useState('');
+    const [isUnlimited, setIsUnlimited] = useState(false);
     const [announcement, setAnnouncement] = useState('');
 
     const [scheduleDate, setScheduleDate] = useState('');
@@ -321,7 +322,13 @@ export default function TeamDetail() {
         setEditName(team.name);
         setEditDescription(team.description || '');
         setAnnouncement(team.announcement || '');
-        setEditCapacity(String(team.maxMembers ?? ''));
+        if (team.maxMembers === null || team.maxMembers === undefined || team.maxMembers === -1) {
+            setIsUnlimited(true);
+            setEditCapacity('');
+        } else {
+            setIsUnlimited(false);
+            setEditCapacity(String(team.maxMembers));
+        }
         setEditModalVisible(true);
     };
 
@@ -329,14 +336,18 @@ export default function TeamDetail() {
         if (!team) return;
 
         const currentCount = team.membersList?.length ?? 0;
-        const newMax = Number(editCapacity);
-
-        if (isNaN(newMax) || newMax < currentCount) {
-            Alert.alert(
-                '유효하지 않은 최대 인원',
-                `현재 모임 인원(${currentCount}명)보다 작을 수 없습니다.`
-            );
-            return;
+        let newMax: number|null = null;
+        if (!isUnlimited) {
+            newMax = Number(editCapacity);
+            if (isNaN(newMax) || newMax < currentCount) {
+                Alert.alert(
+                    '유효하지 않은 최대 인원',
+                    `현재 모임 인원(${currentCount}명)보다 작을 수 없습니다.`
+                );
+                return;
+            }
+        } else {
+            newMax = -1; // 무제한은 -1로 저장
         }
 
         try {
@@ -344,7 +355,7 @@ export default function TeamDetail() {
             await updateDoc(teamRef, {
                 name: editName,
                 description: editDescription,
-                maxMembers: Number(editCapacity),
+                maxMembers: newMax,
                 announcement,      // ✅ 추가 필요
                 scheduleDate,      // ✅ 추가 필요
             });
@@ -353,7 +364,7 @@ export default function TeamDetail() {
                 ...prev,
                 name: editName,
                 description: editDescription,
-                maxMembers: Number(editCapacity),
+                maxMembers: newMax,
                 announcement,
                 scheduleDate,
             });
@@ -861,7 +872,7 @@ export default function TeamDetail() {
                                 color: colors.subtext,
                                 marginTop: 2,
                             }}>
-                                {team.membersList?.length || 0}명의 멤버
+                                인원: {team.membersList?.length || 0} / {team.maxMembers === -1 ? '∞' : team.maxMembers}
                             </Text>
                         </View>
                         {(isCreator || isSubLeader) && (
@@ -1256,19 +1267,50 @@ export default function TeamDetail() {
                             />
 
                             <Text style={{ fontSize: font.body, color: colors.text, marginBottom: spacing.sm }}>최대 인원수</Text>
-                            <TextInput
-                                value={editCapacity}
-                                onChangeText={setEditCapacity}
-                                keyboardType="number-pad"
-                                style={{
-                                    borderColor: colors.border,
-                                    borderWidth: 1,
-                                    borderRadius: radius.sm,
-                                    padding: spacing.sm,
-                                    marginBottom: spacing.md,
-                                    color: colors.text
-                                }}
-                            />
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
+                                <TextInput
+                                    value={isUnlimited ? '∞' : editCapacity}
+                                    onChangeText={setEditCapacity}
+                                    keyboardType="number-pad"
+                                    editable={!isUnlimited}
+                                    style={{
+                                        flex: 1,
+                                        backgroundColor: colors.surface,
+                                        padding: spacing.md,
+                                        borderRadius: radius.md,
+                                        borderWidth: 1,
+                                        borderColor: colors.border,
+                                        color: colors.text,
+                                        fontSize: font.body,
+                                        opacity: isUnlimited ? 0.5 : 1,
+                                        marginRight: 12,
+                                    }}
+                                />
+                                <TouchableOpacity
+                                    onPress={() => setIsUnlimited(prev => !prev)}
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        paddingVertical: 6,
+                                        paddingHorizontal: 10,
+                                        borderRadius: 8,
+                                        backgroundColor: isUnlimited ? colors.primary + '15' : 'transparent',
+                                    }}
+                                >
+                                    <Ionicons
+                                        name={isUnlimited ? 'checkbox' : 'square-outline'}
+                                        size={20}
+                                        color={isUnlimited ? colors.primary : colors.subtext}
+                                    />
+                                    <Text style={{
+                                        color: colors.text,
+                                        marginLeft: 6,
+                                        fontSize: font.body
+                                    }}>
+                                        무제한
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
 
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                                 <TouchableOpacity onPress={() => setEditModalVisible(false)}>

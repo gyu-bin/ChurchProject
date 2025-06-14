@@ -1,5 +1,5 @@
-import SkeletonBox from '@/components/Skeleton';
 import { useDesign } from '@/app/context/DesignSystem';
+import SkeletonBox from '@/components/Skeleton';
 import { db } from '@/firebase/config';
 import { setScrollCallback } from '@/utils/scrollRefManager';
 import { Ionicons } from '@expo/vector-icons';
@@ -140,7 +140,8 @@ export default function TeamsScreen() {
     const renderItem = ({ item }: { item: any }) => {
         const members = item.membersList?.length ?? 0;
         const max = item.maxMembers ?? null;
-        const isFull = typeof max === 'number' && members >= max;
+        const isUnlimited = max === -1 || max === null || max === undefined;
+        const isFull = !isUnlimited && typeof max === 'number' && members >= max;
 
         return (
             <TouchableOpacity
@@ -166,7 +167,7 @@ export default function TeamsScreen() {
                             },
                         ]}
                     >
-                        👥 인원: {members} / {max ?? '명'}
+                        👥 인원: {members} / {isUnlimited ? '∞' : max}
                         {isFull ? ' (모집마감)' : ''}
                     </Text>
                 </View>
@@ -208,6 +209,7 @@ export default function TeamsScreen() {
                 </View>
             </View>
 
+
             {isSearchVisible && (
                 <View style={{ paddingHorizontal: 15, marginBottom: 10 }}>
                     <TextInput
@@ -236,7 +238,7 @@ export default function TeamsScreen() {
                     <Text style={{ color: colors.subtext }}>등록된 소모임이 없습니다.</Text>
                 </View>
             ) : (
-                <>
+                <>                
                     <FlatList
                     ref={mainListRef}
                     data={filteredTeams}

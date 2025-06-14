@@ -92,7 +92,7 @@ export default function JoinedTeams() {
         for (const teamId of selectedIds) {
             const team = teams.find(t => t.id === teamId);
 
-            if (team.ownerEmail === user.email) {
+            if (team.leaderEmail === user.email) {
                 // 모임장일 경우 모임 자체 삭제
                 await deleteDoc(doc(db, 'teams', teamId));
             } else {
