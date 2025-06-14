@@ -129,14 +129,18 @@ export default function EventTab() {
             <TouchableOpacity
                 style={{ flex: 1, backgroundColor: colors.primary, padding: spacing.sm, marginRight: spacing.sm, borderRadius: 8 }}
                 onPress={() => {
+                  const start = new Date(item.startDate.seconds * 1000);
+                  const end = new Date(item.endDate.seconds * 1000);
                   setForm({
                     id: item.id,
                     title: item.title,
                     content: item.content,
                     bannerImage: item.bannerImage,
-                    startDate: new Date(item.startDate.seconds * 1000).toISOString().split('T')[0],
-                    endDate: new Date(item.endDate.seconds * 1000).toISOString().split('T')[0],
+                    startDate: start.toISOString().split('T')[0],
+                    endDate: end.toISOString().split('T')[0],
                   });
+                  setTempStart(start);
+                  setTempEnd(end);
                   setModalVisible(true);
                 }}
             >
@@ -198,22 +202,32 @@ export default function EventTab() {
                     placeholder="제목"
                     value={form.title}
                     onChangeText={(t) => setForm((prev) => ({ ...prev, title: t }))}
-                    style={{ borderColor: colors.border, borderWidth: 1, borderRadius: 8, marginBottom: spacing.sm, padding: spacing.sm }}
+                    placeholderTextColor={colors.subtext} // ✅ 다크모드 대응
+                    style={{
+                      borderColor: colors.border,
+                      borderWidth: 1,
+                      borderRadius: 8,
+                      marginBottom: spacing.sm,
+                      padding: spacing.sm,
+                      color: colors.text, // ✅ 입력 텍스트 색상도 명확하게 지정
+                    }}
                 />
                 <TextInput
                     placeholder="내용"
+                    placeholderTextColor={colors.subtext} // ✅ 다크모드 대응
                     value={form.content}
                     onChangeText={(t) => setForm((prev) => ({ ...prev, content: t }))}
-                    style={{ borderColor: colors.border, borderWidth: 1, borderRadius: 8, marginBottom: spacing.sm, padding: spacing.sm, height: 100 }}
+                    style={{color: colors.text,borderColor: colors.border, borderWidth: 1, borderRadius: 8, marginBottom: spacing.sm, padding: spacing.sm, height: 100 }}
                     multiline
                 />
                 <TouchableOpacity
                     onPress={() => {
                       setModalVisible(false); // 이벤트 모달 먼저 닫기
                       setTimeout(() => {
-                        const now = new Date();
-                        setTempStart(now);
-                        setTempEnd(now);
+                        const start = form.startDate ? new Date(form.startDate) : new Date();
+                        const end = form.endDate ? new Date(form.endDate) : start;
+                        setTempStart(start);
+                        setTempEnd(end);
                         setIsSelectingStart(true);
                         setDatePickerVisible(true); // 날짜 선택 모달 띄우기
                       }, 300);
@@ -307,12 +321,12 @@ export default function EventTab() {
                       if (tempStart && tempEnd && tempEnd >= tempStart) {
                         setForm((prev) => ({
                           ...prev,
-                          startDate: tempStart.toISOString(),
-                          endDate: tempEnd.toISOString(),
+                          startDate: tempStart.toISOString().split('T')[0],
+                          endDate: tempEnd.toISOString().split('T')[0],
                         }));
                         setDatePickerVisible(false);
                         setTimeout(() => {
-                          setModalVisible(true); // 날짜 선택 완료 후 다시 이벤트 추가 모달 열기
+                          setModalVisible(true); // 🔁 모달 다시 열기
                         }, 300);
                       } else {
                         Alert.alert('날짜 오류', '시작일과 종료일을 올바르게 선택해주세요.');

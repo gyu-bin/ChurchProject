@@ -1,7 +1,7 @@
 import { useDesign } from '@/app/context/DesignSystem';
 import { useAppTheme } from '@/app/context/ThemeContext';
-import PrayerListModal from '@/app/home/allPrayer';
-import PrayerModal from '@/app/home/prayerModal';
+import PrayerListModal from '@/app/share/allPrayer';
+import PrayerModal from '@/app/share/prayerModal';
 import { db } from '@/firebase/config';
 import { showToast } from "@/utils/toast";
 import { Ionicons } from '@expo/vector-icons';
@@ -324,4 +324,4 @@ export default function NanumPage() {
             />
         </SafeAreaView>
     );
-} 
+}

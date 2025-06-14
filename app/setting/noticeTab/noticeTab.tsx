@@ -153,6 +153,7 @@ export default function NoticeTab() {
                     >
                         <TextInput
                             placeholder="제목"
+                            placeholderTextColor={colors.subtext} // ✅ 다크모드 대응
                             value={form.title}
                             onChangeText={(t) => setForm((prev) => ({ ...prev, title: t }))}
                             style={{
@@ -161,10 +162,12 @@ export default function NoticeTab() {
                                 borderRadius: 8,
                                 marginBottom: spacing.sm,
                                 padding: spacing.sm,
+                                color: colors.text,
                             }}
                         />
                         <TextInput
                             placeholder="내용"
+                            placeholderTextColor={colors.subtext} // ✅ 다크모드 대응
                             value={form.content}
                             onChangeText={(t) => setForm((prev) => ({ ...prev, content: t }))}
                             multiline
@@ -175,6 +178,7 @@ export default function NoticeTab() {
                                 marginBottom: spacing.sm,
                                 padding: spacing.sm,
                                 height: 100,
+                                color: colors.text,
                             }}
                         />
                         <View style={{ flexDirection: 'row' }}>

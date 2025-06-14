@@ -35,11 +35,28 @@ export default function HomeNotices() {
         });
 
         const unsubEvent = onSnapshot(eventQ, (snapshot) => {
-            const eventList = snapshot.docs.map((doc) => ({
+            const allEvents = snapshot.docs.map((doc) => ({
                 id: doc.id,
                 ...(doc.data() as Omit<Notice, 'id'>),
             }));
-            setEvents(eventList.slice(0, 2)); // 일정 2개
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const upcomingEvents = allEvents
+                .filter((event) => {
+                    const eventDate = new Date(event.startDate?.seconds * 1000);
+                    eventDate.setHours(0, 0, 0, 0);
+                    return eventDate >= today;
+                })
+                .sort((a, b) => {
+                    const dateA = new Date(a.startDate?.seconds * 1000);
+                    const dateB = new Date(b.startDate?.seconds * 1000);
+                    return dateA.getTime() - dateB.getTime();
+                })
+                .slice(0, 2);
+
+            setEvents(upcomingEvents);
         });
 
         return () => {
@@ -104,10 +121,13 @@ export default function HomeNotices() {
 
                 {events.map((item, idx) => {
                     const eventDate = new Date(item.startDate.seconds * 1000);
+
                     const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    const diff = Math.ceil((eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                    const dday = diff === 0 ? 'D-DAY' : diff > 0 ? `D-${diff}` : `D+${Math.abs(diff)}`;
+                    today.setHours(0, 0, 0, 0); // 시간 제거
+                    eventDate.setHours(0, 0, 0, 0); // 시간 제거
+
+                    const diff = Math.floor((eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                    const dday = diff === 0 ? 'D-Day' : diff > 0 ? `D-${diff}` : `D+${Math.abs(diff)}`;
 
                     return (
                         <View

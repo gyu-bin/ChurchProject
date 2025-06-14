@@ -57,14 +57,14 @@ export default function RootLayoutInner() {
           <Stack.Screen name="department/[campus]/[division]/index" options={{ headerShown: false }} />
           <Stack.Screen name="home/notifications" options={{ headerShown: false }} />
           <Stack.Screen name="home/DailyBible" options={{ headerShown: false }} />
-          <Stack.Screen name="home/AiChatPage" options={{ headerShown: false }} />
+          <Stack.Screen name="home/QuickMenuButton/AiChatPage" options={{ headerShown: false }} />
           <Stack.Screen name="setting/videoManager" options={{ headerShown: false }} />
           <Stack.Screen name="setting/joinTeams" options={{ headerShown: false }} />
           <Stack.Screen name="setting/noticeManager" options={{ headerShown: false }} />
           <Stack.Screen name="setting/feedback" options={{ headerShown: false }} />
           <Stack.Screen name="setting/ForgotPassword" options={{ headerShown: false }} />
-          <Stack.Screen name="home/catechism" options={{ headerShown: false }} />
-          <Stack.Screen name="home/todayVerse" options={{ headerShown: false }} />
+          <Stack.Screen name="home/QuickMenuButton/catechism" options={{ headerShown: false }} />
+          <Stack.Screen name="home/QuickMenuButton/todayVerse" options={{ headerShown: false }} />
           <Stack.Screen name="home/BannerDetail/event" options={{ headerShown: false }} />
         </Stack>
         <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />

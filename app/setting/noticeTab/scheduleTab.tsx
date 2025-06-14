@@ -6,7 +6,6 @@ import React, { useEffect, useState } from 'react';
 import {
     Alert,
     FlatList,
-    Image,
     KeyboardAvoidingView,
     Modal,
     Platform,
@@ -65,7 +64,7 @@ export default function ScheduleTab() {
     }, []);
 
     const handleSave = async () => {
-        if (!form.title  || !form.place || !form.startDate || !form.endDate) {
+        if (!form.title || !form.place || !form.startDate || !form.endDate) {
             Alert.alert('모든 필드를 입력해주세요');
             return;
         }
@@ -85,7 +84,7 @@ export default function ScheduleTab() {
         }
 
         setModalVisible(false);
-        setForm({ title: '',  place: '', startDate: '', endDate: '', id: '' });
+        setForm({ title: '', place: '', startDate: '', endDate: '', id: '' });
         fetchSchedules();
     };
 
@@ -108,13 +107,17 @@ export default function ScheduleTab() {
                     <TouchableOpacity
                         style={{ flex: 1, backgroundColor: colors.primary, padding: spacing.sm, marginRight: spacing.sm, borderRadius: 8 }}
                         onPress={() => {
+                            const start = new Date(item.startDate.seconds * 1000);
+                            const end = new Date(item.endDate.seconds * 1000);
                             setForm({
                                 id: item.id,
                                 title: item.title,
                                 place: item.place,
-                                startDate: new Date(item.startDate.seconds * 1000).toISOString().split('T')[0],
-                                endDate: new Date(item.endDate.seconds * 1000).toISOString().split('T')[0],
+                                startDate: start.toISOString().split('T')[0],
+                                endDate: end.toISOString().split('T')[0],
                             });
+                            setTempStart(start);
+                            setTempEnd(end);
                             setModalVisible(true);
                         }}
                     >
@@ -153,17 +156,17 @@ export default function ScheduleTab() {
                 renderItem={renderItem}
             />
 
-            {!modalVisible && (
-                <TouchableOpacity
-                    onPress={() => {
-                        setForm({ title: '', place: '', startDate: '', endDate: '', id: '' });
-                        setModalVisible(true);
-                    }}
-                    style={{ margin: spacing.md, backgroundColor: colors.primary, padding: spacing.md, borderRadius: 8 }}
-                >
-                    <Text style={{ color: '#fff', textAlign: 'center' }}>일정 추가</Text>
-                </TouchableOpacity>
-            )}
+            <TouchableOpacity
+                onPress={() => {
+                    setForm({ title: '', place: '', startDate: '', endDate: '', id: '' });
+                    setTempStart(null);
+                    setTempEnd(null);
+                    setModalVisible(true);
+                }}
+                style={{ margin: spacing.md, backgroundColor: colors.primary, padding: spacing.md, borderRadius: 8 }}
+            >
+                <Text style={{ color: '#fff', textAlign: 'center' }}>일정 추가</Text>
+            </TouchableOpacity>
 
             <Modal visible={modalVisible} transparent animationType="fade">
                 <KeyboardAvoidingView
@@ -174,36 +177,32 @@ export default function ScheduleTab() {
                         <ScrollView showsVerticalScrollIndicator={false}>
                             <TextInput
                                 placeholder="제목"
+                                placeholderTextColor={colors.subtext}
                                 value={form.title}
                                 onChangeText={(t) => setForm((prev) => ({ ...prev, title: t }))}
-                                style={{ borderColor: colors.border, borderWidth: 1, borderRadius: 8, marginBottom: spacing.sm, padding: spacing.sm }}
+                                style={{ color: colors.text, borderColor: colors.border, borderWidth: 1, borderRadius: 8, marginBottom: spacing.sm, padding: spacing.sm }}
                             />
                             <TextInput
                                 placeholder="장소"
+                                placeholderTextColor={colors.subtext}
                                 value={form.place}
                                 onChangeText={(t) => setForm((prev) => ({ ...prev, place: t }))}
-                                style={{ borderColor: colors.border, borderWidth: 1, borderRadius: 8, marginBottom: spacing.sm, padding: spacing.sm }}
+                                style={{ color: colors.text, borderColor: colors.border, borderWidth: 1, borderRadius: 8, marginBottom: spacing.sm, padding: spacing.sm }}
                             />
                             <TouchableOpacity
                                 onPress={() => {
-                                    setModalVisible(false); // 이벤트 모달 먼저 닫기
-                                    setTimeout(() => {
-                                        const now = new Date();
-                                        setTempStart(now);
-                                        setTempEnd(now);
-                                        setIsSelectingStart(true);
-                                        setDatePickerVisible(true); // 날짜 선택 모달 띄우기
-                                    }, 300);
+                                    setModalVisible(false);
+                                    setTimeout(() => setDatePickerVisible(true), 200);
                                 }}
                                 style={{ backgroundColor: colors.border, padding: spacing.sm, borderRadius: 8, marginBottom: spacing.sm }}
                             >
                                 <Text style={{ textAlign: 'center', color: colors.text }}>날짜 선택</Text>
                             </TouchableOpacity>
-                            {form.startDate && form.endDate ? (
+                            {form.startDate && form.endDate && (
                                 <Text style={{ textAlign: 'center', marginBottom: spacing.sm, color: colors.text }}>
                                     {form.startDate} ~ {form.endDate}
                                 </Text>
-                            ) : null}
+                            )}
                             <View style={{ flexDirection: 'row', marginTop: spacing.sm }}>
                                 <TouchableOpacity
                                     onPress={() => setModalVisible(false)}
@@ -265,6 +264,7 @@ export default function ScheduleTab() {
                                     setDatePickerVisible(false);
                                     setTempStart(null);
                                     setTempEnd(null);
+                                    setModalVisible(true);
                                 }}
                                 style={{ flex: 1, backgroundColor: colors.border, padding: spacing.sm, marginRight: 8, borderRadius: 8, alignItems: 'center' }}
                             >
@@ -282,6 +282,7 @@ export default function ScheduleTab() {
                                         setIsSelectingStart(true);
                                         setTempStart(null);
                                         setTempEnd(null);
+                                        setModalVisible(true);
                                     } else {
                                         Alert.alert('날짜 오류', '시작일과 종료일을 올바르게 선택해주세요.');
                                     }
