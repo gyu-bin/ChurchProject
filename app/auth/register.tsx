@@ -28,7 +28,7 @@ import { useAuth } from "@/hooks/useAuth";
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const campuses = ['문래', '신촌'];
 const divisions = ['유치부', '초등부', '중고등부', '청년1부', '청년2부', '장년부'];
-const roles = ['새가족', '정회원', '교역자'];
+const roles = ['새가족', '정회원', '교역자','관리자'];
 
 export default function RegisterSlideScreen() {
     const router = useRouter();
@@ -43,7 +43,7 @@ export default function RegisterSlideScreen() {
 
     const { reload } = useAuth(); // 컴포넌트 상단에서 선언
 
-    const steps = ['email', 'password', 'confirm', 'name', 'role','campus', 'division', ] as const;
+    const steps = ['email', 'password', 'confirm', 'name', 'division','campus', 'role', ] as const;
 
     if (!bcrypt.setRandomFallback) {
         console.warn('⚠️ bcryptjs 버전이 올바르지 않습니다.');
@@ -99,7 +99,7 @@ export default function RegisterSlideScreen() {
 
                         await setDoc(doc(db, 'users', form.email), userData);
                         await AsyncStorage.setItem('currentUser', JSON.stringify(userData));
-                        await reload();
+                        await AsyncStorage.setItem('isLoggedIn', 'true');
                         await registerPushToken();
 
                         await reload();
