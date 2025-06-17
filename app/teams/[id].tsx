@@ -6,6 +6,7 @@ import { getCurrentUser } from '@/services/authService';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
 import { showToast } from "@/utils/toast"; // ✅ 추가
 import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -44,7 +45,6 @@ import {
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import Toast from "react-native-root-toast";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 type Team = {
     id: string;
     name: string;
@@ -125,21 +125,30 @@ export default function TeamDetail() {
     const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
     const [isLocationModalVisible, setLocationModalVisible] = useState(false);
     const [locationInput, setLocationInput] = useState('');
+    const [category, setCategory] = useState('');
+    const [expirationDate, setExpirationDate] = useState(new Date());
+    const [dueDate, setDueDate] = useState<string>(''); // 날짜 저장
+    const [showDatePicker, setShowDatePicker] = useState(false); // 모달 표시 제어
+    const [isCategoryModalVisible, setCategoryModalVisible] = useState(false);
+
+    const [isSparkleModalVisible, setSparkleModalVisible] = useState(false);
+
     const [commonLocations] = useState([
         '본당',
         '카페',
     ]);
     const categories = [
-        '✨ 반짝소모임',
-        '🏃 운동/스포츠',
-        '📚 책모임',
-        '🎮 게임',
-        '🎭 문화생활',
-        '🤝 봉사',
-        '📖 스터디',
-        '🐾 동물',
-        '🍳 요리/제조'
+        { label: '✨ 반짝소모임', value: '반짝소모임' },
+        { label: '🏃 운동/스포츠', value: '운동/스포츠' },
+        { label: '📚 책모임', value: '책모임' },
+        { label: '🎮 게임', value: '게임' },
+        { label: '🎭 문화생활', value: '문화생활' },
+        { label: '🤝 봉사', value: '봉사' },
+        { label: '📖 스터디', value: '스터디' },
+        { label: '🐾 동물', value: '동물' },
+        { label: '🍳 요리/제조', value: '요리/제조' },
     ];
+
     const [editCategory, setEditCategory] = useState(team?.category || '');
 
     useEffect(() => {
@@ -350,6 +359,7 @@ export default function TeamDetail() {
             setIsUnlimited(false);
             setEditCapacity(String(team.maxMembers));
         }
+        setCategory(team.category || '');
         setEditModalVisible(true);
     };
 
@@ -380,7 +390,7 @@ export default function TeamDetail() {
                 maxMembers: newMax,
                 announcement,
                 scheduleDate,
-                category: editCategory,
+                category: category,
             });
 
             setTeam(prev => prev && {
@@ -390,7 +400,7 @@ export default function TeamDetail() {
                 maxMembers: newMax,
                 announcement,
                 scheduleDate,
-                category: editCategory,
+                category: category,
             });
 
             setEditModalVisible(false);
@@ -426,7 +436,7 @@ export default function TeamDetail() {
                 });
 
                 await Promise.all(pushPromises);
-                console.log(`✅ 반짝소모임 수정 푸시 완료: ${sentTokens.size}명`);
+                console.log(`✅ ✨ 반짝소모임 수정 푸시 완료: ${sentTokens.size}명`);
             }
 
         } catch (e) {
@@ -780,6 +790,19 @@ export default function TeamDetail() {
     };
 
     const isFull = (team?.members ?? 0) >= (team?.capacity ?? 99);
+    
+    const handleCategorySelect = (cat: { label: string; value: string }) => {
+        setCategory(cat.label);
+        setCategoryModalVisible(false);
+        if (cat.value === '✨ 반짝소모임') {
+            setSparkleModalVisible(true);
+        }
+    };
+    
+      const handleDateChange = (event: any, selectedDate?: Date) => {
+        if (selectedDate) setExpirationDate(selectedDate);
+        setShowDatePicker(false);
+      };
 
     return (
         <SafeAreaView style={{
@@ -1264,6 +1287,7 @@ export default function TeamDetail() {
                 </View>
                 )}
 
+                {/* 모임 수정 모달 */}
                 <Modal visible={editModalVisible} animationType="slide" transparent>
                     <KeyboardAvoidingView
                         behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
@@ -1378,130 +1402,93 @@ export default function TeamDetail() {
                             </View>
 
                             <View>
-                                <Text style={{ fontSize: font.body, color: colors.text, marginBottom: spacing.sm }}>카테고리</Text>
-                                <TouchableOpacity
-                                    onPress={() => setShowCategoryDropdown(prev => !prev)}
-                                    style={{
-                                        flexDirection: 'row',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        borderWidth: 1,
-                                        borderColor: colors.border,
-                                        borderRadius: radius.sm,
-                                        paddingHorizontal: spacing.sm,
-                                        paddingVertical: 10,
-                                        backgroundColor: colors.surface,
-                                        marginBottom: spacing.md,
-                                    }}
-                                >
-                                    <Text style={{
-                                        color: colors.text,
-                                        fontSize: font.body,
-                                    }}>
-                                        {editCategory || '카테고리를 선택하세요'}
-                                    </Text>
-                                    <Ionicons name="chevron-down" size={18} color={colors.subtext} />
-                                </TouchableOpacity>
+      {/* 카테고리 선택 */}
+      <TouchableOpacity
+        onPress={() => setCategoryModalVisible(true)}
+        style={{
+          backgroundColor: colors.surface,
+          padding: spacing.md,
+          borderRadius: radius.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+          marginBottom: spacing.md,
+        }}
+      >
+        <Text style={{ color: colors.text, fontSize: font.body }}>
+  {category
+    ? `카테고리: ${categories.find(c => c.value === category)?.label || category}`
+    : '카테고리를 선택하세요'}
+</Text>
+      </TouchableOpacity>
 
-                                {/* 👇 카테고리 드롭다운을 모달이 아닌 View로 표시 */}
-                                {Platform.OS === 'ios' ? (
-                                    // ✅ iOS는 View로 드롭다운
-                                    showCategoryDropdown && (
-                                        <View
-                                            style={{
-                                                position: 'absolute',
-                                                bottom: 140, // 필요 시 위치 조정
-                                                left: spacing.md,
-                                                right: spacing.md,
-                                                backgroundColor: colors.background,
-                                                borderRadius: radius.sm,
-                                                borderWidth: 1,
-                                                borderColor: colors.border,
-                                                zIndex: 9999,
-                                                maxHeight: 320,
-                                                paddingVertical: spacing.sm,
-                                                paddingHorizontal: spacing.md,
-                                            }}
-                                        >
-                                            <ScrollView>
-                                                {categories.map((cat) => (
-                                                    <TouchableOpacity
-                                                        key={cat}
-                                                        onPress={() => {
-                                                            setEditCategory(cat);
-                                                            setShowCategoryDropdown(false);
-                                                        }}
-                                                        style={{
-                                                            paddingVertical: spacing.md, // ✅ 항목 높이 증가
-                                                            paddingHorizontal: spacing.md,
-                                                            borderBottomWidth: 1,
-                                                            borderColor: colors.border,
-                                                        }}
-                                                    >
-                                                        <Text
-                                                            style={{
-                                                                fontSize: font.body + 2, // ✅ 텍스트 크기 약간 증가
-                                                                color: editCategory === cat ? colors.primary : colors.text,
-                                                                fontWeight: editCategory === cat ? 'bold' : 'normal',
-                                                            }}
-                                                        >
-                                                            {cat}
-                                                        </Text>
-                                                    </TouchableOpacity>
-                                                ))}
-                                            </ScrollView>
-                                        </View>
-                                    )
-                                ) : (
-                                    // ✅ Android는 Modal로 처리
-                                    <Modal
-                                        visible={showCategoryDropdown}
-                                        transparent
-                                        animationType="fade"
-                                        onRequestClose={() => setShowCategoryDropdown(false)}
-                                    >
-                                        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' }}>
-                                            <TouchableWithoutFeedback onPress={() => setShowCategoryDropdown(false)}>
-                                                <View style={{ flex: 1 }} />
-                                            </TouchableWithoutFeedback>
+      <Modal visible={isCategoryModalVisible} transparent animationType="slide">
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <View style={{ width: '80%', backgroundColor: colors.background, borderRadius: radius.md, padding: spacing.md }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }}>
+              {categories.map(cat => (
+                <TouchableOpacity
+                  key={cat.value}
+                  onPress={() => handleCategorySelect(cat)}
+                  style={{ width: '30%', margin: 5, alignItems: 'center' }}
+                >
+                  <Text style={{ fontSize: 30, marginBottom: 5 }}>{cat.label.split(' ')[0]}</Text>
+                  <Text style={{ color: colors.text, fontSize: font.body }}>{cat.label.split(' ')[1]}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity onPress={() => setCategoryModalVisible(false)} style={{ marginTop: spacing.md }}>
+              <Text style={{ color: colors.primary, textAlign: 'center', fontSize: font.body }}>닫기</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
-                                            <View style={{
-                                                backgroundColor: colors.background,
-                                                borderTopLeftRadius: 16,
-                                                borderTopRightRadius: 16,
-                                                padding: spacing.md,
-                                                maxHeight: 320,
-                                            }}>
-                                                <ScrollView>
-                                                    {categories.map((cat) => (
-                                                        <TouchableOpacity
-                                                            key={cat}
-                                                            onPress={() => {
-                                                                setEditCategory(cat);
-                                                                setShowCategoryDropdown(false);
-                                                            }}
-                                                            style={{
-                                                                paddingVertical: spacing.sm,
-                                                                borderBottomWidth: 1,
-                                                                borderColor: colors.border,
-                                                            }}
-                                                        >
-                                                            <Text style={{
-                                                                fontSize: font.body,
-                                                                color: editCategory === cat ? colors.primary : colors.text,
-                                                                fontWeight: editCategory === cat ? 'bold' : 'normal',
-                                                            }}>
-                                                                {cat}
-                                                            </Text>
-                                                        </TouchableOpacity>
-                                                    ))}
-                                                </ScrollView>
-                                            </View>
-                                        </View>
-                                    </Modal>
-                                )}
-                            </View>
+      {/* 날짜 선택 (반짝소모임일 때만) */}
+      {category === '✨ 반짝소모임' && (
+        <TouchableOpacity
+          onPress={() => setShowDatePicker(true)}
+          style={{
+            backgroundColor: colors.surface,
+            padding: spacing.md,
+            borderRadius: radius.md,
+            borderWidth: 1,
+            borderColor: colors.border,
+            marginBottom: spacing.md,
+          }}
+        >
+          <Text style={{ color: colors.text, fontSize: font.body }}>
+            {`날짜 선택: ${expirationDate.toLocaleDateString()}`}
+          </Text>
+          <Text style={{ color: colors.text, fontSize: font.caption }}>
+            {'선택한 날짜 다음날 모임이 삭제됩니다.'}
+          </Text>
 
+          {showDatePicker && category === '✨ 반짝소모임' && (
+        <DateTimePicker
+          value={expirationDate}
+          mode="date"
+          display="default"
+          onChange={handleDateChange}
+        />
+      )}
+        </TouchableOpacity>
+      )}
+
+      
+
+      <Modal visible={isSparkleModalVisible} transparent animationType="slide">
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <View style={{ width: '80%', backgroundColor: colors.background, borderRadius: radius.md, padding: spacing.md }}>
+            <Text style={{ color: colors.text, fontSize: font.body, marginBottom: spacing.md }}>
+              반짝 소모임은 선택한 날짜 다음날 모임이 삭제되는 번개모임입니다. 반짝 소모임 생성 시 모든 회원에게 알림이 갑니다.
+            </Text>
+            <TouchableOpacity onPress={() => setSparkleModalVisible(false)}>
+              <Text style={{ color: colors.primary, textAlign: 'center', fontSize: font.body }}>확인</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>                        
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                                 <TouchableOpacity onPress={() => setEditModalVisible(false)}>
                                     <Text style={{ color: colors.subtext }}>취소</Text>

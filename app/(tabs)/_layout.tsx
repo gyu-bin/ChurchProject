@@ -129,10 +129,8 @@ export default function TabLayout() {
                 options={{ title: '부서활동' }}
                 listeners={{
                     tabPress: () => {
-                        if (pathname === '/') {
-                            const cb = getScrollCallback('departments');
-                            cb?.();
-                        }
+                        const cb = getScrollCallback('departments');
+                        cb?.();
                     },
                 }}
             />

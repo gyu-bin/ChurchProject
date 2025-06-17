@@ -71,9 +71,9 @@ export default function RegisterSlideScreen() {
         const currentKey = steps[step];
         const currentValue = form[currentKey];
 
-        if (!currentValue.trim()) {
+        /*if (!currentValue.trim()) {
             return Alert.alert('입력 오류', '내용을 입력하세요.');
-        }
+        }*/
         if (currentKey === 'confirm' && form.password !== form.confirm) {
             return Alert.alert('비밀번호 불일치', '비밀번호가 일치하지 않습니다.');
         }

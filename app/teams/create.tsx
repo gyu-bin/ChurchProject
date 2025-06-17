@@ -1,7 +1,7 @@
 import { db } from '@/firebase/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import {addDoc, collection, deleteDoc, doc, getDocs, updateDoc} from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
@@ -15,11 +15,11 @@ import {
 } from 'react-native';
 // import { sendNotification, sendPushNotification } from '@/services/notificationService';
 import { useDesign } from '@/app/context/DesignSystem';
+import { sendPushNotification } from "@/services/notificationService";
 import { showToast } from "@/utils/toast";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {sendPushNotification} from "@/services/notificationService";
 // import { useAppTheme } from '@/context/ThemeContext';
 
 export default function CreateTeam() {
@@ -357,7 +357,7 @@ export default function CreateTeam() {
                             marginBottom: spacing.md,
                         }}>
                             <Text style={{ color: colors.text, fontSize: font.body }}>
-                                {`날자 선택: ${expirationDate.toLocaleDateString()}`}
+                                {`날짜 선택: ${expirationDate.toLocaleDateString()}`}
                             </Text>
                             <Text style={{ color: colors.text, fontSize: font.caption }}>
                                 {'선택한 날짜 다음날 모임이 삭제됩니다.'}

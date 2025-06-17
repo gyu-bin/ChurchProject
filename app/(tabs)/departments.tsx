@@ -4,7 +4,7 @@ import { useDesign } from '@/app/context/DesignSystem';
 import { useAppTheme } from '@/app/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {
     Animated,
     Dimensions,
@@ -17,6 +17,7 @@ import {
     View
 } from 'react-native';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {setScrollCallback} from "@/utils/scrollRefManager";
 
 const CAMPUS_DIVISIONS: Record<string, string[]> = {
     신촌캠퍼스: ['유치부', '초등부', '중고등부', '청년1부', '청년2부', '장년부'],
@@ -80,12 +81,18 @@ export default function DepartmentsScreen() {
     const campuses = Object.keys(CAMPUS_DIVISIONS);
 
     const insets = useSafeAreaInsets();
-
+    const mainListRef = useRef<FlatList>(null);
     const filtered = FEEDS.filter(f =>
         (selectedCampus === '전체' || f.campus === selectedCampus) &&
         (selectedDept === '전체' || f.dept === selectedDept)
     );
     const visibleFeeds = filtered.slice(0, visibleCount);
+
+    useEffect(() => {
+        setScrollCallback('departments', () => {
+            mainListRef.current?.scrollToOffset({ offset: 0, animated: true });
+        });
+    }, []);
 
     const openFilter = () => {
         setTempCampus(selectedCampus);
@@ -200,6 +207,7 @@ export default function DepartmentsScreen() {
             {/* 피드 리스트 */}
             <FlatList
                 data={visibleFeeds}
+                ref={mainListRef}
                 keyExtractor={item => item.id}
                 contentContainerStyle={{ padding: spacing.lg, gap: 18 }}
                 renderItem={({ item }) => (

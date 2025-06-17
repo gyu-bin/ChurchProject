@@ -1,127 +1,234 @@
-// app/components/CalendarModal.tsx
-import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, Pressable } from 'react-native';
-import { Calendar } from 'react-native-calendars';
-import { collection, onSnapshot, query, where, DocumentData } from 'firebase/firestore';
-import { db } from '@/firebase/config';
+// components/CustomGridCalendar.tsx
 import { useDesign } from '@/app/context/DesignSystem';
+import { db } from '@/firebase/config';
+import dayjs from 'dayjs';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
+import {
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 
-interface EventItem {
-    id: string;
-    title: string;
-    place?: string;
-    startDate?: { seconds: number };
-    endDate?: { seconds: number };
-}
+const daysOfWeek = ['일', '월', '화', '수', '목', '금', '토'];
 
-export default function CalendarModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-    const { colors, spacing } = useDesign();
-    const [markedDates, setMarkedDates] = useState<any>({});
-    const [selectedDate, setSelectedDate] = useState<string>('');
-    const [events, setEvents] = useState<EventItem[]>([]);
-    const [selectedEvents, setSelectedEvents] = useState<EventItem[]>([]);
-    const [currentDate, setCurrentDate] = useState<string>(new Date().toISOString().split('T')[0]);
-    const [calendarKey, setCalendarKey] = useState<number>(Date.now());
+export default function CalendarModal({
+  visible,
+  onClose,
+}: {
+  visible: boolean;
+  onClose: () => void;
+}) {
+  const { colors, spacing, font } = useDesign();
+  const [events, setEvents] = useState<any[]>([]);
+  const [currentMonth, setCurrentMonth] = useState(dayjs());
+  const [selectedDate, setSelectedDate] = useState(dayjs().format('YYYY-MM-DD'));
+  const today = dayjs();
 
-    useEffect(() => {
-        const q = query(collection(db, 'notice'), where('type', '==', 'event'));
-        const unsub = onSnapshot(q, (snapshot) => {
-            const eventList: EventItem[] = snapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...(doc.data() as Omit<EventItem, 'id'>),
-            }));
-            setEvents(eventList);
+  useEffect(() => {
+    const q = query(collection(db, 'notice'), where('type', '==', 'event'));
+    const unsub = onSnapshot(q, snapshot => {
+      const list = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setEvents(list);
+    });
+    return () => unsub();
+  }, []);
 
-            const marks: any = {};
-            eventList.forEach(ev => {
-                const start = ev.startDate?.seconds ? new Date(ev.startDate.seconds * 1000) : null;
-                const end = ev.endDate?.seconds ? new Date(ev.endDate.seconds * 1000) : start;
-                if (!start) return;
-                const current = new Date(start);
-                while (current <= (end || start)) {
-                    const dateStr = current.toISOString().split('T')[0];
-                    if (!marks[dateStr]) marks[dateStr] = { marked: true, dots: [{ color: colors.primary }] };
-                    current.setDate(current.getDate() + 1);
-                }
-            });
-            setMarkedDates(marks);
-        });
-        return () => unsub();
-    }, [colors.primary]);
+  const handleToday = () => {
+    setCurrentMonth(today);
+    setSelectedDate(today.format('YYYY-MM-DD'));
+  };
 
-    const handleDayPress = (day: any) => {
-        const dateStr = day.dateString;
-        setSelectedDate(dateStr);
-        const filtered = events.filter(ev => {
-            const start = ev.startDate?.seconds ? new Date(ev.startDate.seconds * 1000) : null;
-            const end = ev.endDate?.seconds ? new Date(ev.endDate.seconds * 1000) : start;
-            if (!start) return false;
-            const s = start.toISOString().split('T')[0];
-            const e:any = end?.toISOString().split('T')[0];
-            return dateStr >= s && dateStr <= e;
-        });
-        setSelectedEvents(filtered);
-    };
+  const getCalendarMatrix = () => {
+    const startOfMonth = currentMonth.startOf('month');
+    const endOfMonth = currentMonth.endOf('month');
+    const startDate = startOfMonth.startOf('week');
+    const endDate = endOfMonth.endOf('week');
 
-    return (
-        <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-            <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', alignItems: 'center' }} onPress={onClose}>
-                <View style={{ backgroundColor: colors.surface, borderRadius: 20, padding:24, width: '90%', maxWidth: 500 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.md }}>
-                        <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text }}>시광 캘린더</Text>
-                        <TouchableOpacity
-                            onPress={() => {
-                                const todayStr = new Date().toISOString().split('T')[0];
-                                setCurrentDate(todayStr); // 이동 날짜 상태 갱신
-                                setSelectedDate(todayStr); // 하단 일정 표시
-                                handleDayPress({ dateString: todayStr }); // 필터링
-                                setCalendarKey(Date.now()); // ✅ Calendar 강제 리렌더링
-                            }}
-                            style={{ backgroundColor: colors.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 }}
+    let date = startDate.clone();
+    const matrix = [];
+
+    while (date.isBefore(endDate) || date.isSame(endDate)) {
+      const week = [];
+      for (let i = 0; i < 7; i++) {
+        week.push(date);
+        date = date.add(1, 'day');
+      }
+      matrix.push(week);
+    }
+
+    return matrix;
+  };
+
+  const getEventsForDate = (dateStr: string) => {
+    return events.filter(ev => {
+      const s = dayjs(ev.startDate?.seconds * 1000).format('YYYY-MM-DD');
+      const e = dayjs(ev.endDate?.seconds * 1000).format('YYYY-MM-DD');
+      return dateStr >= s && dateStr <= e;
+    });
+  };
+
+  if (!visible) return null;
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable
+        style={{
+          flex: 1,
+          backgroundColor: 'rgba(0,0,0,0.3)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          paddingTop: Platform.OS === 'android' ? 40 : 80,
+        }}
+        onPress={onClose}
+      >
+        <Pressable
+          style={{
+            backgroundColor: colors.surface,
+            borderRadius: 20,
+            paddingTop: 20,
+            paddingHorizontal: 20,
+            width: '100%',
+            minHeight: 700,
+            maxHeight: 700,
+          }}
+          onPress={() => {}}
+        >
+          {/* 상단 월 표기 + 이동 */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.md, alignItems: 'center' }}>
+            <TouchableOpacity onPress={() => setCurrentMonth(prev => prev.subtract(1, 'month'))}>
+              <Text style={{ fontSize: 24, color: colors.primary }}>{'◀'}</Text>
+            </TouchableOpacity>
+
+            <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.text }}>
+              {currentMonth.format('YYYY년 M월')}
+            </Text>
+
+            <TouchableOpacity onPress={() => setCurrentMonth(prev => prev.add(1, 'month'))}>
+              <Text style={{ fontSize: 24, color: colors.primary }}>{'▶'}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* 요일 */}
+          <View style={{ flexDirection: 'row', marginBottom: 6 }}>
+            {daysOfWeek.map((day, idx) => (
+              <Text key={idx} style={{ flex: 1, textAlign: 'center', fontWeight: '600', color: colors.subtext }}>
+                {day}
+              </Text>
+            ))}
+          </View>
+
+          {/* 달력 */}
+          <ScrollView style={{ maxHeight: 360 }}>
+            {getCalendarMatrix().map((week, i) => (
+              <View key={i} style={{ flexDirection: 'row' }}>
+                {week.map(date => {
+                  const dateStr = date.format('YYYY-MM-DD');
+                  const isSelected = dateStr === selectedDate;
+                  const isToday = dateStr === today.format('YYYY-MM-DD');
+                  const dayEvents = getEventsForDate(dateStr);
+
+                  return (
+                    <TouchableOpacity
+                      key={dateStr}
+                      style={{
+                        flex: 1,
+                        borderWidth: 0.5,
+                        borderColor: '#eee',
+                        // padding: 6,
+                        // margin: 2,
+                        borderRadius: 8,
+                        backgroundColor: isSelected ? colors.primary : undefined,
+                        minHeight: 70,
+                      }}
+                      onPress={() => setSelectedDate(dateStr)}
+                    >
+                      <Text
+                        style={{
+                          textAlign: 'center',
+                          color: isSelected ? '#fff' : colors.text,
+                          fontWeight: isToday ? 'bold' : 'normal',
+                        }}
+                      >
+                        {date.date()}
+                      </Text>
+
+                      {dayEvents.slice(0, 2).map(ev => (
+                        <View
+                          key={ev.id}
+                          style={{
+                            backgroundColor: isSelected ? '#ffffff33' : '#eee',
+                            paddingHorizontal: 6,
+                            paddingVertical: 2,
+                            borderRadius: 6,
+                            marginTop: 4,
+                            alignSelf: 'center',
+                          }}
                         >
-                            <Text style={{ color: '#fff' }}>오늘</Text>
-                        </TouchableOpacity>
-                    </View>
-                    <Calendar
-                        style={{ borderRadius: 12, alignSelf: 'stretch' }}
-                        theme={{
-                            calendarBackground: colors.surface,
-                            textSectionTitleColor: colors.subtext,
-                            selectedDayBackgroundColor: colors.primary,
-                            selectedDayTextColor: '#fff',
-                            todayTextColor: colors.primary,
-                            dayTextColor: colors.text,
-                            textDisabledColor: '#ccc',
-                            arrowColor: colors.primary,
-                            monthTextColor: colors.primary,
-                        }}
-                        markedDates={{
-                            ...markedDates,
-                            [selectedDate]: {
-                                ...markedDates[selectedDate],
-                                selected: true,
-                                selectedColor: colors.primary,
-                                selectedTextColor: '#fff',
-                            },
-                        }}
-                        markingType="multi-dot"
-                        onDayPress={handleDayPress}
-                        current={currentDate}
-                        key={calendarKey}
-                    />
-                    {selectedDate && (
-                        <View style={{ marginTop: 16 }}>
-                            <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.primary, marginBottom: 10 }}>{selectedDate} 일정</Text>
-                            {selectedEvents.length > 0 ? selectedEvents.map(ev => (
-                                <View key={ev.id} style={{ marginBottom: 10 }}>
-                                    <Text style={{ fontWeight: 'bold', color: colors.text }}>{ev.title}</Text>
-                                    {ev.place && <Text style={{ color: colors.subtext }}>장소: {ev.place}</Text>}
-                                </View>
-                            )) : <Text style={{ color: colors.subtext }}>일정이 없습니다.</Text>}
+                          <Text
+                            style={{
+                              fontSize: 11,
+                              color: isSelected ? '#fff' : colors.text,
+                              fontWeight: '500',
+                            }}
+                            numberOfLines={1}
+                          >
+                            {ev.title}
+                          </Text>
                         </View>
-                    )}
+                      ))}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ))}
+          </ScrollView>
+
+          {/* 상세 일정 */}
+          <View style={{ marginTop: spacing.lg }}>
+            <Text style={{ fontWeight: 'bold', fontSize: font.body, color: colors.primary }}>
+              {selectedDate} 일정
+            </Text>
+            {getEventsForDate(selectedDate).length > 0 ? (
+              getEventsForDate(selectedDate).map(ev => (
+                <View key={ev.id} style={{ paddingVertical: 6 }}>
+                  <Text style={{ fontWeight: 'bold', color: colors.text }}>{ev.title}</Text>
+                  {ev.place && <Text style={{ color: colors.subtext, fontSize: 13 }}>장소: {ev.place}</Text>}
                 </View>
-            </Pressable>
-        </Modal>
-    );
+              ))
+            ) : (
+              <Text style={{ color: colors.subtext, marginTop: spacing.sm }}>일정이 없습니다.</Text>
+            )}
+          </View>
+
+          {/* 우측 하단 오늘 버튼 */}
+          <TouchableOpacity
+            onPress={handleToday}
+            style={{
+              position: 'absolute',
+              bottom: 16,
+              right: 16,
+              backgroundColor: colors.primary,
+              paddingHorizontal: 14,
+              paddingVertical: 8,
+              borderRadius: 20,
+              shadowColor: '#000',
+              shadowOpacity: 0.2,
+              shadowOffset: { width: 0, height: 2 },
+              elevation: 4,
+            }}
+          >
+            <Text style={{ color: '#fff', fontWeight: 'bold' }}>오늘</Text>
+          </TouchableOpacity>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
 }

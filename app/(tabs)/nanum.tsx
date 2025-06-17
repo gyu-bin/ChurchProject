@@ -1,7 +1,5 @@
 import { useDesign } from '@/app/context/DesignSystem';
 import { useAppTheme } from '@/app/context/ThemeContext';
-import PrayerListModal from '@/app/share/allPrayer';
-import PrayerModal from '@/app/share/prayerModal';
 import { db } from '@/firebase/config';
 import { showToast } from "@/utils/toast";
 import { Ionicons } from '@expo/vector-icons';
@@ -10,16 +8,16 @@ import { useRouter } from 'expo-router';
 import { addDoc, collection, deleteDoc, doc, getDocs, query, where } from 'firebase/firestore';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
-  Dimensions,
-  FlatList,
-  Image,
-  Linking,
-  RefreshControl,
-  SafeAreaView,
-  Text,
-  TouchableOpacity,
-  View
+    Alert,
+    Dimensions,
+    FlatList,
+    Image,
+    Linking,
+    RefreshControl,
+    SafeAreaView,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -57,6 +55,18 @@ export default function NanumPage() {
     const [initialIndex, setInitialIndex] = useState<number | null>(null);
     const [listKey, setListKey] = useState(Date.now());
     const flatListRef = useRef<FlatList>(null);
+
+    useEffect(() => {
+        const loadUser = async () => {
+            const raw = await AsyncStorage.getItem('currentUser');
+            if (raw) {
+                const userData = JSON.parse(raw);
+                setCurrentUser(userData);
+                setUser(userData);
+            }
+        };
+        loadUser();
+    }, []); 
 
     useEffect(() => {
         const fetchVideos = async () => {
@@ -281,10 +291,10 @@ export default function NanumPage() {
                         {/* 기도제목 */}
                         <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
                             <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>📝 기도제목</Text>
-                            <TouchableOpacity onPress={() => setModalVisible(true)} style={{ backgroundColor: theme.colors.primary, padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 }}>
+                            <TouchableOpacity onPress={() => router.push('/share/prayerModal')} style={{ backgroundColor: theme.colors.primary, padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 }}>
                                 <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>🙏 기도제목 나누기</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={fetchPublicPrayers} style={{ backgroundColor: theme.colors.primary, padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 }}>
+                            <TouchableOpacity onPress={()=>router.push('/share/allPrayer')} style={{ backgroundColor: theme.colors.primary, padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 }}>
                                 <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>📃 기도제목 보기</Text>
                             </TouchableOpacity>
                         </View>
@@ -302,26 +312,7 @@ export default function NanumPage() {
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchPrayers} />}
                 renderItem={() => <View />}
             />
-            <PrayerModal
-                visible={modalVisible}
-                onClose={() => setModalVisible(false)}
-                onSubmit={submitPrayer}
-                name={user?.name ?? '익명'}
-                email={user?.email ?? ''}
-                title={title}
-                content={content}
-                visibility={visibility}
-                setTitle={setTitle}
-                setContent={setContent}
-                setVisibility={setVisibility}
-            />
-            <PrayerListModal
-                visible={viewModalVisible}
-                prayers={publicPrayers}
-                currentUser={currentUser}
-                onClose={() => setViewModalVisible(false)}
-                onDelete={deletePrayer}
-            />
+        
         </SafeAreaView>
     );
 }

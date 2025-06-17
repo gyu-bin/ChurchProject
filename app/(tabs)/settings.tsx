@@ -1,6 +1,6 @@
-import DeviceManager from '@/components/DeviceManager';
+import DeviceManager from '@/app/setting/DeviceManager';
 import ThemeToggle from "@/components/ThemeToggle";
-import PushSettings from "@/components/VerseNotificationSettings";
+import PushSettings from "@/app/setting/VerseNotificationSettings";
 import { useDesign } from '@/app/context/DesignSystem';
 import { useAppTheme } from '@/app/context/ThemeContext';
 import { db } from '@/firebase/config';
@@ -18,7 +18,7 @@ import { deleteDoc, doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestor
 import LottieView from 'lottie-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    Alert, Modal,
+    Alert, FlatList, Modal,
     Platform,
     SafeAreaView,
     ScrollView,

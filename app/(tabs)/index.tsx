@@ -1,8 +1,8 @@
 import { useDesign } from '@/app/context/DesignSystem';
 import { useAppTheme } from '@/app/context/ThemeContext';
+import ActiveSection from '@/app/home/active';
 import BannerCarousel from '@/app/home/homeBanner';
 import HomeNotices from "@/app/home/noticePage";
-import QuickCalendar from '../home/QuickMenuButton/calendar'
 import catechismData from '@/assets/catechism/catechism.json';
 import { verses } from '@/assets/verses';
 import { db } from '@/firebase/config';
@@ -33,8 +33,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { Calendar } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import QuickCalendar from '../home/QuickMenuButton/calendar';
 
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -73,13 +73,7 @@ export default function HomeScreen() {
     const insets = useSafeAreaInsets();
     const [verse, setVerse] = useState(verses[0]);
     const [refreshing, setRefreshing] = useState(false);
-    const [modalVisible, setModalVisible] = useState(false);
-    const [viewModalVisible, setViewModalVisible] = useState(false);
-    const [title, setTitle] = useState('');
-    const [content, setContent] = useState('');
-    const [visibility, setVisibility] = useState<'all' | 'pastor'>('all');
     const [prayers, setPrayers] = useState<any[]>([]);
-    const [publicPrayers, setPublicPrayers] = useState<any[]>([]);
     const [user, setUser] = useState<any>(null);
     const [notifications, setNotifications] = useState<any[]>([]);
     const [currentUser, setCurrentUser] = useState<any>(null);
@@ -307,16 +301,14 @@ export default function HomeScreen() {
                         <BannerCarousel events={banners} goToEvent={goToEvent} theme={theme} />
                     )}
 
-                    <View>
-                        <Text>교회활동</Text>
+                    <View style={{ backgroundColor: theme.colors.surface,borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
+                        <ActiveSection />
                     </View>
 
-                    <View>
-                        <Text>교회 공지</Text>
+                
                         <View style={{ backgroundColor: theme.colors.surface,borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
                             <HomeNotices />
                         </View>
-                    </View>
 
                     {/* 퀵메뉴 */}
                         <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginVertical: 24 }}>
@@ -335,6 +327,11 @@ export default function HomeScreen() {
                                     icon: <Text style={{ fontSize: 30 }}>📖</Text>,
                                     label: '교리',
                                     action: () => router.push('../home/QuickMenuButton/catechism/'),
+                                },
+                                {
+                                    icon: <Text style={{ fontSize: 30 }}>💬</Text>,
+                                    label: '심방 요청',
+                                    action: () => router.push('../home/counseling'),
                                 },
                                 {
                                     icon: <Text style={{ fontSize: 30 }}>🤖</Text>,
@@ -381,6 +378,7 @@ export default function HomeScreen() {
                     </View>
                 </Pressable>
             </Modal>
+            
             {/* 캘린더 모달 */}
             <QuickCalendar visible={calendarVisible} onClose={() => setCalendarVisible(false)} />
 

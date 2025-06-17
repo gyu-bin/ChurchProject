@@ -1,8 +1,11 @@
 // EventTab.tsx
 import { useDesign } from '@/app/context/DesignSystem';
-import { db } from '@/firebase/config';
+import { db, storage } from '@/firebase/config';
+import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
+import { FirebaseError } from 'firebase/app';
 import { addDoc, collection, deleteDoc, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
+import {getDownloadURL, ref, uploadBytes, uploadString} from 'firebase/storage';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
@@ -19,6 +22,7 @@ import {
   View,
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
+import Toast from "react-native-root-toast";
 
 export default function EventTab() {
   const { colors, spacing } = useDesign();
@@ -77,31 +81,68 @@ export default function EventTab() {
     fetchBanners();
   }, []);
 
-  const handleSave = async () => {
-    if (!form.title || !form.content || !form.startDate || !form.endDate || !form.bannerImage) {
-      Alert.alert('모든 필드를 입력해주세요');
-      return;
-    }
+    const uploadImageToFirebase = async (localUri: string): Promise<string> => {
+        try {
+            console.log('✅ 업로드 시작, 파일 URI:', localUri);
 
-    const payload = {
-      title: form.title,
-      content: form.content,
-      startDate: new Date(form.startDate),
-      endDate: new Date(form.endDate),
-      bannerImage: form.bannerImage,
-      type: 'banner',
+            // 📌 base64로 인코딩
+            const base64 = await FileSystem.readAsStringAsync(localUri, {
+                encoding: FileSystem.EncodingType.Base64,
+            });
+
+            const filename = `banners/${Date.now()}.jpg`;
+            const storageRef = ref(storage, filename);
+
+            // 📌 base64 데이터 업로드
+            await uploadString(storageRef, `data:image/jpeg;base64,${base64}`, 'data_url');
+
+            const downloadUrl = await getDownloadURL(storageRef);
+            console.log('✅ 다운로드 URL:', downloadUrl);
+            return downloadUrl;
+        } catch (error: any) {
+            console.error('🔥 이미지 업로드 실패:', error);
+            throw error;
+        }
     };
 
-    if (form.id) {
-      await updateDoc(doc(db, 'notice', form.id), payload);
-    } else {
-      await addDoc(collection(db, 'notice'), payload);
-    }
+    const handleSave = async () => {
+        if (!form.title || !form.content || !form.startDate || !form.endDate || !form.bannerImage) {
+            Alert.alert('모든 필드를 입력해주세요');
+            return;
+        }
 
-    setModalVisible(false);
-    setForm({ title: '', content: '', startDate: '', endDate: '', bannerImage: '', id: '' });
-    fetchBanners(); // ✅ 바로 반영
-  };
+        try {
+            let imageUrl = form.bannerImage;
+
+            // file:// 경로면 Firebase Storage에 업로드
+            if (imageUrl.startsWith('file://')) {
+                imageUrl = await uploadImageToFirebase(imageUrl);
+            }
+
+            const payload = {
+                title: form.title,
+                content: form.content,
+                startDate: new Date(form.startDate),
+                endDate: new Date(form.endDate),
+                bannerImage: imageUrl,
+                type: 'banner',
+            };
+
+            if (form.id) {
+                await updateDoc(doc(db, 'notice', form.id), payload);
+            } else {
+                await addDoc(collection(db, 'notice'), payload);
+            }
+
+            setModalVisible(false);
+            setForm({ title: '', content: '', startDate: '', endDate: '', bannerImage: '', id: '' });
+            fetchBanners();
+            Toast.show('저장되었습니다.');
+        } catch (err: any) {
+            console.error('❌ 저장 실패:', err.message || err);
+            Alert.alert('저장 실패', err.message || '이미지 업로드 중 오류가 발생했습니다.');
+        }
+    };
 
   const renderItem = ({ item }: any) => {
     const toDateString = (timestamp: any) => {
