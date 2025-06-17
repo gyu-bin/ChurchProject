@@ -1,10 +1,12 @@
 import { db } from '@/firebase/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { addDoc, collection, updateDoc } from 'firebase/firestore';
+import {addDoc, collection, deleteDoc, doc, getDocs, updateDoc} from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert, KeyboardAvoidingView,
+    Alert,
+    KeyboardAvoidingView,
+    Modal,
     Platform,
     SafeAreaView,
     ScrollView,
@@ -15,7 +17,9 @@ import {
 import { useDesign } from '@/app/context/DesignSystem';
 import { showToast } from "@/utils/toast";
 import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {sendPushNotification} from "@/services/notificationService";
 // import { useAppTheme } from '@/context/ThemeContext';
 
 export default function CreateTeam() {
@@ -26,9 +30,26 @@ export default function CreateTeam() {
     const [isUnlimited, setIsUnlimited] = useState(false); // ✅ 무제한 상태
     const [role, setRole] = useState('');
     const [memberCount, setMemberCount] = useState('');
+    const [category, setCategory] = useState('');
+    const [isCategoryModalVisible, setCategoryModalVisible] = useState(false);
+    const [isSparkleModalVisible, setSparkleModalVisible] = useState(false);
+    const [expirationDate, setExpirationDate] = useState(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { colors, spacing, radius, font } = useDesign();
+
+    const categories = [
+        { label: '✨ 반짝소모임', value: '반짝소모임' },
+        { label: '🏃 운동/스포츠', value: '운동/스포츠' },
+        { label: '📚 책모임', value: '책모임' },
+        { label: '🎮 게임', value: '게임' },
+        { label: '🎭 문화생활', value: '문화생활' },
+        { label: '🤝 봉사', value: '봉사' },
+        { label: '📖 스터디', value: '스터디' },
+        { label: '🐾 동물', value: '동물' },
+        { label: '🍳 요리/제조', value: '요리/제조' },
+    ];
 
     useEffect(() => {
         AsyncStorage.getItem('currentUser').then((raw) => {
@@ -60,7 +81,7 @@ export default function CreateTeam() {
                 return;
             }
         } else {
-            max = -1; // 무제한
+            max = -1;
         }
 
         try {
@@ -72,81 +93,115 @@ export default function CreateTeam() {
                 membersList: [creatorEmail],
                 createdAt: new Date(),
                 maxMembers: max,
+                category,
+                ...(category === '✨ 반짝소모임' && expirationDate && { expirationDate }),
             };
 
-            if (role === '교역자' || role === '정회원') {
-                const teamRef = await addDoc(collection(db, 'teams'), {
-                    ...baseData,
-                    approved: true,
-                    id: '',       // 초기값
-                    teamId: '',   // 추가!
-                });
+            const teamRef = await addDoc(collection(db, 'teams'), {
+                ...baseData,
+                approved: true,
+                id: '',
+                teamId: '',
+            });
 
-// ✅ 생성 후 teamId, id 동시에 설정
-                await updateDoc(teamRef, {
-                    id: teamRef.id,
-                    teamId: teamRef.id,
-                });
+            await updateDoc(teamRef, {
+                id: teamRef.id,
+                teamId: teamRef.id,
+            });
 
-                // const newTeamId = teamRef.id;
+            // ✅ '✨ 반짝소모임'일 경우: 삭제 예약 + 푸시 알림
+            if (category === '✨ 반짝소모임' && expirationDate) {
+                // 🔹 삭제 예약
+                const deletionDate = new Date(expirationDate);
+                deletionDate.setDate(deletionDate.getDate() + 1);
+                const timeUntilDeletion = deletionDate.getTime() - new Date().getTime();
 
-                // 🔔 알림 전송 로직은 필요시 주석 해제
-                /*
-                const q = query(collection(db, 'users'), where('role', '==', '교역자'));
-                const snapshot = await getDocs(q);
-
-                const notified = new Set<string>();
-                const firestorePromises: Promise<void>[] = [];
-                const pushPromises: Promise<void>[] = [];
-
-                snapshot.docs.forEach((docSnap) => {
-                    const setting = docSnap.data();
-                    if (setting.email === creatorEmail || notified.has(setting.email)) return;
-                    notified.add(setting.email);
-
-                    firestorePromises.push(sendNotification({
-                        to: setting.email,
-                        message: `${leader}님이 "${name}" 소모임을 생성했습니다.`,
-                        type: 'team_create',
-                        link: '/setting?tab=teams',
-                        teamId: newTeamId,
-                        teamName: name,
-                    }));
-
-                    if (setting.expoPushToken) {
-                        pushPromises.push(sendPushNotification({
-                            to: setting.expoPushToken,
-                            title: '📌 소모임 생성 알림',
-                            body: `${leader}님의 소모임이 생성되었습니다.`,
-                        }));
+                setTimeout(async () => {
+                    try {
+                        await deleteDoc(doc(db, 'teams', teamRef.id));
+                        console.log('✅ 반짝소모임 자동 삭제 완료');
+                    } catch (e) {
+                        console.error('❌ 삭제 실패:', e);
                     }
-                });
+                }, timeUntilDeletion);
 
-                await Promise.all([...firestorePromises, ...pushPromises]);
-                */
+                // 🔹 푸시 알림: 모든 Expo 토큰 대상, 중복 방지
+                try {
+                    const snapshot = await getDocs(collection(db, 'users'));
+                    const sentTokens = new Set<string>();
+                    const pushPromises: Promise<void>[] = [];
+
+                    snapshot.docs.forEach((docSnap) => {
+                        const user = docSnap.data();
+                        const tokens: string[] = user.expoPushTokens || [];
+
+                        tokens.forEach(token => {
+                            if (
+                                typeof token === 'string' &&
+                                token.startsWith('ExponentPushToken') &&
+                                !sentTokens.has(token)
+                            ) {
+                                sentTokens.add(token);
+
+                                pushPromises.push(sendPushNotification({
+                                    to: token,
+                                    title: '✨ 반짝소모임 생성!',
+                                    body: `${leader}님의 반짝소모임 "${name}"에 참여해보세요!`,
+                                }));
+                            }
+                        });
+                    });
+
+                    await Promise.all(pushPromises);
+                    console.log(`✅ ${sentTokens.size}개의 Expo 푸시 전송 완료`);
+
+                } catch (err) {
+                    console.error('❌ 푸시 알림 실패:', err);
+                }
             }
 
             showToast('✅ 모임이 성공적으로 생성되었습니다.');
             router.replace('/teams');
+
         } catch (error: any) {
             Alert.alert('생성 실패', error.message);
         }
     };
 
+    const handleCategorySelect = (cat: { label: string; value: string }) => {
+        setCategory(cat.label);
+        setCategoryModalVisible(false);
+        if (cat.value === '반짝소모임') {
+            setSparkleModalVisible(true);
+        }
+    };
+
+    const handleDateChange = (event: any, selectedDate: Date | undefined) => {
+        const currentDate = selectedDate || expirationDate;
+        setShowDatePicker(Platform.OS === 'ios');
+        setExpirationDate(currentDate);
+    };
+
+
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background,paddingTop: Platform.OS === 'android' ? 30 : 0 }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background,paddingTop: Platform.OS === 'android' ? insets.top : 20 }}>
             {/* 상단 화살표 + 소모임생성 한 줄 */}
             <View
                 style={{
                     flexDirection: 'row',
                     alignItems: 'center',
-                    justifyContent: 'center',
+                    justifyContent: 'flex-start',
+                    paddingTop: 20,
                     paddingHorizontal: spacing.lg,
-                    marginTop: Platform.OS === 'android' ? insets.top : spacing.md,
-                    marginBottom: spacing.lg,
                 }}
             >
-                <TouchableOpacity onPress={() => router.back()} style={{ position: 'absolute', left: 0 }}>
+                <TouchableOpacity
+                    onPress={() => router.back()}
+                    style={{
+                        paddingLeft: 8,
+                        zIndex: 1,
+                    }}
+                >
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
                 <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.text, textAlign: 'center' }}>
@@ -201,7 +256,7 @@ export default function CreateTeam() {
                         <TextInput
                             placeholder="최대 인원 수 (예: 5)"
                             keyboardType="numeric"
-                            value={isUnlimited ? '∞' : memberCount}
+                            value={isUnlimited ? '무제한' : memberCount}
                             onChangeText={setMemberCount}
                             placeholderTextColor={colors.placeholder}
                             editable={!isUnlimited}
@@ -243,6 +298,101 @@ export default function CreateTeam() {
                             </Text>
                         </TouchableOpacity>
                     </View>
+
+                    {/* 카테고리 선택 */}
+                    <TouchableOpacity
+                        onPress={() => setCategoryModalVisible(true)}
+                        style={{
+                            backgroundColor: colors.surface,
+                            padding: spacing.md,
+                            borderRadius: radius.md,
+                            borderWidth: 1,
+                            borderColor: colors.border,
+                            marginBottom: spacing.md,
+                        }}
+                    >
+                        <Text style={{ color: colors.text, fontSize: font.body }}>
+                            {category ? `카테고리: ${category}` : '카테고리를 선택하세요'}
+                        </Text>
+                    </TouchableOpacity>
+
+                    <Modal
+                        visible={isCategoryModalVisible}
+                        transparent
+                        animationType="slide"
+                    >
+                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                            <View style={{ width: '80%', backgroundColor: colors.background, borderRadius: radius.md, padding: spacing.md }}>
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }}>
+                                    {categories.map(cat => (
+                                        <TouchableOpacity
+                                            key={cat.value}
+                                            onPress={() => handleCategorySelect(cat)}
+                                            style={{
+                                                width: '30%',
+                                                margin: 5,
+                                                alignItems: 'center',
+                                            }}
+                                        >
+                                            <Text style={{ fontSize: 30, marginBottom: 5 }}>{cat.label.split(' ')[0]}</Text>
+                                            <Text style={{ color: colors.text, fontSize: font.body }}>{cat.label.split(' ')[1]}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                                <TouchableOpacity onPress={() => setCategoryModalVisible(false)} style={{ marginTop: spacing.md }}>
+                                    <Text style={{ color: colors.primary, textAlign: 'center', fontSize: font.body }}>닫기</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </Modal>
+
+                    {/* 날짜 선택 (반짝소모임일 때만) */}
+                    {category === '✨ 반짝소모임' && (
+                        <TouchableOpacity onPress={() => setShowDatePicker(true)} style={{
+                            backgroundColor: colors.surface,
+                            padding: spacing.md,
+                            borderRadius: radius.md,
+                            borderWidth: 1,
+                            borderColor: colors.border,
+                            marginBottom: spacing.md,
+                        }}>
+                            <Text style={{ color: colors.text, fontSize: font.body }}>
+                                {`날자 선택: ${expirationDate.toLocaleDateString()}`}
+                            </Text>
+                            <Text style={{ color: colors.text, fontSize: font.caption }}>
+                                {'선택한 날짜 다음날 모임이 삭제됩니다.'}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+
+                    {showDatePicker && category === '✨ 반짝소모임' && (
+                        <DateTimePicker
+                            value={expirationDate}
+                            mode='date'
+                            display='default'
+                            onChange={handleDateChange}
+                        />
+                    )}
+
+                    <Modal
+                        visible={isSparkleModalVisible}
+                        transparent
+                        animationType="slide"
+                    >
+                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                            <View style={{ width: '80%', backgroundColor: colors.background, borderRadius: radius.md, padding: spacing.md }}>
+                                <Text style={{ color: colors.text, fontSize: font.body, marginBottom: spacing.md }}>
+                                    반짝 소모임은 선택한 날짜 다음날 모임이 삭제되는 번개모임입니다. 반짝 소모임 생성 시 모든 회원에게 알림이 갑니다.
+                                </Text>
+
+                                <TouchableOpacity onPress={() => setSparkleModalVisible(false)}>
+                                    <Text style={{ color: colors.primary, textAlign: 'center', fontSize: font.body }}>
+                                        확인
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </Modal>
 
                     <TouchableOpacity
                         onPress={handleSubmit}

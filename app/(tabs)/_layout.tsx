@@ -87,18 +87,31 @@ export default function TabLayout() {
                 options={{
                     title: '',
                     tabBarIcon: ({ color, size }) => (
-                        <View style={{
-                            width: 60,
-                            height: 60,
-                            backgroundColor: '#6366f1',
-                            borderRadius: 30,
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            marginBottom: 20,
-                            borderWidth: 4,
-                            borderColor: '#ffffff'
-                        }}>
-                            <Ionicons name="home-outline" size={size} color="#ffffff" />
+                        <View
+                            style={{
+                                width: 64,
+                                height: 64,
+                                borderRadius: 32,
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                marginBottom: 24,
+
+                                // ✅ 배경: 밝은 하늘색 + 입체감
+                                backgroundColor: '#3b82f6', // Tailwind blue-500
+
+                                // ✅ 3D 효과: 그림자 위 + 아래
+                                shadowColor: '#1e3a8a', // 진한 그림자 (blue-900)
+                                shadowOffset: { width: 0, height: 6 },
+                                shadowOpacity: 0.4,
+                                shadowRadius: 8,
+                                elevation: 10,
+
+                                // ✅ 가장자리 라이트 엣지 효과 (내부 테두리처럼 보임)
+                                borderWidth: 2,
+                                borderColor: '#93c5fd', // 밝은 blue-300 엣지
+                            }}
+                        >
+                            <Ionicons name="home" size={30} color="#ffffff" />
                         </View>
                     ),
                 }}

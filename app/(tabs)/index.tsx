@@ -99,8 +99,6 @@ export default function HomeScreen() {
     // 달력 마킹용
     const [markedDates, setMarkedDates] = useState<any>({});
     // 일정 상세 모달
-    const [selectedDate, setSelectedDate] = useState<string>('');
-    const [selectedEvents, setSelectedEvents] = useState<EventNotice[]>([]);
 
     const [events, setEvents] = useState<EventNotice[]>([]);
     const [calendarVisible, setCalendarVisible] = useState(false);
@@ -110,17 +108,6 @@ export default function HomeScreen() {
             mainListRef.current?.scrollToOffset({ offset: 0, animated: true });
         });
     }, []);
-
-    useEffect(() => {
-        if (videoData.length > 2) {
-            const random = Math.floor(Math.random() * (videoData.length - 2));
-            setInitialIndex(random + 1); // 앞 dummy 때문에 +1
-            setCurrentIndex(random + 1);
-        }
-
-        setVerse(verses[Math.floor(Math.random() * verses.length)]);
-        fetchPrayers();
-    }, [videoData]); // ✅ videoData가 로딩된 후 실행되도록 의존성 추가
 
     useEffect(() => {
         const loadUser = async () => {
@@ -332,12 +319,51 @@ export default function HomeScreen() {
                     </View>
 
                     {/* 퀵메뉴 */}
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginVertical: 24 }}>
-                        <QuickMenuButton icon="💕" label="오늘의 말씀" onPress={() => router.push('../home/QuickMenuButton/todayVerse')} />
-                        <QuickMenuButton icon="📅" label="캘린더" onPress={() => setCalendarVisible(true)} />
-                        <QuickMenuButton icon="📖" label="교리" onPress={() => router.push('../home/QuickMenuButton/catechism/')} />
-                        <QuickMenuButton icon="🤖" label="AI로 질문" onPress={() => router.push('../home/QuickMenuButton/AiChatPage')} />
-                    </View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginVertical: 24 }}>
+                            {[
+                                {
+                                    icon: <Text style={{ fontSize: 30 }}>💕</Text>,
+                                    label: '오늘의 말씀',
+                                    action: () => router.push('../home/QuickMenuButton/todayVerse'),
+                                },
+                                {
+                                    icon: <Text style={{ fontSize: 30 }}>📅</Text>,
+                                    label: '캘린더',
+                                    action: () => setCalendarVisible(true),
+                                },
+                                {
+                                    icon: <Text style={{ fontSize: 30 }}>📖</Text>,
+                                    label: '교리',
+                                    action: () => router.push('../home/QuickMenuButton/catechism/'),
+                                },
+                                {
+                                    icon: <Text style={{ fontSize: 30 }}>🤖</Text>,
+                                    label: 'AI로 질문',
+                                    action: () => router.push('../home/QuickMenuButton/AiChatPage'),
+                                },
+                            ].map((item, idx) => (
+                                <TouchableOpacity key={idx} onPress={item.action} style={{ alignItems: 'center', width: 72 }}>
+                                    <View
+                                        style={{
+                                            width: 56,
+                                            height: 56,
+                                            borderRadius: 28,
+                                            backgroundColor: '#f5f6fa',
+                                            justifyContent: 'center',
+                                            alignItems: 'center',
+                                            marginBottom: 6,
+                                            shadowColor: '#000',
+                                            shadowOpacity: 0.06,
+                                            shadowRadius: 4,
+                                            elevation: 2,
+                                        }}
+                                    >
+                                        {item.icon}
+                                    </View>
+                                    <Text style={{ color: theme.colors.text, fontSize: 15, fontWeight: '500' }}>{item.label}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
                 </View>
                 )}
                 data={prayers}
@@ -357,83 +383,7 @@ export default function HomeScreen() {
             </Modal>
             {/* 캘린더 모달 */}
             <QuickCalendar visible={calendarVisible} onClose={() => setCalendarVisible(false)} />
-            {/*<Modal visible={quickModal === 'calendar'} transparent animationType="fade" onRequestClose={() => setQuickModal(null)}>*/}
-            {/*    <Pressable*/}
-            {/*        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', alignItems: 'center' }}*/}
-            {/*        onPress={() => setQuickModal(null)}*/}
-            {/*    >*/}
-            {/*        <View style={{ backgroundColor: theme.colors.surface, borderRadius: 20, padding: 24, minWidth: 400, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 12 }}>*/}
-            {/*            <View style={{ flexDirection: 'row', width: '100%', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>*/}
-            {/*                <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.text }}>캘린더</Text>*/}
-            {/*                <TouchableOpacity*/}
-            {/*                    onPress={() => {*/}
-            {/*                        const todayStr = new Date().toISOString().split('T')[0];*/}
-            {/*                        setSelectedDate(todayStr);*/}
-            {/*                        handleDayPress({ dateString: todayStr });*/}
-            {/*                    }}*/}
-            {/*                    style={{ paddingVertical: 4, paddingHorizontal: 10, backgroundColor: theme.colors.primary, borderRadius: 6 }}*/}
-            {/*                >*/}
-            {/*                    <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>오늘</Text>*/}
-            {/*                </TouchableOpacity>*/}
-            {/*            </View>*/}
 
-            {/*            <Calendar*/}
-            {/*                style={{ borderRadius: 12, width: 320 }}*/}
-            {/*                theme={{*/}
-            {/*                    backgroundColor: theme.colors.surface,*/}
-            {/*                    calendarBackground: theme.colors.surface,*/}
-            {/*                    textSectionTitleColor: theme.colors.subtext,*/}
-            {/*                    selectedDayBackgroundColor: theme.colors.primary,*/}
-            {/*                    selectedDayTextColor: '#fff',*/}
-            {/*                    todayTextColor: theme.colors.primary,*/}
-            {/*                    dayTextColor: theme.colors.text,*/}
-            {/*                    textDisabledColor: '#ccc',*/}
-            {/*                    arrowColor: theme.colors.primary,*/}
-            {/*                    monthTextColor: theme.colors.primary,*/}
-            {/*                }}*/}
-            {/*                markedDates={{*/}
-            {/*                    ...markedDates,*/}
-            {/*                    [selectedDate]: {*/}
-            {/*                        ...markedDates[selectedDate],*/}
-            {/*                        selected: true,*/}
-            {/*                        selectedColor: theme.colors.primary,*/}
-            {/*                        selectedTextColor: '#fff',*/}
-            {/*                    },*/}
-            {/*                    [new Date().toISOString().split('T')[0]]: {*/}
-            {/*                        ...markedDates[new Date().toISOString().split('T')[0]],*/}
-            {/*                        marked: true,*/}
-            {/*                        dotColor: theme.colors.primary,*/}
-            {/*                    },*/}
-            {/*                }}*/}
-            {/*                markingType="multi-dot"*/}
-            {/*                onDayPress={handleDayPress}*/}
-            {/*            />*/}
-
-            {/*             일정 상세 리스트 */}
-            {/*            {selectedDate && (*/}
-            {/*                <View style={{ width: 320, marginTop: 18, backgroundColor: theme.colors.card, borderRadius: 14, padding: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 }}>*/}
-            {/*                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.primary, marginBottom: 10 }}>{selectedDate} 일정</Text>*/}
-            {/*                    {selectedEvents.length > 0 ? (*/}
-            {/*                        selectedEvents.map(ev => (*/}
-            {/*                            <View key={ev.id} style={{ marginBottom: 16, borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingBottom: 10 }}>*/}
-            {/*                                <Text style={{ fontSize: 15, fontWeight: '600', color: theme.colors.text, marginBottom: 4 }}>{ev.title}</Text>*/}
-            {/*                                {ev.place && <Text style={{ color: theme.colors.subtext, marginBottom: 2 }}>장소: {ev.place}</Text>}*/}
-            {/*                                {ev.time && <Text style={{ color: theme.colors.subtext, marginBottom: 2 }}>시간: {ev.time}</Text>}*/}
-            {/*                                {ev.content && <Text style={{ color: theme.colors.text, marginBottom: 2 }}>{ev.content}</Text>}*/}
-            {/*                                <Text style={{ color: theme.colors.subtext, fontSize: 13 }}>*/}
-            {/*                                    {ev.startDate?.seconds ? new Date(ev.startDate.seconds * 1000).toLocaleDateString('ko-KR') : ''}*/}
-            {/*                                    {ev.endDate?.seconds && ev.endDate?.seconds !== ev.startDate?.seconds ? ` ~ ${new Date(ev.endDate.seconds * 1000).toLocaleDateString('ko-KR')}` : ''}*/}
-            {/*                                </Text>*/}
-            {/*                            </View>*/}
-            {/*                        ))*/}
-            {/*                    ) : (*/}
-            {/*                        <Text style={{ color: theme.colors.subtext, textAlign: 'center', marginVertical: 12 }}>일정이 없습니다.</Text>*/}
-            {/*                    )}*/}
-            {/*                </View>*/}
-            {/*            )}*/}
-            {/*        </View>*/}
-            {/*    </Pressable>*/}
-            {/*</Modal>*/}
             {/* 교리문답 모달 */}
             <Modal visible={quickModal === 'catechism'} transparent animationType="fade" onRequestClose={() => setQuickModal(null)}>
                 <Pressable style={{ flex:1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent:'center', alignItems:'center' }} onPress={() => setQuickModal(null)}>

@@ -29,7 +29,8 @@ import {
     Alert,
     KeyboardAvoidingView,
     Modal,
-    Platform, RefreshControl,
+    Platform,
+    RefreshControl,
     SafeAreaView,
     ScrollView,
     Share,
@@ -121,13 +122,31 @@ export default function TeamDetail() {
     const [myVote, setMyVote] = useState<VoteStatus | null>(null);
     const [selectedVote, setSelectedVote] = useState<VoteStatus | null>(null);
     const [showVoteStatus, setShowVoteStatus] = useState(false);
-
+    const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
     const [isLocationModalVisible, setLocationModalVisible] = useState(false);
     const [locationInput, setLocationInput] = useState('');
     const [commonLocations] = useState([
         '본당',
         '카페',
     ]);
+    const categories = [
+        '✨ 반짝소모임',
+        '🏃 운동/스포츠',
+        '📚 책모임',
+        '🎮 게임',
+        '🎭 문화생활',
+        '🤝 봉사',
+        '📖 스터디',
+        '🐾 동물',
+        '🍳 요리/제조'
+    ];
+    const [editCategory, setEditCategory] = useState(team?.category || '');
+
+    useEffect(() => {
+        if (team) {
+            setEditCategory(team.category || '');
+        }
+    }, [team]);
 
     useEffect(() => {
         getCurrentUser().then(setCurrentUser);
@@ -281,7 +300,9 @@ export default function TeamDetail() {
             return;
         }
 
-        if ((team.membersList?.length ?? 0) >= (team.maxMembers ?? 99)) {
+        const isUnlimited = team.maxMembers === -1;
+
+        if (!isUnlimited && (team.membersList?.length ?? 0) >= (team.maxMembers ?? 99)) {
             Alert.alert('인원 초과', '모집이 마감되었습니다.');
             return;
         }
@@ -308,7 +329,7 @@ export default function TeamDetail() {
             await sendPushNotification({
                 to: tokens,
                 title: '🙋 소모임 가입 신청',
-                body: `${user.name}님의 신청`,
+                body: `${user.name}님이 "${team.name}" 모임에 가입 신청했습니다.`,
             });
         }
 
@@ -336,7 +357,8 @@ export default function TeamDetail() {
         if (!team) return;
 
         const currentCount = team.membersList?.length ?? 0;
-        let newMax: number|null = null;
+        let newMax: number | null = null;
+
         if (!isUnlimited) {
             newMax = Number(editCapacity);
             if (isNaN(newMax) || newMax < currentCount) {
@@ -356,8 +378,9 @@ export default function TeamDetail() {
                 name: editName,
                 description: editDescription,
                 maxMembers: newMax,
-                announcement,      // ✅ 추가 필요
-                scheduleDate,      // ✅ 추가 필요
+                announcement,
+                scheduleDate,
+                category: editCategory,
             });
 
             setTeam(prev => prev && {
@@ -367,11 +390,45 @@ export default function TeamDetail() {
                 maxMembers: newMax,
                 announcement,
                 scheduleDate,
+                category: editCategory,
             });
 
             setEditModalVisible(false);
             Toast.show('✅ 수정 완료', { duration: 1500 });
-            fetchTeam();  // ← 🔥 명시적으로 새로고침
+            fetchTeam();
+
+            // ✅ 반짝소모임이면 푸시 알림 발송
+            if (editCategory === '✨ 반짝소모임') {
+                const snapshot = await getDocs(collection(db, 'users'));
+                const sentTokens = new Set<string>();
+                const pushPromises: Promise<void>[] = [];
+
+                snapshot.docs.forEach((docSnap) => {
+                    const user = docSnap.data();
+                    const tokens: string[] = user.expoPushTokens || [];
+
+                    tokens.forEach(token => {
+                        if (
+                            typeof token === 'string' &&
+                            token.startsWith('ExponentPushToken') &&
+                            !sentTokens.has(token)
+                        ) {
+                            sentTokens.add(token);
+                            pushPromises.push(
+                                sendPushNotification({
+                                    to: token,
+                                    title: '✨ 반짝소모임 업데이트!',
+                                    body: `반짝소모임${editName}에 지금 참여해보세요!`,
+                                })
+                            );
+                        }
+                    });
+                });
+
+                await Promise.all(pushPromises);
+                console.log(`✅ 반짝소모임 수정 푸시 완료: ${sentTokens.size}명`);
+            }
+
         } catch (e) {
             console.error('❌ 모임 정보 수정 실패:', e);
             Alert.alert('에러', '모임 수정 중 문제가 발생했습니다.');
@@ -869,12 +926,20 @@ export default function TeamDetail() {
                             </Text>
                             <Text style={{
                                 fontSize: font.caption,
+                                color: colors.primary,
+                                fontWeight: '600',
+                            }}>
+                                {team.category}
+                            </Text>
+                            <Text style={{
+                                fontSize: font.caption,
                                 color: colors.subtext,
                                 marginTop: 2,
                             }}>
-                                인원: {team.membersList?.length || 0} / {team.maxMembers === -1 ? '∞' : team.maxMembers}
+                                인원: {team.membersList?.length || 0} / {team.maxMembers === -1 ? '무제한' : team.maxMembers}
                             </Text>
                         </View>
+
                         {(isCreator || isSubLeader) && (
                             <TouchableOpacity
                                 onPress={openEditModal}
@@ -1201,7 +1266,7 @@ export default function TeamDetail() {
 
                 <Modal visible={editModalVisible} animationType="slide" transparent>
                     <KeyboardAvoidingView
-                        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
                         style={{
                             flex: 1,
                             justifyContent: 'center',
@@ -1269,7 +1334,7 @@ export default function TeamDetail() {
                             <Text style={{ fontSize: font.body, color: colors.text, marginBottom: spacing.sm }}>최대 인원수</Text>
                             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
                                 <TextInput
-                                    value={isUnlimited ? '∞' : editCapacity}
+                                    value={isUnlimited ? '무제한' : editCapacity}
                                     onChangeText={setEditCapacity}
                                     keyboardType="number-pad"
                                     editable={!isUnlimited}
@@ -1310,6 +1375,131 @@ export default function TeamDetail() {
                                         무제한
                                     </Text>
                                 </TouchableOpacity>
+                            </View>
+
+                            <View>
+                                <Text style={{ fontSize: font.body, color: colors.text, marginBottom: spacing.sm }}>카테고리</Text>
+                                <TouchableOpacity
+                                    onPress={() => setShowCategoryDropdown(prev => !prev)}
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        borderWidth: 1,
+                                        borderColor: colors.border,
+                                        borderRadius: radius.sm,
+                                        paddingHorizontal: spacing.sm,
+                                        paddingVertical: 10,
+                                        backgroundColor: colors.surface,
+                                        marginBottom: spacing.md,
+                                    }}
+                                >
+                                    <Text style={{
+                                        color: colors.text,
+                                        fontSize: font.body,
+                                    }}>
+                                        {editCategory || '카테고리를 선택하세요'}
+                                    </Text>
+                                    <Ionicons name="chevron-down" size={18} color={colors.subtext} />
+                                </TouchableOpacity>
+
+                                {/* 👇 카테고리 드롭다운을 모달이 아닌 View로 표시 */}
+                                {Platform.OS === 'ios' ? (
+                                    // ✅ iOS는 View로 드롭다운
+                                    showCategoryDropdown && (
+                                        <View
+                                            style={{
+                                                position: 'absolute',
+                                                bottom: 140, // 필요 시 위치 조정
+                                                left: spacing.md,
+                                                right: spacing.md,
+                                                backgroundColor: colors.background,
+                                                borderRadius: radius.sm,
+                                                borderWidth: 1,
+                                                borderColor: colors.border,
+                                                zIndex: 9999,
+                                                maxHeight: 320,
+                                                paddingVertical: spacing.sm,
+                                                paddingHorizontal: spacing.md,
+                                            }}
+                                        >
+                                            <ScrollView>
+                                                {categories.map((cat) => (
+                                                    <TouchableOpacity
+                                                        key={cat}
+                                                        onPress={() => {
+                                                            setEditCategory(cat);
+                                                            setShowCategoryDropdown(false);
+                                                        }}
+                                                        style={{
+                                                            paddingVertical: spacing.md, // ✅ 항목 높이 증가
+                                                            paddingHorizontal: spacing.md,
+                                                            borderBottomWidth: 1,
+                                                            borderColor: colors.border,
+                                                        }}
+                                                    >
+                                                        <Text
+                                                            style={{
+                                                                fontSize: font.body + 2, // ✅ 텍스트 크기 약간 증가
+                                                                color: editCategory === cat ? colors.primary : colors.text,
+                                                                fontWeight: editCategory === cat ? 'bold' : 'normal',
+                                                            }}
+                                                        >
+                                                            {cat}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </ScrollView>
+                                        </View>
+                                    )
+                                ) : (
+                                    // ✅ Android는 Modal로 처리
+                                    <Modal
+                                        visible={showCategoryDropdown}
+                                        transparent
+                                        animationType="fade"
+                                        onRequestClose={() => setShowCategoryDropdown(false)}
+                                    >
+                                        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' }}>
+                                            <TouchableWithoutFeedback onPress={() => setShowCategoryDropdown(false)}>
+                                                <View style={{ flex: 1 }} />
+                                            </TouchableWithoutFeedback>
+
+                                            <View style={{
+                                                backgroundColor: colors.background,
+                                                borderTopLeftRadius: 16,
+                                                borderTopRightRadius: 16,
+                                                padding: spacing.md,
+                                                maxHeight: 320,
+                                            }}>
+                                                <ScrollView>
+                                                    {categories.map((cat) => (
+                                                        <TouchableOpacity
+                                                            key={cat}
+                                                            onPress={() => {
+                                                                setEditCategory(cat);
+                                                                setShowCategoryDropdown(false);
+                                                            }}
+                                                            style={{
+                                                                paddingVertical: spacing.sm,
+                                                                borderBottomWidth: 1,
+                                                                borderColor: colors.border,
+                                                            }}
+                                                        >
+                                                            <Text style={{
+                                                                fontSize: font.body,
+                                                                color: editCategory === cat ? colors.primary : colors.text,
+                                                                fontWeight: editCategory === cat ? 'bold' : 'normal',
+                                                            }}>
+                                                                {cat}
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                    ))}
+                                                </ScrollView>
+                                            </View>
+                                        </View>
+                                    </Modal>
+                                )}
                             </View>
 
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
