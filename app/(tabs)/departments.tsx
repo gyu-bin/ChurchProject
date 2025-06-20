@@ -158,7 +158,9 @@ export default function DepartmentsScreen() {
                         <Ionicons name="filter" size={18} color={colors.primary} />
                         <Text style={{ color: colors.primary, fontWeight: 'bold', fontSize: 14, marginLeft: 4 }}>필터</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={{
+                    <TouchableOpacity
+                        onPress={() => router.push('/department/createDep')}
+                        style={{
                         backgroundColor: colors.primary,
                         borderRadius: 18,
                         padding: 2,

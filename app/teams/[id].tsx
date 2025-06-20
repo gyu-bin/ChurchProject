@@ -45,6 +45,8 @@ import {
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import Toast from "react-native-root-toast";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Timestamp } from 'firebase/firestore'; // 필수
+
 type Team = {
     id: string;
     name: string;
@@ -58,6 +60,7 @@ type Team = {
     scheduleDate?: string; // YYYY-MM-DD
     location?: string;
     meetingTime?: string;
+    expirationDate?: any;
     [key: string]: any; // 기타 필드를 허용하는 경우
 };
 
@@ -391,6 +394,9 @@ export default function TeamDetail() {
                 announcement,
                 scheduleDate,
                 category: category,
+                ...(category === '✨ 반짝소모임' && {
+                    expirationDate: new Date(expirationDate),
+                }),
             });
 
             setTeam(prev => prev && {
@@ -790,7 +796,7 @@ export default function TeamDetail() {
     };
 
     const isFull = (team?.members ?? 0) >= (team?.capacity ?? 99);
-    
+
     const handleCategorySelect = (cat: { label: string; value: string }) => {
         setCategory(cat.label);
         setCategoryModalVisible(false);
@@ -798,7 +804,7 @@ export default function TeamDetail() {
             setSparkleModalVisible(true);
         }
     };
-    
+
       const handleDateChange = (event: any, selectedDate?: Date) => {
         if (selectedDate) setExpirationDate(selectedDate);
         setShowDatePicker(false);
@@ -961,7 +967,20 @@ export default function TeamDetail() {
                             }}>
                                 인원: {team.membersList?.length || 0} / {team.maxMembers === -1 ? '무제한' : team.maxMembers}
                             </Text>
+                            {team.category === '✨ 반짝소모임' && (
+                                <View style={{ marginTop: 8 }}>
+                                    <Text style={{ fontSize: font.caption, color: colors.subtext }}>
+                                        ⏰ 소모임 만료일: {
+                                        team.expirationDate instanceof Timestamp
+                                            ? team.expirationDate.toDate().toLocaleDateString()
+                                            : new Date(team.expirationDate).toLocaleDateString()
+                                    }
+                                    </Text>
+                                </View>
+                            )}
                         </View>
+
+
 
                         {(isCreator || isSubLeader) && (
                             <TouchableOpacity
@@ -1474,7 +1493,7 @@ export default function TeamDetail() {
         </TouchableOpacity>
       )}
 
-      
+
 
       <Modal visible={isSparkleModalVisible} transparent animationType="slide">
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
@@ -1488,7 +1507,7 @@ export default function TeamDetail() {
           </View>
         </View>
       </Modal>
-    </View>                        
+    </View>
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                                 <TouchableOpacity onPress={() => setEditModalVisible(false)}>
                                     <Text style={{ color: colors.subtext }}>취소</Text>

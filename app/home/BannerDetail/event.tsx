@@ -116,35 +116,51 @@ export default function EventDetailPage() {
   }
 
   return (
-      <ScrollView
-          style={{
-            flex: 1,
-            backgroundColor: colors.background,
-            paddingTop: Platform.OS === 'android' ? insets.top + 10 : insets.top,
-          }}
-          contentContainerStyle={{ paddingBottom: 32 }}
-      >
+      <View style={{ flex: 1,backgroundColor: colors.background,
+        paddingTop: Platform.OS === 'android' ? insets.top + 10 : insets.top,}}>
         {/* 헤더 */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.lg, paddingHorizontal: spacing.md }}>
+        <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginBottom: spacing.lg,
+              paddingHorizontal: spacing.md,
+            }}
+        >
           <TouchableOpacity onPress={() => router.back()} style={{ padding: 4, width: 40 }}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
+
           <View style={{ flex: 1, alignItems: 'center' }}>
-            <Text numberOfLines={1} style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.text }}>
+            <Text
+                numberOfLines={1}
+                style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.text }}
+            >
               {event.title}
             </Text>
           </View>
+
           <View style={{ width: 40 }} />
         </View>
 
-        {/* 내용 */}
-        {event.bannerImage ? (
-            <View style={{ flex: 1, backgroundColor: colors.background }}>
-              <ImageBackground
-                  source={{ uri: event.bannerImage }}
-                  style={{ width: '100%', height: 280 }}
-                  resizeMode="cover"
-              >
+        <ScrollView
+            contentContainerStyle={{ paddingBottom: 32 }}
+        >
+
+          {/* 내용 */}
+          {event.bannerImage ? (
+              <View style={{ flex: 1, backgroundColor: colors.background }}>
+                <ImageBackground
+                    source={{ uri: event.bannerImage}}
+                    style={{
+                      width: '100%',
+                      aspectRatio:2 / 2,
+                      justifyContent: 'flex-end',
+                    }}
+                    // style={{ width: '100%', height: 500, backgroundColor: 'lightgray',aspectRatio: 16/9,}}
+                    resizeMode="contain"
+                >
+                </ImageBackground>
                 <View style={{ padding: spacing.lg, backgroundColor: 'rgba(0,0,0,0.3)' }}>
                   {/* 기간 */}
                   {event.startDate?.seconds && event.endDate?.seconds && (
@@ -161,26 +177,28 @@ export default function EventDetailPage() {
                     {event.content}
                   </Text>
                 </View>
-              </ImageBackground>
-            </View>
-        ) : (
-            <View style={{ paddingHorizontal: spacing.lg }}>
-              {/* 기간 */}
-              {event.startDate?.seconds && event.endDate?.seconds && (
-                  <Text style={{ fontSize: font.caption, color: colors.subtext, marginBottom: 8 }}>
-                    🗓 {formatDate(event.startDate.seconds)} ~ {formatDate(event.endDate.seconds)}
-                  </Text>
-              )}
-              {/* 제목 */}
-              <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.text, marginBottom: 12 }}>
-                {event.title}
-              </Text>
-              {/* 내용 */}
-              <Text style={{ fontSize: font.body, color: colors.text, lineHeight: 24 }}>
-                {event.content}
-              </Text>
-            </View>
-        )}
-      </ScrollView>
+              </View>
+          ) : (
+              <View style={{ paddingHorizontal: spacing.lg }}>
+                {/* 기간 */}
+                {event.startDate?.seconds && event.endDate?.seconds && (
+                    <Text style={{ fontSize: font.caption, color: colors.subtext, marginBottom: 8 }}>
+                      🗓 {formatDate(event.startDate.seconds)} ~ {formatDate(event.endDate.seconds)}
+                    </Text>
+                )}
+                {/* 제목 */}
+                <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.text, marginBottom: 12 }}>
+                  {event.title}
+                </Text>
+                {/* 내용 */}
+                <Text style={{ fontSize: font.body, color: colors.text, lineHeight: 24 }}>
+                  {event.content}
+                </Text>
+              </View>
+          )}
+        </ScrollView>
+      </View>
+
+
 );
 }

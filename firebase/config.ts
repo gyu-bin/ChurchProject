@@ -7,7 +7,8 @@ const firebaseConfig = {
     apiKey: "AIzaSyAtkt7DLTq_LdYEsqiHEWgzZLGkBa4d2JI",
     authDomain: "churchappexpo.firebaseapp.com",
     projectId: "churchappexpo",
-    storageBucket: "churchappexpo.appspot.com", // ✅ 수정된 부분
+    // storageBucket: "churchappexpo.appspot.com",
+    storageBucket: "gs://churchappexpo.firebasestorage.app",
     messagingSenderId: "650084657232",
     appId: "1:650084657232:web:a772970ae7b4154ff14955",
     measurementId: "G-Z6F6G7BG5T"

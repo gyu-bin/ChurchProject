@@ -2,149 +2,216 @@
 import { useDesign } from '@/app/context/DesignSystem';
 import { db, storage } from '@/firebase/config';
 import * as FileSystem from 'expo-file-system';
+import type { ImagePickerAsset } from 'expo-image-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { FirebaseError } from 'firebase/app';
-import { addDoc, collection, deleteDoc, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
-import {getDownloadURL, ref, uploadBytes, uploadString} from 'firebase/storage';
+import {
+    addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, Timestamp, updateDoc, where
+} from 'firebase/firestore';
+import {getDownloadURL, ref, uploadBytes, uploadString,getStorage} from 'firebase/storage';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  FlatList,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+  Alert, FlatList, Image, KeyboardAvoidingView, Modal, Platform, RefreshControl,
+  ScrollView, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
-import Toast from "react-native-root-toast";
+import Toast from 'react-native-root-toast';
+import {router} from "expo-router";
+import * as ImageManipulator from 'expo-image-manipulator';
 
 export default function EventTab() {
-  const { colors, spacing } = useDesign();
-  const [modalVisible, setModalVisible] = useState(false);
-  const [form, setForm] = useState({
-    title: '',
-    content: '',
-    startDate: '',
-    endDate: '',
-    bannerImage: '',
-    id: '',
-  });
-  const [isDatePickerVisible, setDatePickerVisible] = useState(false);
-  const [isSelectingStart, setIsSelectingStart] = useState(true);
-  const [tempStart, setTempStart] = useState<Date | null>(null);
-  const [tempEnd, setTempEnd] = useState<Date | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
-  const [eventList, setEventList] = useState<any[]>([]);
+    const { colors, spacing } = useDesign();
+    const [modalVisible, setModalVisible] = useState(false);
+    const [form, setForm] = useState({ title: '', content: '', startDate: '', endDate: '', bannerImage: '', id: '' });
+    const [isDatePickerVisible, setDatePickerVisible] = useState(false);
+    const [isSelectingStart, setIsSelectingStart] = useState(true);
+    const [tempStart, setTempStart] = useState<Date | null>(null);
+    const [tempEnd, setTempEnd] = useState<Date | null>(null);
+    const [refreshing, setRefreshing] = useState(false);
+    const [eventList, setEventList] = useState<any[]>([]);
+    const [imageURLs, setImageURLs] = useState<ImagePickerAsset[]>([]);
 
-  const getMarkedRange = (start: Date, end: Date) => {
-    const range: any = {};
-    const current = new Date(start);
-    while (current <= end) {
-      const dateStr = current.toISOString().split('T')[0];
-      range[dateStr] = { color: colors.primary, textColor: '#fff' };
-      current.setDate(current.getDate() + 1);
-    }
-    return range;
-  };
+    const getMarkedRange = (start: Date, end: Date) => {
+        const range: any = {};
+        const current = new Date(start);
+        while (current <= end) {
+            const dateStr = current.toISOString().split('T')[0];
+            range[dateStr] = { color: colors.primary, textColor: '#fff' };
+            current.setDate(current.getDate() + 1);
+        }
+        return range;
+    };
 
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets.length > 0) {
-      setForm((prev) => ({ ...prev, bannerImage: result.assets[0].uri }));
-    }
-  };
+    const fetchBanners = async () => {
+        const q = query(collection(db, 'notice'), where('type', '==', 'banner'));
+        const snap = await getDocs(q);
+        const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setEventList(list);
+    };
 
-  const fetchBanners = async () => {
-    const q = query(collection(db, 'notice'), where('type', '==', 'banner'));
-    const snap = await getDocs(q);
-    const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    setEventList(list);
-  };
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await fetchBanners();
+        setRefreshing(false);
+    };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchBanners();
-    setRefreshing(false);
-  };
+    useEffect(() => {
+        fetchBanners();
+    }, []);
 
-  useEffect(() => {
-    fetchBanners();
-  }, []);
-
-    const uploadImageToFirebase = async (localUri: string): Promise<string> => {
+    /*const uploadImageToFirebase = async (localUri: string): Promise<string> => {
         try {
-            console.log('✅ 업로드 시작, 파일 URI:', localUri);
+            const response = await fetch(localUri);
+            const blob: Blob = await response.blob();
 
-            // 📌 base64로 인코딩
-            const base64 = await FileSystem.readAsStringAsync(localUri, {
-                encoding: FileSystem.EncodingType.Base64,
-            });
-
-            const filename = `banners/${Date.now()}.jpg`;
+            const filename = `uploads/${Date.now()}_${Math.floor(Math.random() * 10000)}.jpg`;
             const storageRef = ref(storage, filename);
 
-            // 📌 base64 데이터 업로드
-            await uploadString(storageRef, `data:image/jpeg;base64,${base64}`, 'data_url');
+            await uploadBytes(storageRef, blob);
 
             const downloadUrl = await getDownloadURL(storageRef);
-            console.log('✅ 다운로드 URL:', downloadUrl);
             return downloadUrl;
         } catch (error: any) {
             console.error('🔥 이미지 업로드 실패:', error);
             throw error;
         }
-    };
+    };*/
 
-    const handleSave = async () => {
-        if (!form.title || !form.content || !form.startDate || !form.endDate || !form.bannerImage) {
-            Alert.alert('모든 필드를 입력해주세요');
+    // 이미지 선택
+    const pickImage = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('권한 필요', '이미지 라이브러리에 접근 권한이 필요합니다.');
             return;
         }
 
-        try {
-            let imageUrl = form.bannerImage;
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: false,
+            quality: 0.8,
+            base64: false,
+        });
 
-            // file:// 경로면 Firebase Storage에 업로드
-            if (imageUrl.startsWith('file://')) {
-                imageUrl = await uploadImageToFirebase(imageUrl);
+        if (!result.canceled && result.assets.length > 0) {
+            const selected = result.assets[0];
+            setImageURLs([selected]); // ✅ 하나만 선택
+            setForm(prev => ({ ...prev, bannerImage: selected.uri })); // ✅ 미리보기용 uri 저장
+        }
+    };
+
+    const uploadImageToFirebase = async (imageUri: string): Promise<string> => {
+        try {
+            // 이미지 조작 (크기 그대로, 포맷만 JPEG으로 확실히 지정)
+            const manipulated = await ImageManipulator.manipulateAsync(
+                imageUri,
+                [],
+                { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+            );
+
+            const response = await fetch(manipulated.uri);
+            const blob = await response.blob();
+
+            const filename = `uploads/${Date.now()}_${Math.floor(Math.random() * 10000)}.jpg`;
+            const storageRef = ref(storage, filename);
+
+            await uploadBytes(storageRef, blob, {
+                contentType: 'image/jpeg',
+            });
+
+            const downloadUrl = await getDownloadURL(storageRef);
+            return downloadUrl;
+        } catch (err) {
+            console.error('🔥 업로드 실패:', err);
+            throw err;
+        }
+    };
+    // 테스트
+    const handleSave = async () => {
+        try {
+            console.log('⚙️ handleSave called');
+
+            if (!form.title || !form.content || imageURLs.length === 0) {
+                Alert.alert('모든 필드를 입력해주세요');
+                return;
+            }
+
+            const downloadUrls: string[] = [];
+
+            for (const image of imageURLs) {
+                const downloadUrl = await uploadImageToFirebase(image.uri);
+                downloadUrls.push(downloadUrl);
             }
 
             const payload = {
-                title: form.title,
-                content: form.content,
+                title: form.title.trim(),
+                content: form.content.trim(),
                 startDate: new Date(form.startDate),
                 endDate: new Date(form.endDate),
-                bannerImage: imageUrl,
+                bannerImage: downloadUrls[0],
                 type: 'banner',
             };
 
-            if (form.id) {
-                await updateDoc(doc(db, 'notice', form.id), payload);
-            } else {
-                await addDoc(collection(db, 'notice'), payload);
-            }
+            await addDoc(collection(db, 'notice'), payload);
 
+            setForm({
+                title: '',
+                content: '',
+                startDate: '',
+                endDate: '',
+                bannerImage: '',
+                id: '',
+            });
+            setImageURLs([]);
+            Toast.show('게시글이 등록되었습니다.');
             setModalVisible(false);
-            setForm({ title: '', content: '', startDate: '', endDate: '', bannerImage: '', id: '' });
-            fetchBanners();
-            Toast.show('저장되었습니다.');
         } catch (err: any) {
             console.error('❌ 저장 실패:', err.message || err);
             Alert.alert('저장 실패', err.message || '이미지 업로드 중 오류가 발생했습니다.');
         }
     };
 
-  const renderItem = ({ item }: any) => {
+    const handleUpdate = async () => {
+        try {
+            console.log('⚙️ handleUpdate called');
+
+            if (!form.id || !form.title || !form.content) {
+                Alert.alert('모든 필드를 입력해주세요');
+                return;
+            }
+
+            let downloadUrls: string[] = [];
+
+            if (imageURLs.length > 0) {
+                for (const image of imageURLs) {
+                    const downloadUrl = await uploadImageToFirebase(image.uri);
+                    downloadUrls.push(downloadUrl);
+                }
+            } else {
+                // 기존 이미지 유지
+                downloadUrls = [form.bannerImage];
+            }
+
+            const payload = {
+                title: form.title.trim(),
+                content: form.content.trim(),
+                startDate: new Date(form.startDate),
+                endDate: new Date(form.endDate),
+                bannerImage: downloadUrls[0],
+                type: 'banner',
+            };
+
+            await updateDoc(doc(db, 'notice', form.id), payload);
+
+            await fetchBanners();
+
+            Toast.show('게시글이 수정되었습니다.');
+            setModalVisible(false);
+        } catch (err: any) {
+            console.error('❌ 수정 실패:', err.message || err);
+            Alert.alert('수정 실패', err.message || '이미지 업로드 중 오류가 발생했습니다.');
+        }
+    };
+
+const renderItem = ({ item }: any) => {
     const toDateString = (timestamp: any) => {
       if (timestamp?.seconds) {
         return new Date(timestamp.seconds * 1000).toLocaleDateString('ko-KR');
@@ -161,7 +228,7 @@ export default function EventTab() {
           {item.bannerImage && (
               <Image
                   source={{ uri: item.bannerImage }}
-                  style={{ width: '100%', height: 160, marginTop: 8, borderRadius: 8 }}
+                  style={{ width: '100%', minHeight: 400, marginTop: 8, borderRadius: 8 }}
                   resizeMode="cover"
               />
           )}
@@ -288,9 +355,13 @@ export default function EventTab() {
                 >
                   <Text style={{ textAlign: 'center', color: colors.text }}>배너 이미지 선택</Text>
                 </TouchableOpacity>
-                {form.bannerImage !== '' && (
-                    <Image source={{ uri: form.bannerImage }} style={{ width: '100%', height: 160, borderRadius: 8 }} resizeMode="cover" />
-                )}
+                  {form.bannerImage !== '' && (
+                      <Image
+                          source={{ uri: form.bannerImage }}
+                          style={{ width: '100%', height: 160, borderRadius: 8 }}
+                          resizeMode="cover"
+                      />
+                  )}
                 <View style={{ flexDirection: 'row', marginTop: spacing.sm }}>
                   <TouchableOpacity
                       onPress={() => setModalVisible(false)}
@@ -298,12 +369,14 @@ export default function EventTab() {
                   >
                     <Text style={{ textAlign: 'center', color: colors.text }}>취소</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                      onPress={handleSave}
-                      style={{ flex: 1, padding: spacing.sm, backgroundColor: colors.primary, borderRadius: 8 }}
-                  >
-                    <Text style={{ textAlign: 'center', color: '#fff' }}>저장</Text>
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={form.id ? handleUpdate : handleSave}
+                        style={{ flex: 1, padding: spacing.sm, backgroundColor: colors.primary, borderRadius: 8 }}
+                    >
+                        <Text style={{ textAlign: 'center', color: '#fff' }}>
+                            {form.id ? '수정' : '저장'}
+                        </Text>
+                    </TouchableOpacity>
                 </View>
               </ScrollView>
             </View>

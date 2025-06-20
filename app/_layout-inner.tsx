@@ -54,9 +54,7 @@ export default function RootLayoutInner() {
           <Stack.Screen name="auth/ForgotPassword" options={{ headerShown: false }} />
           <Stack.Screen name="intro" options={{ headerShown: false }} />
           <Stack.Screen name="teams" options={{ headerShown: false }} />
-          <Stack.Screen name="department/[campus]/[division]/index" options={{ headerShown: false }} />
           <Stack.Screen name="home/notifications" options={{ headerShown: false }} />
-          <Stack.Screen name="home/DailyBible" options={{ headerShown: false }} />
           <Stack.Screen name="home/QuickMenuButton/AiChatPage" options={{ headerShown: false }} />
           <Stack.Screen name="setting/videoManager" options={{ headerShown: false }} />
           <Stack.Screen name="setting/joinTeams" options={{ headerShown: false }} />
@@ -71,6 +69,7 @@ export default function RootLayoutInner() {
           <Stack.Screen name="home/active" options={{ headerShown: false }} />
           <Stack.Screen name="share/DailyBible" options={{ headerShown: false }} />
           <Stack.Screen name="home/counseling" options={{ headerShown: false }} />
+          <Stack.Screen name="department/createDep" options={{ headerShown: false }} />
         </Stack>
         <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
       </ThemeProvider>

@@ -9,43 +9,7 @@ export default function EventBannerCarousel({ events = [], goToEvent, theme }: a
   const [data, setData] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(1); // dummy 앞뒤
 
-  // exampleEventData.ts
-  const eventBannerSample = [
-    {
-      id: 'summer-retreat-2025',
-      title: '2025 여름 수련회 신청 오픈!',
-      bannerImage: 'https://i.pinimg.com/736x/19/09/c8/1909c81247d7deb3c9b398d4c2c02f32.jpg',
-      startDate: { seconds: 1751846400 }, // 2025-07-07
-      endDate: { seconds: 1752364800 },   // 2025-07-12
-      content: '올여름 수련회에 함께하세요! 찬양과 말씀, 교제와 회복의 시간이 기다리고 있습니다. 지금 신청하고 하나님의 은혜를 경험해보세요.',
-    },
-    {
-      id: 'new-family-class',
-      title: '앱 출시가 다가오고 있습니다.',
-      bannerImage: 'https://i.pinimg.com/736x/9d/cb/65/9dcb6537520307c24d1cd945c30fbf5f.jpg',
-      startDate: { seconds: 1750128000 }, // 2025-06-17
-      endDate: { seconds: 1750732800 },   // 2025-06-24
-      content: '출시날까지 모두 화이팅입니다. 잘되면 좋은것 아니겠습니다. 하하',
-    },
-    {
-      id: 'bible-reading-challenge',
-      title: '성경읽기',
-      bannerImage: 'https://i.pinimg.com/736x/7a/5e/e2/7a5ee2a0ad179a65368b1f1a0d63a8c2.jpg',
-      startDate: { seconds: 1750032000 }, // 2025-06-16
-      endDate: { seconds: 1752624000 },   // 2025-07-16
-      content: '성경을 읽는것은 나의 삶에 중요한 일입니다. 모두 함께 읽도록 하죠',
-    },
-    {
-      id: 'church-running-campain',
-      title: '시광마라톤대회',
-      bannerImage: '',
-      startDate: { seconds: 1750032000 }, // 2025-06-16
-      endDate: { seconds: 1752624000 },   // 2025-07-16
-      content: '인간은 달리기위해 태어났죠. 열심히 달려봅시다 모두',
-    }
-  ];
-
-  /*useEffect(() => {
+  useEffect(() => {
     if (!events || events.length === 0) return;
 
     if (events.length === 1) {
@@ -64,25 +28,7 @@ export default function EventBannerCarousel({ events = [], goToEvent, theme }: a
         flatListRef.current?.scrollToIndex({ index: 1, animated: false });
       }, 10);
     }
-  }, [events]);*/
-
-  //샘플코드
-  useEffect(() => {
-    if (eventBannerSample.length === 1) {
-      setData(eventBannerSample);
-      setCurrentIndex(0);
-    } else {
-      const extended = [
-        { ...eventBannerSample[eventBannerSample.length - 1], id: 'dummy-left' },
-        ...eventBannerSample,
-        { ...eventBannerSample[0], id: 'dummy-right' },
-      ];
-      setData(extended);
-      setTimeout(() => {
-        flatListRef.current?.scrollToIndex({ index: 1, animated: false });
-      }, 10);
-    }
-  }, []);
+  }, [events]);
 
   const scrollToIndex = (index: number, animated = true) => {
     if (index < 0 || index >= data.length) return;
@@ -115,10 +61,11 @@ export default function EventBannerCarousel({ events = [], goToEvent, theme }: a
                 style={{
                   width: SCREEN_WIDTH,
                   height: 300,
+                  aspectRatio: 16/9,
                   justifyContent: 'flex-end',
                   overflow: 'hidden',
                 }}
-                resizeMode="cover"
+                resizeMode="contain"
             >
               <View style={{ backgroundColor: 'rgba(0,0,0,0.32)', padding: 10 }}>
                 <Text style={{ color: '#fff', fontSize: 30, fontWeight: 'bold', marginBottom: 6 }}>
@@ -189,8 +136,6 @@ export default function EventBannerCarousel({ events = [], goToEvent, theme }: a
       </TouchableOpacity>
   );
 
-  if (!events || events.length === 0) return null;
-
   return (
     <View>
       <View style={{ position: 'relative' }}>
@@ -255,27 +200,7 @@ export default function EventBannerCarousel({ events = [], goToEvent, theme }: a
       )}
     </View>
 
-      {/* 🔘 인디케이터 (실제 데이터 기준) */}
-      {/* 🔘 인디케이터 (샘플 데이터 기준) */}
-      {eventBannerSample.length > 1 && (
-          <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 8 }}>
-            {eventBannerSample.map((_, i) => (
-                <View
-                    key={i}
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: 4,
-                      marginHorizontal: 4,
-                      backgroundColor: i === currentIndex - 1
-                          ? theme.colors.primary
-                          : theme.colors.border,
-                    }}
-                />
-            ))}
-          </View>
-      )}
-      {/*{events.length > 1 && (
+      {events.length > 1 && (
         <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 8 }}>
           {events.map((_:any, i:any) => (
             <View
@@ -292,7 +217,7 @@ export default function EventBannerCarousel({ events = [], goToEvent, theme }: a
             />
           ))}
         </View>
-      )}*/}
+      )}
     </View>
   );
 }

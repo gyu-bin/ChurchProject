@@ -7,6 +7,7 @@ import { Tabs, usePathname } from 'expo-router';
 import React, { useRef } from 'react';
 import { Platform, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 
 export default function TabLayout() {
     const { mode } = useAppTheme();

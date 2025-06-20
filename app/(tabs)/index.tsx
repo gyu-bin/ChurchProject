@@ -297,20 +297,11 @@ export default function HomeScreen() {
                     </View>
 
                     {/* 상단배너*/}
-                    {banners?.length > 0 && (
+                    {/*{banners?.length > 0 && (*/}
                         <BannerCarousel events={banners} goToEvent={goToEvent} theme={theme} />
-                    )}
+                    {/*)}*/}
 
-                    <View style={{ backgroundColor: theme.colors.surface,borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
-                        <ActiveSection />
-                    </View>
-
-                
-                        <View style={{ backgroundColor: theme.colors.surface,borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
-                            <HomeNotices />
-                        </View>
-
-                    {/* 퀵메뉴 */}
+                        {/* 퀵메뉴 */}
                         <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginVertical: 24 }}>
                             {[
                                 {
@@ -333,11 +324,11 @@ export default function HomeScreen() {
                                     label: '심방 요청',
                                     action: () => router.push('../home/counseling'),
                                 },
-                                {
+                                /*{
                                     icon: <Text style={{ fontSize: 30 }}>🤖</Text>,
                                     label: 'AI로 질문',
                                     action: () => router.push('../home/QuickMenuButton/AiChatPage'),
-                                },
+                                },*/
                             ].map((item, idx) => (
                                 <TouchableOpacity key={idx} onPress={item.action} style={{ alignItems: 'center', width: 72 }}>
                                     <View
@@ -361,6 +352,14 @@ export default function HomeScreen() {
                                 </TouchableOpacity>
                             ))}
                         </View>
+
+                        <View style={{ backgroundColor: theme.colors.surface,borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
+                            <HomeNotices />
+                        </View>
+
+                    <View style={{ backgroundColor: theme.colors.surface,borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
+                        <ActiveSection />
+                    </View>
                 </View>
                 )}
                 data={prayers}
@@ -378,7 +377,7 @@ export default function HomeScreen() {
                     </View>
                 </Pressable>
             </Modal>
-            
+
             {/* 캘린더 모달 */}
             <QuickCalendar visible={calendarVisible} onClose={() => setCalendarVisible(false)} />
 

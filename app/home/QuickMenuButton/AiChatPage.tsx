@@ -1,5 +1,3 @@
-// ✅ 전체적으로 정리된 FaithChatPage (키보드 올라올 때 FlatList 함께 올라오게 수정)
-
 import { useDesign } from '@/app/context/DesignSystem';
 import { useAppTheme } from '@/app/context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -151,9 +149,9 @@ export default function FaithChatPage() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-            <View style={[styles.header, { 
+            <View style={[styles.header, {
                 borderColor: colors.border,
-                backgroundColor: colors.background 
+                backgroundColor: colors.background
             }]}>
                 <TouchableOpacity onPress={() => router.back()}>
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
@@ -182,7 +180,7 @@ export default function FaithChatPage() {
                                 backgroundColor: item.role === 'user' ? '#fcdc3c' : colors.primary,
                             }
                         ]}>
-                            <Text style={{ 
+                            <Text style={{
                                 color: item.role === 'user' ? '#000' : '#fff',
                                 fontSize: 16
                             }}>
@@ -198,31 +196,31 @@ export default function FaithChatPage() {
                     }}
                 />
 
-                <View style={[styles.inputContainer, { 
+                <View style={[styles.inputContainer, {
                     borderColor: colors.border,
-                    backgroundColor: colors.background 
+                    backgroundColor: colors.background
                 }]}>
                     <TextInput
                         value={question}
                         onChangeText={setQuestion}
                         placeholder="메시지를 입력하세요"
                         placeholderTextColor={colors.subtext}
-                        style={[styles.input, { 
+                        style={[styles.input, {
                             backgroundColor: colors.surface,
                             color: colors.text,
                             maxHeight: 100
                         }]}
                         multiline
                     />
-                    <TouchableOpacity 
-                        onPress={handleAsk} 
+                    <TouchableOpacity
+                        onPress={handleAsk}
                         disabled={!question.trim()}
                         style={styles.sendButton}
                     >
-                        <Ionicons 
-                            name="send" 
-                            size={24} 
-                            color={question.trim() ? colors.primary : colors.border} 
+                        <Ionicons
+                            name="send"
+                            size={24}
+                            color={question.trim() ? colors.primary : colors.border}
                         />
                     </TouchableOpacity>
                 </View>

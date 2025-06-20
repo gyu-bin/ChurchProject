@@ -5,6 +5,7 @@ export default {
     expo: {
         name: 'ChurchAppExpo',
         slug: 'ChurchAppExpo', // ✅ 반드시 소문자, EAS 프로젝트 slug와 일치
+        platforms: ["ios", "android"],
         version: '1.0.0',
         orientation: 'portrait',
         owner: 'rbqls6651',
