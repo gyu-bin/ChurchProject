@@ -1,8 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import { Dimensions, FlatList, ImageBackground, Text, TouchableOpacity, View } from 'react-native';
+import dayjs from 'dayjs';
+import 'dayjs/locale/ko';
+import weekday from 'dayjs/plugin/weekday';
+import localizedFormat from 'dayjs/plugin/localizedFormat';
+import {font} from "@/app/context/DesignSystem";
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
+
+dayjs.extend(weekday);
+dayjs.extend(localizedFormat);
+dayjs.locale('ko');
 
 export default function EventBannerCarousel({ events = [], goToEvent, theme }: any) {
   const flatListRef = useRef<FlatList>(null);
@@ -49,6 +58,21 @@ export default function EventBannerCarousel({ events = [], goToEvent, theme }: a
     }
   };
 
+  const formattedDateTime = (
+      startDate: any, // Timestamp 또는 string
+      startTime: string,
+      location: string
+  ) => {
+    const date = dayjs(startDate?.toDate ? startDate.toDate() : startDate);
+    if (!date.isValid()) return ''; // 혹시라도 아직 값이 안 들어온 경우
+
+    const month = date.month() + 1;
+    const day = date.date();
+    const dayOfWeek = date.format('dd'); // 월, 화, 수...
+
+    return `${month}월 ${day}일(${dayOfWeek}) ${startTime}, ${location}`;
+  };
+
   const renderItem = ({ item }: any) => (
       <TouchableOpacity
           activeOpacity={0.9}
@@ -56,36 +80,67 @@ export default function EventBannerCarousel({ events = [], goToEvent, theme }: a
           style={{ width: SCREEN_WIDTH }}
       >
         {item.bannerImage ? (
-            <ImageBackground
-                source={{ uri: item.bannerImage }}
+            /*<TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => goToEvent(item.id)}
                 style={{
-                  width: SCREEN_WIDTH,
-                  height: 300,
-                  aspectRatio: 16/9,
-                  justifyContent: 'flex-end',
-                  overflow: 'hidden',
+                  width: "100%",
+                  paddingHorizontal: 20,
+                  paddingVertical: 24,
+                  alignItems: 'center',
                 }}
-                resizeMode="contain"
+            >*/
+            <View
+                style={{
+                  backgroundColor: '#CCB08A',
+                  borderRadius: 16,
+                  paddingVertical: 24,
+                  paddingHorizontal: 20,
+                  alignItems: 'center',
+                  width: SCREEN_WIDTH * 0.93,
+                  height: 400
+                }}
             >
-              <View style={{ backgroundColor: 'rgba(0,0,0,0.32)', padding: 10 }}>
-                <Text style={{ color: '#fff', fontSize: 30, fontWeight: 'bold', marginBottom: 6 }}>
-                  {item.title}
-                </Text>
-                <View
-                    style={{
-                      alignSelf: 'flex-start',
-                      backgroundColor: theme.colors.primary,
-                      borderRadius: 8,
-                      paddingHorizontal: 16,
-                      paddingVertical: 7,
-                    }}
-                >
-                  <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15 }}>
-                    자세히 보기
-                  </Text>
-                </View>
-              </View>
-            </ImageBackground>
+              {/* 배너 이미지 */}
+              <ImageBackground
+                  source={{ uri: item.bannerImage }}
+                  style={{
+                    marginTop: 20,
+                    width: SCREEN_WIDTH * 0.5,
+                    height: 250,
+                    borderRadius: 8,
+                    marginBottom: 16,
+                    overflow: 'hidden',
+                  }}
+                  resizeMode="cover"
+              />
+
+              {/* 제목 */}
+              <Text
+                  style={{
+                    fontSize: 30,
+                    fontWeight: 'bold',
+                    color: '#fff',
+                    textAlign: 'center',
+                    marginBottom: 6,
+                  }}
+              >
+                {item.title}
+              </Text>
+
+              {/* 날짜 + 시간 + 장소 */}
+              <Text
+                  style={{
+                    fontSize: 20,
+                    color: '#f0f0f0',
+                    textAlign: 'center',
+                  }}
+              >
+                {formattedDateTime(item.startDate, item.startTime, item.location)}
+              </Text>
+            </View>
+
+            // </TouchableOpacity>
         ) : (
             <View
                 style={{
@@ -136,9 +191,32 @@ export default function EventBannerCarousel({ events = [], goToEvent, theme }: a
       </TouchableOpacity>
   );
 
+  const realLength = events.length;
+  const visibleIndex = realLength === 1 ? 1 : Math.min(Math.max(currentIndex, 1), realLength);
+
   return (
     <View>
       <View style={{ position: 'relative' }}>
+
+        {realLength > 1 && (
+            <View
+                style={{
+                  position: 'absolute',
+                  top: 15,
+                  right: 10,
+                  backgroundColor: 'rgba(0,0,0,0.5)',
+                  borderRadius: 20,
+                  paddingHorizontal: 12,
+                  paddingVertical: 4,
+                  zIndex: 999,
+                }}
+            >
+              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>
+                {visibleIndex} / {realLength}
+              </Text>
+            </View>
+        )}
+
         <FlatList
           ref={flatListRef}
           data={data}
@@ -157,6 +235,7 @@ export default function EventBannerCarousel({ events = [], goToEvent, theme }: a
           initialScrollIndex={events.length === 1 ? 0 : 1}
           renderItem={renderItem}
         />
+
 
   {events.length > 1 && (
         <TouchableOpacity

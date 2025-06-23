@@ -1,4 +1,4 @@
-import { db } from '@/firebase/config';
+import {db, storage} from '@/firebase/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { addDoc, collection, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore';
@@ -11,7 +11,7 @@ import {
     SafeAreaView,
     ScrollView,
     Text, TextInput, TouchableOpacity,
-    View
+    View,Image
 } from 'react-native';
 // import { sendNotification, sendPushNotification } from '@/services/notificationService';
 import { useDesign } from '@/app/context/DesignSystem';
@@ -20,11 +20,16 @@ import { showToast } from "@/utils/toast";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-// import { useAppTheme } from '@/context/ThemeContext';
+import  {ImagePickerAsset} from "expo-image-picker";
+import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
+import {getDownloadURL, ref, uploadBytes} from "firebase/storage";
+import {Calendar} from "react-native-calendars";
 
 export default function CreateTeam() {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
+    const [location, setLocation] = useState('');
     const [leader, setLeader] = useState('');
     const [creatorEmail, setCreatorEmail] = useState('');
     const [isUnlimited, setIsUnlimited] = useState(false); // ✅ 무제한 상태
@@ -38,6 +43,14 @@ export default function CreateTeam() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { colors, spacing, radius, font } = useDesign();
+    const [imageURLs, setImageURLs] = useState<ImagePickerAsset[]>([]);
+
+    const [showCalendar, setShowCalendar] = useState(false);
+
+    // yyyy-mm-dd 형식으로 포맷하는 함수
+    const formatDate = (date: Date) => {
+        return date.toISOString().split('T')[0];
+    };
 
     const categories = [
         { label: '✨ 반짝소모임', value: '반짝소모임' },
@@ -62,6 +75,54 @@ export default function CreateTeam() {
         });
     }, []);
 
+    const pickImage = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('권한 필요', '이미지 라이브러리에 접근 권한이 필요합니다.');
+            return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: false,
+            quality: 0.8,
+            base64: false,
+        });
+
+        if (!result.canceled && result.assets.length > 0) {
+            const selected = result.assets[0];
+            setImageURLs([selected]); // ✅ 하나만 선택
+            // setForm(prev => ({ ...prev, bannerImage: selected.uri })); // ✅ 미리보기용 uri 저장
+        }
+    };
+
+    const uploadImageToFirebase = async (imageUri: string): Promise<string> => {
+        try {
+            // 이미지 조작 (크기 그대로, 포맷만 JPEG으로 확실히 지정)
+            const manipulated = await ImageManipulator.manipulateAsync(
+                imageUri,
+                [],
+                { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+            );
+
+            const response = await fetch(manipulated.uri);
+            const blob = await response.blob();
+
+            const filename = `uploads/${Date.now()}_${Math.floor(Math.random() * 10000)}.jpg`;
+            const storageRef = ref(storage, filename);
+
+            await uploadBytes(storageRef, blob, {
+                contentType: 'image/jpeg',
+            });
+
+            const downloadUrl = await getDownloadURL(storageRef);
+            return downloadUrl;
+        } catch (err) {
+            console.error('🔥 업로드 실패:', err);
+            throw err;
+        }
+    };
+
     const handleSubmit = async () => {
         if (!name) {
             Alert.alert('입력 오류', '모임명을 입력해주세요.');
@@ -84,6 +145,13 @@ export default function CreateTeam() {
             max = -1;
         }
 
+        const downloadUrls: string[] = [];
+
+        for (const image of imageURLs) {
+            const downloadUrl = await uploadImageToFirebase(image.uri);
+            downloadUrls.push(downloadUrl);
+        }
+
         try {
             const baseData = {
                 name,
@@ -95,6 +163,8 @@ export default function CreateTeam() {
                 maxMembers: max,
                 category,
                 ...(category === '✨ 반짝소모임' && expirationDate && { expirationDate }),
+                ...(category === '✨ 반짝소모임' && location && { location }),
+                thumbnail: downloadUrls[0],
             };
 
             const teamRef = await addDoc(collection(db, 'teams'), {
@@ -126,7 +196,7 @@ export default function CreateTeam() {
                 }, timeUntilDeletion);
 
                 // 🔹 푸시 알림: 모든 Expo 토큰 대상, 중복 방지
-                try {
+                /*try {
                     const snapshot = await getDocs(collection(db, 'users'));
                     const sentTokens = new Set<string>();
                     const pushPromises: Promise<void>[] = [];
@@ -157,7 +227,7 @@ export default function CreateTeam() {
 
                 } catch (err) {
                     console.error('❌ 푸시 알림 실패:', err);
-                }
+                }*/
             }
 
             showToast('✅ 모임이 성공적으로 생성되었습니다.');
@@ -181,7 +251,6 @@ export default function CreateTeam() {
         setShowDatePicker(Platform.OS === 'ios');
         setExpirationDate(currentDate);
     };
-
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background,paddingTop: Platform.OS === 'android' ? insets.top : 20 }}>
@@ -213,6 +282,44 @@ export default function CreateTeam() {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
                 <ScrollView contentContainerStyle={{ padding: spacing.lg, flexGrow: 1 }}>
+                    <View style={{ padding: spacing.md }}>
+                        <Text style={{
+                            fontSize: font.title,
+                            fontWeight: 'bold',
+                            marginBottom: spacing.sm,
+                            color: colors.text,
+                        }}>
+                            썸네일 이미지
+                        </Text>
+
+                        {imageURLs.length > 0 ? (
+                            <Image
+                                source={{ uri: imageURLs[0].uri }}
+                                style={{
+                                    width: '100%',
+                                    height: 180,
+                                    borderRadius: radius.md,
+                                    marginBottom: spacing.sm,
+                                    resizeMode: 'cover',
+                                }}
+                            />
+                        ) : (
+                            <TouchableOpacity
+                                onPress={pickImage}
+                                style={{
+                                    backgroundColor: colors.primary,
+                                    paddingVertical: 10,
+                                    borderRadius: radius.sm,
+                                    alignItems: 'center',
+                                }}
+                            >
+                                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: font.body }}>
+                                    썸네일 이미지 선택하기
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+
                     <TextInput
                         placeholder="모임명 (예: 러닝크루)"
                         placeholderTextColor={colors.placeholder}
@@ -348,30 +455,94 @@ export default function CreateTeam() {
 
                     {/* 날짜 선택 (반짝소모임일 때만) */}
                     {category === '✨ 반짝소모임' && (
-                        <TouchableOpacity onPress={() => setShowDatePicker(true)} style={{
-                            backgroundColor: colors.surface,
-                            padding: spacing.md,
-                            borderRadius: radius.md,
-                            borderWidth: 1,
-                            borderColor: colors.border,
-                            marginBottom: spacing.md,
-                        }}>
-                            <Text style={{ color: colors.text, fontSize: font.body }}>
-                                {`날짜 선택: ${expirationDate.toLocaleDateString()}`}
-                            </Text>
-                            <Text style={{ color: colors.text, fontSize: font.caption }}>
-                                {'선택한 날짜 다음날 모임이 삭제됩니다.'}
-                            </Text>
-                        </TouchableOpacity>
-                    )}
+                        <>
+                            {/* 날짜 선택 */}
+                            <TouchableOpacity
+                                onPress={() => setShowCalendar(true)}
+                                style={{
+                                    backgroundColor: colors.surface,
+                                    padding: spacing.md,
+                                    borderRadius: radius.md,
+                                    borderWidth: 1,
+                                    borderColor: colors.border,
+                                    marginBottom: spacing.md,
+                                }}
+                            >
+                                <Text style={{ color: colors.text, fontSize: font.body }}>
+                                    {`날짜 선택: ${expirationDate.toLocaleDateString()}`}
+                                </Text>
+                                <Text style={{ color: colors.text, fontSize: font.caption }}>
+                                    {'선택한 날짜 다음날 모임이 삭제됩니다.'}
+                                </Text>
+                            </TouchableOpacity>
 
-                    {showDatePicker && category === '✨ 반짝소모임' && (
-                        <DateTimePicker
-                            value={expirationDate}
-                            mode='date'
-                            display='default'
-                            onChange={handleDateChange}
-                        />
+                            {category === '✨ 반짝소모임' && (
+                                <Modal visible={showCalendar} transparent animationType="fade">
+                                    <View style={{
+                                        flex: 1,
+                                        backgroundColor: 'rgba(0,0,0,0.4)',
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                    }}>
+                                        <View style={{
+                                            width: '90%',
+                                            backgroundColor: colors.background,
+                                            borderRadius: radius.md,
+                                            padding: spacing.md,
+                                        }}>
+                                            <Calendar
+                                                onDayPress={(day:any) => {
+                                                    setExpirationDate(new Date(day.dateString));
+                                                    setShowCalendar(false);
+                                                }}
+                                                markedDates={{
+                                                    [formatDate(expirationDate)]: {
+                                                        selected: true,
+                                                        marked: true,
+                                                        selectedColor: colors.primary,
+                                                    },
+                                                }}
+                                                theme={{
+                                                    backgroundColor: colors.background,
+                                                    calendarBackground: colors.background,
+                                                    textSectionTitleColor: colors.text,
+                                                    dayTextColor: colors.text,
+                                                    selectedDayTextColor: '#fff',
+                                                    selectedDayBackgroundColor: colors.primary,
+                                                    monthTextColor: colors.text,
+                                                    arrowColor: colors.primary,
+                                                }}
+                                            />
+
+                                            <TouchableOpacity
+                                                onPress={() => setShowCalendar(false)}
+                                                style={{ marginTop: spacing.md, alignItems: 'center' }}
+                                            >
+                                                <Text style={{ color: colors.primary, fontSize: font.body }}>닫기</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                </Modal>
+                            )}
+
+                            {/* 장소 입력 필드 */}
+                            <TextInput
+                                placeholder="모임 장소 입력 (예: 교회 앞 스타벅스)"
+                                placeholderTextColor={colors.placeholder}
+                                value={location}
+                                onChangeText={setLocation}
+                                style={{
+                                    backgroundColor: colors.surface,
+                                    padding: spacing.md,
+                                    borderRadius: radius.md,
+                                    borderWidth: 1,
+                                    borderColor: colors.border,
+                                    marginBottom: spacing.md,
+                                    color: colors.text,
+                                    fontSize: font.body,
+                                }}
+                            />
+                        </>
                     )}
 
                     <Modal

@@ -17,11 +17,15 @@ import { Calendar } from 'react-native-calendars';
 import Toast from 'react-native-root-toast';
 import {router} from "expo-router";
 import * as ImageManipulator from 'expo-image-manipulator';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import {useAppTheme} from "@/app/context/ThemeContext";
 
 export default function EventTab() {
+    const { mode } = useAppTheme();
+    const isDark = mode === 'dark';
     const { colors, spacing } = useDesign();
     const [modalVisible, setModalVisible] = useState(false);
-    const [form, setForm] = useState({ title: '', content: '', startDate: '', endDate: '', bannerImage: '', id: '' });
+    const [form, setForm] = useState({ title: '', content: '', startDate: '', endDate: '', bannerImage: '', startTime: '',endTime:'',location: '',id: '' });
     const [isDatePickerVisible, setDatePickerVisible] = useState(false);
     const [isSelectingStart, setIsSelectingStart] = useState(true);
     const [tempStart, setTempStart] = useState<Date | null>(null);
@@ -29,7 +33,9 @@ export default function EventTab() {
     const [refreshing, setRefreshing] = useState(false);
     const [eventList, setEventList] = useState<any[]>([]);
     const [imageURLs, setImageURLs] = useState<ImagePickerAsset[]>([]);
-
+    const [isSelectingStartTime, setIsSelectingStartTime] = useState(true);
+    const [tempTime, setTempTime] = useState<Date>(new Date());
+    const [timePickerVisible, setTimePickerVisible] = useState(false);
     const getMarkedRange = (start: Date, end: Date) => {
         const range: any = {};
         const current = new Date(start);
@@ -57,24 +63,6 @@ export default function EventTab() {
     useEffect(() => {
         fetchBanners();
     }, []);
-
-    /*const uploadImageToFirebase = async (localUri: string): Promise<string> => {
-        try {
-            const response = await fetch(localUri);
-            const blob: Blob = await response.blob();
-
-            const filename = `uploads/${Date.now()}_${Math.floor(Math.random() * 10000)}.jpg`;
-            const storageRef = ref(storage, filename);
-
-            await uploadBytes(storageRef, blob);
-
-            const downloadUrl = await getDownloadURL(storageRef);
-            return downloadUrl;
-        } catch (error: any) {
-            console.error('🔥 이미지 업로드 실패:', error);
-            throw error;
-        }
-    };*/
 
     // 이미지 선택
     const pickImage = async () => {
@@ -124,7 +112,6 @@ export default function EventTab() {
             throw err;
         }
     };
-    // 테스트
     const handleSave = async () => {
         try {
             console.log('⚙️ handleSave called');
@@ -147,6 +134,7 @@ export default function EventTab() {
                 startDate: new Date(form.startDate),
                 endDate: new Date(form.endDate),
                 bannerImage: downloadUrls[0],
+                startTime: form.startTime,
                 type: 'banner',
             };
 
@@ -158,6 +146,9 @@ export default function EventTab() {
                 startDate: '',
                 endDate: '',
                 bannerImage: '',
+                startTime :'',
+                endTime: '',
+                location: '', // ✅ 추가
                 id: '',
             });
             setImageURLs([]);
@@ -196,6 +187,8 @@ export default function EventTab() {
                 startDate: new Date(form.startDate),
                 endDate: new Date(form.endDate),
                 bannerImage: downloadUrls[0],
+                startTime: form.startTime,
+                location: form.location?.trim(), // ✅ 장소 추가
                 type: 'banner',
             };
 
@@ -209,6 +202,33 @@ export default function EventTab() {
             console.error('❌ 수정 실패:', err.message || err);
             Alert.alert('수정 실패', err.message || '이미지 업로드 중 오류가 발생했습니다.');
         }
+    };
+
+    const handleTimeChange = (_: any, selectedTime: Date | undefined) => {
+        if (Platform.OS === 'android') setTimePickerVisible(false); // Android는 즉시 닫힘
+
+        if (selectedTime) {
+            const hours = selectedTime.getHours();
+            const minutes = selectedTime.getMinutes();
+
+            // 오전/오후 형식 변환
+            const ampm = hours >= 12 ? '오후' : '오전';
+            const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+            const timeStr = `${ampm} ${hour12}시${minutes !== 0 ? ` ${minutes}분` : ''}`;
+
+            if (isSelectingStartTime) {
+                setForm((prev) => ({ ...prev, startTime: timeStr }));
+            } else {
+                setForm((prev) => ({ ...prev, endTime: timeStr }));
+            }
+        }
+    };
+
+    const formatKoreanTime = (date: Date) => {
+        return date.toLocaleTimeString('ko-KR', {
+            hour: 'numeric',
+            hour12: true,
+        });
     };
 
 const renderItem = ({ item }: any) => {
@@ -239,14 +259,17 @@ const renderItem = ({ item }: any) => {
                 onPress={() => {
                   const start = new Date(item.startDate.seconds * 1000);
                   const end = new Date(item.endDate.seconds * 1000);
-                  setForm({
-                    id: item.id,
-                    title: item.title,
-                    content: item.content,
-                    bannerImage: item.bannerImage,
-                    startDate: start.toISOString().split('T')[0],
-                    endDate: end.toISOString().split('T')[0],
-                  });
+                    setForm({
+                        id: item.id,
+                        title: item.title,
+                        content: item.content,
+                        bannerImage: item.bannerImage,
+                        startDate: start.toISOString().split('T')[0],
+                        endDate: end.toISOString().split('T')[0],
+                        startTime: formatKoreanTime(start), // 예: '오전 9시'
+                        endTime: formatKoreanTime(end),     // 예: '오후 6시'
+                        location: item.location, // ✅ 추가
+                    });
                   setTempStart(start);
                   setTempEnd(end);
                   setModalVisible(true);
@@ -290,7 +313,17 @@ const renderItem = ({ item }: any) => {
         {!modalVisible && (
             <TouchableOpacity
                 onPress={() => {
-                  setForm({ title: '', content: '', bannerImage: '', startDate: '', endDate: '', id: '' });
+                    setForm({
+                        id: '',
+                        title: '',
+                        content: '',
+                        bannerImage: '',
+                        startDate: '',
+                        endDate: '',
+                        startTime: '',
+                        endTime: '',
+                        location: '',
+                    });
                   setModalVisible(true);
                 }}
                 style={{ margin: spacing.md, backgroundColor: colors.primary, padding: spacing.md, borderRadius: 8 }}
@@ -355,12 +388,148 @@ const renderItem = ({ item }: any) => {
                 >
                   <Text style={{ textAlign: 'center', color: colors.text }}>배너 이미지 선택</Text>
                 </TouchableOpacity>
-                  {form.bannerImage !== '' && (
-                      <Image
-                          source={{ uri: form.bannerImage }}
-                          style={{ width: '100%', height: 160, borderRadius: 8 }}
-                          resizeMode="cover"
-                      />
+                  <TextInput
+                      placeholder="장소"
+                      value={form.location}
+                      onChangeText={(t) => setForm((prev) => ({ ...prev, location: t }))}
+                      placeholderTextColor={colors.subtext}
+                      style={{
+                          borderColor: colors.border,
+                          borderWidth: 1,
+                          borderRadius: 8,
+                          marginBottom: spacing.sm,
+                          padding: spacing.sm,
+                          color: colors.text,
+                      }}
+                  />
+                  {/* 시간 선택 영역 */}
+                  {form.startDate && form.endDate && (
+                      <>
+                          {/* 시작 시간 선택 버튼 */}
+                          <TouchableOpacity
+                              onPress={() => setTimePickerVisible(true)}
+                              style={{
+                                  backgroundColor: colors.border,
+                                  padding: spacing.sm,
+                                  borderRadius: 8,
+                                  marginBottom: spacing.sm,
+                              }}
+                          >
+                              <Text style={{ textAlign: 'center', color: colors.text }}>시간 선택</Text>
+                          </TouchableOpacity>
+
+                          {/* 선택된 시작 시간 표시 */}
+                          {form.startTime && (
+                              <Text style={{ textAlign: 'center', marginBottom: spacing.sm, color: colors.text }}>
+                                  {form.startTime}
+                              </Text>
+                          )}
+                      </>
+                  )}
+
+                  {/* 시간 선택 모달 */}
+                  {timePickerVisible && (
+                      Platform.OS === 'ios' ? (
+                          <Modal visible transparent animationType="fade">
+                              <View
+                                  style={{
+                                      flex: 1,
+                                      backgroundColor: 'rgba(0,0,0,0.4)',
+                                      justifyContent: 'center',
+                                      alignItems: 'center',
+                                  }}
+                              >
+                                  <View
+                                      style={{
+                                          backgroundColor: colors.surface,
+                                          padding: spacing.lg,
+                                          borderRadius: 16,
+                                          width: '80%',
+                                          alignItems: 'center',
+                                      }}
+                                  >
+                                      <Text
+                                          style={{
+                                              fontSize: 16,
+                                              fontWeight: '600',
+                                              marginBottom: 12,
+                                              color: colors.text,
+                                          }}
+                                      >
+                                          시간 선택
+                                      </Text>
+
+                                      <DateTimePicker
+                                          mode="time"
+                                          value={tempTime}
+                                          display="spinner"
+                                          is24Hour={false}
+                                          themeVariant={isDark ? 'dark' : 'light'}
+                                          onChange={(event, selectedTime) => {
+                                              if (selectedTime) {
+                                                  setTempTime(selectedTime);
+                                              }
+                                          }}
+                                      />
+
+                                      <View style={{ flexDirection: 'row', marginTop: 20 }}>
+                                          <TouchableOpacity
+                                              onPress={() => setTimePickerVisible(false)}
+                                              style={{
+                                                  flex: 1,
+                                                  backgroundColor: colors.border,
+                                                  paddingVertical: spacing.sm,
+                                                  borderRadius: 8,
+                                                  marginRight: spacing.sm,
+                                              }}
+                                          >
+                                              <Text style={{ textAlign: 'center', color: colors.text }}>취소</Text>
+                                          </TouchableOpacity>
+
+                                          <TouchableOpacity
+                                              onPress={() => {
+                                                  const hours = tempTime.getHours();
+                                                  const minutes = tempTime.getMinutes();
+                                                  const ampm = hours >= 12 ? '오후' : '오전';
+                                                  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+                                                  const formatted = `${ampm} ${hour12}시${minutes > 0 ? ` ${minutes}분` : ''}`;
+
+                                                  setForm((prev) => ({ ...prev, startTime: formatted }));
+                                                  setTimePickerVisible(false);
+                                              }}
+                                              style={{
+                                                  flex: 1,
+                                                  backgroundColor: colors.primary,
+                                                  paddingVertical: spacing.sm,
+                                                  borderRadius: 8,
+                                              }}
+                                          >
+                                              <Text style={{ textAlign: 'center', color: '#fff' }}>확인</Text>
+                                          </TouchableOpacity>
+                                      </View>
+                                  </View>
+                              </View>
+                          </Modal>
+                      ) : (
+                          <DateTimePicker
+                              mode="time"
+                              value={new Date()}
+                              is24Hour={false}
+                              display="clock"
+                              onChange={(event, selectedDate) => {
+                                  if (event.type === 'set' && selectedDate) {
+                                      const hours = selectedDate.getHours();
+                                      const minutes = selectedDate.getMinutes();
+                                      const ampm = hours >= 12 ? '오후' : '오전';
+                                      const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+                                      const formatted = `${ampm} ${hour12}시${minutes > 0 ? ` ${minutes}분` : ''}`;
+
+                                      setForm((prev) => ({ ...prev, startTime: formatted }));
+                                  }
+                                  setTimePickerVisible(false);
+                              }}
+                          />
+                      )
                   )}
                 <View style={{ flexDirection: 'row', marginTop: spacing.sm }}>
                   <TouchableOpacity

@@ -353,13 +353,17 @@ export default function HomeScreen() {
                             ))}
                         </View>
 
+                        {/*반짝 & 기도*/}
+                        <View style={{ backgroundColor: theme.colors.surface,borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
+                            <ActiveSection />
+                        </View>
+
+                        {/*공지 & 일정*/}
                         <View style={{ backgroundColor: theme.colors.surface,borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
                             <HomeNotices />
                         </View>
 
-                    <View style={{ backgroundColor: theme.colors.surface,borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
-                        <ActiveSection />
-                    </View>
+
                 </View>
                 )}
                 data={prayers}
@@ -396,7 +400,7 @@ export default function HomeScreen() {
                 </Pressable>
             </Modal>
             {/* AI로 질문하기 모달 */}
-            <Modal visible={quickModal === 'ai'} transparent animationType="fade" onRequestClose={() => setQuickModal(null)}>
+           {/* <Modal visible={quickModal === 'ai'} transparent animationType="fade" onRequestClose={() => setQuickModal(null)}>
                 <Pressable style={{ flex:1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent:'center', alignItems:'center' }} onPress={() => setQuickModal(null)}>
                     <View style={{ backgroundColor:'#fff', borderRadius:20, padding:24, minWidth:280, alignItems:'center', shadowColor:'#000', shadowOpacity:0.1, shadowRadius:12 }}>
                         <Text style={{ fontSize:20, fontWeight:'bold', marginBottom:12 }}>AI로 질문하기</Text>
@@ -409,7 +413,7 @@ export default function HomeScreen() {
                         </View>
                     </View>
                 </Pressable>
-            </Modal>
+            </Modal>*/}
 
         </SafeAreaView>
     );

@@ -18,9 +18,13 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View,Image
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+
+
 export default function TeamsScreen() {
     const [teams, setTeams] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -78,12 +82,12 @@ export default function TeamsScreen() {
         });
     }, []);
 
+
     useEffect(() => {
         if (firstLoad && filter && typeof filter === 'string') {
           setCategoryOption(filter);
           setFilterOption('');
           setTeams(allTeams.filter(team => team.category === filter));
-          setFirstLoad(false); // ✅ 최초 진입 이후엔 필터 적용 안 함
         }
       }, [filter, allTeams, firstLoad]);
 
@@ -395,7 +399,7 @@ useFocusEffect(
     const handleCategorySelect = (category: string) => {
         setCategoryOption(category);
         setCategoryModalVisible(false);
-      
+
         if (category === '전체') {
           setTeams(allTeams);
         } else {
@@ -463,65 +467,77 @@ useFocusEffect(
         const max = item.maxMembers ?? null;
         const isUnlimited = max === -1 || max === null || max === undefined;
         const isFull = !isUnlimited && typeof max === 'number' && members >= max;
-
+        const isClosed = item.isClosed;
         return (
             <TouchableOpacity
                 key={item.id}
-                style={
-                    isGrid
-  ? [
-      styles.gridItem,
-      {
-        backgroundColor: colors.surface,
-        borderColor: colors.border,
-        borderWidth: 1,
-        borderRadius: 16,
-        padding: 14,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
-      },
-    ]
-  : [
-      styles.listItem,
-      {
-        backgroundColor: colors.surface,
-        borderColor: colors.border,
-        borderWidth: 1,
-        borderRadius: 16,
-        padding: 14,
-        shadowColor:  '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
-      },
-    ]
-                }
+                style={{
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    borderWidth: 1,
+                    borderRadius: 16,
+                    padding: 8, // 🔽 패딩 줄임
+                    margin: 6,
+                    width: (SCREEN_WIDTH - 3 * 12) / 2, // 🔽 좌우 margin 고려한 2열 정렬
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.05,
+                    shadowRadius: 4,
+                    elevation: 2,
+                }}
                 onPress={() => handlePress(item.id)}
             >
-                <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text, marginBottom: 4 }}>
-    {item.name}
-  </Text>
+                {item.thumbnail? (
+                    <Image
+                        source={{ uri: item.thumbnail}}
+                        style={{
+                            width: 64,
+                            height: 64,
+                            borderRadius: 8,
+                            backgroundColor: '#eee',
+                            marginRight: 12,
+                        }}
+                    />
+                ) : (
+                    <View
+                        style={{
+                            width: 64,
+                            height: 64,
+                            borderRadius: 8,
+                            backgroundColor: '#eee',
+                            marginRight: 12,
+                        }}
+                    />
+                )}
 
-  <Text style={{ fontSize: 13, color: colors.primary, marginBottom: 8 }}>
-    {item.category ? `(${item.category})` : '(카테고리 없음)'}
-  </Text>
+                <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text, marginBottom: 4 }}>
+                        {item.name}
+                    </Text>
+                    <Text style={{ fontSize: 13, color: colors.primary, marginBottom: 8 }}>
+                        {item.category ? `(${item.category})` : '(카테고리 없음)'}
+                    </Text>
 
-  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-    <Ionicons name="person-outline" size={14} color={colors.subtext} style={{ marginRight: 4 }} />
-    <Text style={{ fontSize: 12, color: colors.subtext }}>모임장: {item.leader}</Text>
-  </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                        <Ionicons name="person-outline" size={14} color={colors.subtext} style={{ marginRight: 4 }} />
+                        <Text style={{ fontSize: 12, color: colors.subtext }}>모임장: {item.leader}</Text>
+                    </View>
 
-  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-    <Ionicons name="people-outline" size={14} color={isFull ? colors.error : colors.subtext} style={{ marginRight: 4 }} />
-    <Text style={{ fontSize: 12, color: isFull ? colors.error : colors.subtext }}>
-      인원: {members} / {isUnlimited ? '무제한' : max}
-      {isFull && ' (모집마감)'}
-    </Text>
-  </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Ionicons
+                            name="people-outline"
+                            size={14}
+                            color={isFull ? colors.error : colors.subtext}
+                            style={{ marginRight: 4 }}
+                        />
+                        <Text style={{ fontSize: 12, color: (isFull || item.isClosed) ? colors.error : colors.subtext }}>
+                            인원: {members} / {isUnlimited ? '무제한' : max}
+                            {(isFull || item.isClosed) ?' (모집마감)' : '(모집중)'}
+                        </Text>
+                    </View>
+                </View>
             </TouchableOpacity>
         );
     };
@@ -661,7 +677,7 @@ useFocusEffect(
                     keyExtractor={(item) => item.id}
                     renderItem={renderItem}
                     contentContainerStyle={styles.listContent}
-                    columnWrapperStyle={isGrid && {gap: 16}}
+                    columnWrapperStyle={isGrid && {gap: 4}}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh}/>}
                     onEndReachedThreshold={0.3}
                     onEndReached={() => fetchTeams()}/></>
