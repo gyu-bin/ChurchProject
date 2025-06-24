@@ -8,8 +8,8 @@ interface FlexibleCarouselProps {
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const ITEM_WIDTH = SCREEN_WIDTH * 0.7;               // 80%
-const ITEM_MARGIN_RIGHT = SCREEN_WIDTH * 0.05;       // 5%
-const NEXT_VISIBLE = SCREEN_WIDTH * 0.15;            // 오른쪽 15% 보이게
+const ITEM_MARGIN_RIGHT = SCREEN_WIDTH * 0.1;       // 5%
+const NEXT_VISIBLE = SCREEN_WIDTH * 0.25;            // 오른쪽 15% 보이게
 const SNAP_INTERVAL = ITEM_WIDTH + ITEM_MARGIN_RIGHT;
 const MULTIPLIER = 1000;
 

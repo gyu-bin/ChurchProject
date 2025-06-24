@@ -324,6 +324,11 @@ export default function HomeScreen() {
                                     label: '심방 요청',
                                     action: () => router.push('../home/counseling'),
                                 },
+                                {
+                                    icon: <Text style={{ fontSize: 30 }}>🔖</Text>,
+                                    label: '함께 읽기',
+                                    action: () => router.push('../home/counseling'),
+                                },
                                 /*{
                                     icon: <Text style={{ fontSize: 30 }}>🤖</Text>,
                                     label: 'AI로 질문',

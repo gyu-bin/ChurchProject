@@ -191,7 +191,7 @@ export default function ActiveSection() {
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Ionicons name="person-circle-outline" size={14} color={colors.subtext} />
                         <Text style={{ fontSize: font.caption, color: colors.subtext }}>
-                            {team.leader} · {team.membersList?.length ?? 1}명 참여 · 진행확정
+                            {team.leader} · {team.membersList?.length ?? 1}명 참여
                         </Text>
                     </View>
                 </View>
