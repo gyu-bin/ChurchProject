@@ -56,11 +56,11 @@ export default function RootLayoutInner() {
           <Stack.Screen name="teams" options={{ headerShown: false }} />
           <Stack.Screen name="home/notifications" options={{ headerShown: false }} />
           <Stack.Screen name="home/QuickMenuButton/AiChatPage" options={{ headerShown: false }} />
-          <Stack.Screen name="setting/videoManager" options={{ headerShown: false }} />
-          <Stack.Screen name="setting/joinTeams" options={{ headerShown: false }} />
-          <Stack.Screen name="setting/noticeManager" options={{ headerShown: false }} />
-          <Stack.Screen name="setting/feedback" options={{ headerShown: false }} />
-          <Stack.Screen name="setting/ForgotPassword" options={{ headerShown: false }} />
+          <Stack.Screen name="my/videoManager" options={{ headerShown: false }} />
+          <Stack.Screen name="my/joinTeams" options={{ headerShown: false }} />
+          <Stack.Screen name="my/noticeManager" options={{ headerShown: false }} />
+          <Stack.Screen name="my/feedback" options={{ headerShown: false }} />
+          <Stack.Screen name="my/ForgotPassword" options={{ headerShown: false }} />
           <Stack.Screen name="home/QuickMenuButton/catechism" options={{ headerShown: false }} />
           <Stack.Screen name="home/QuickMenuButton/todayVerse" options={{ headerShown: false }} />
           <Stack.Screen name="home/BannerDetail/event" options={{ headerShown: false }} />
