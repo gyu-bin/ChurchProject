@@ -58,6 +58,7 @@ export default function RootLayoutInner() {
           <Stack.Screen name="home/QuickMenuButton/AiChatPage" options={{ headerShown: false }} />
           <Stack.Screen name="my/videoManager" options={{ headerShown: false }} />
           <Stack.Screen name="my/joinTeams" options={{ headerShown: false }} />
+          <Stack.Screen name="my/setting" options={{ headerShown: false }} />
           <Stack.Screen name="my/noticeManager" options={{ headerShown: false }} />
           <Stack.Screen name="my/feedback" options={{ headerShown: false }} />
           <Stack.Screen name="my/ForgotPassword" options={{ headerShown: false }} />

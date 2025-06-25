@@ -1,31 +1,18 @@
-import DeviceManager from "@/app/my/DeviceManager";
 import ThemeToggle from "@/components/ThemeToggle";
 import PushSettings from "@/app/my/VerseNotificationSettings";
 import { useDesign } from "@/app/context/DesignSystem";
 import { useAppTheme } from "@/app/context/ThemeContext";
 import { db } from "@/firebase/config";
-import { useAppDispatch } from "@/hooks/useRedux";
-import { clearPrayers } from "@/redux/slices/prayerSlice";
-import { clearTeams } from "@/redux/slices/teamSlice";
-import { logoutUser } from "@/redux/slices/userSlice";
-import { removeDeviceToken } from "@/services/registerPushToken";
 import { setScrollCallback } from "@/utils/scrollRefManager";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import bcrypt from "bcryptjs";
 import { useRouter } from "expo-router";
-import {
-  deleteDoc,
-  doc,
-  getDoc,
-  onSnapshot,
-  updateDoc,
-} from "firebase/firestore";
+import { doc, getDoc, onSnapshot, updateDoc } from "firebase/firestore";
 import LottieView from "lottie-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
-  FlatList,
   Modal,
   Platform,
   SafeAreaView,
@@ -56,16 +43,13 @@ export default function MyScreen() {
   const router = useRouter();
   const { mode } = useAppTheme();
   const isDark = mode === "dark";
-  const { colors, spacing, font, radius } = useDesign();
+  const { colors } = useDesign();
   const insets = useSafeAreaInsets();
-  const horizontalMargin = Platform.OS === "ios" ? 20 : 16;
 
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
-  const dispatch = useAppDispatch();
 
   const [showEditProfile, setShowEditProfile] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
 
   const [oldPassword, setOldPassword] = useState("");
@@ -149,16 +133,6 @@ export default function MyScreen() {
     });
   };
 
-  const handleLogout = async () => {
-    await removeDeviceToken();
-    await AsyncStorage.removeItem("currentUser");
-    await AsyncStorage.removeItem("useBiometric");
-    dispatch(logoutUser());
-    dispatch(clearPrayers());
-    dispatch(clearTeams());
-    router.replace("/auth/login");
-  };
-
   const handleSaveProfile = async () => {
     if (!user?.name) return; // 문서 ID로 name을 사용 중
 
@@ -195,41 +169,6 @@ export default function MyScreen() {
       console.error(err);
       Alert.alert("수정 실패", "다시 시도해주세요.");
     }
-  };
-
-  const handleDeleteAccount = async () => {
-    if (!user?.email) return;
-
-    Alert.alert(
-      "계정 탈퇴",
-      "정말로 계정을 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.",
-      [
-        { text: "취소", style: "cancel" },
-        {
-          text: "삭제",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteDoc(doc(db, "users", user.email)); // 🔥 Firestore 삭제
-              await AsyncStorage.removeItem("currentUser"); // 로컬 삭제
-
-              dispatch(logoutUser());
-              dispatch(clearPrayers());
-              dispatch(clearTeams());
-
-              Toast.show("👋 계정이 삭제되었습니다.", {
-                duration: Toast.durations.SHORT,
-                position: Toast.positions.BOTTOM,
-              });
-
-              router.replace("/auth/login");
-            } catch (err) {
-              Alert.alert("오류 발생", "계정 삭제에 실패했습니다.");
-            }
-          },
-        },
-      ]
-    );
   };
 
   // 재인증 함수 추가
@@ -311,13 +250,16 @@ export default function MyScreen() {
           <Text
             style={{
               flex: 1,
-              fontSize: 32,
+              fontSize: 24,
               fontWeight: "700",
               color: colors.text,
             }}
           >
-            설정
+            마이페이지
           </Text>
+          <TouchableOpacity onPress={() => router.push("/my/setting")}>
+            <Ionicons name="settings-outline" size={24} color={colors.text} />
+          </TouchableOpacity>
         </View>
 
         {/* 프로필 카드 */}
@@ -693,253 +635,45 @@ export default function MyScreen() {
           </View>
         )}
 
-        {/* 기타 설정 */}
-        <View style={{ marginBottom: 32 }}>
-          <Text
+        <View style={{ gap: 12 }}>
+          {/* 피드백 */}
+          <TouchableOpacity
+            onPress={() => router.push("/my/feedback")}
             style={{
-              fontSize: 18,
-              fontWeight: "600",
-              color: colors.text,
-              marginBottom: 16,
-              paddingLeft: 4,
+              backgroundColor: colors.surface,
+              padding: 20,
+              borderRadius: 16,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.06,
+              shadowRadius: 6,
+              elevation: 2,
             }}
           >
-            기타
-          </Text>
-
-          <View style={{ gap: 12 }}>
-            {/* 피드백 */}
-            <TouchableOpacity
-              onPress={() => router.push("/my/feedback")}
-              style={{
-                backgroundColor: colors.surface,
-                padding: 20,
-                borderRadius: 16,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.06,
-                shadowRadius: 6,
-                elevation: 2,
-              }}
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
             >
               <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: "#ddd6fe",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
               >
-                <View
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    backgroundColor: "#ddd6fe",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Ionicons name="chatbox-outline" size={20} color="#7c3aed" />
-                </View>
-                <Text style={{ fontSize: 16, color: colors.text }}>
-                  피드백 보내기
-                </Text>
+                <Ionicons name="chatbox-outline" size={20} color="#7c3aed" />
               </View>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={colors.subtext}
-              />
-            </TouchableOpacity>
-
-            {/* 로그인된 기기 */}
-            <TouchableOpacity
-              onPress={() => setModalVisible(true)}
-              style={{
-                backgroundColor: colors.surface,
-                padding: 20,
-                borderRadius: 16,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.06,
-                shadowRadius: 6,
-                elevation: 2,
-              }}
-            >
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
-              >
-                <View
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    backgroundColor: "#e0f2fe",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Ionicons
-                    name="phone-portrait-outline"
-                    size={20}
-                    color="#0284c7"
-                  />
-                </View>
-                <Text style={{ fontSize: 16, color: colors.text }}>
-                  로그인된 기기
-                </Text>
-              </View>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={colors.subtext}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-        <DeviceManager
-          visible={modalVisible}
-          onClose={() => setModalVisible(false)}
-        />
-
-        {/* 계정 설정 */}
-        <View style={{ marginBottom: 32 }}>
-          <Text
-            style={{
-              fontSize: 18,
-              fontWeight: "600",
-              color: colors.text,
-              marginBottom: 16,
-              paddingLeft: 4,
-            }}
-          >
-            계정
-          </Text>
-
-          <View style={{ gap: 12 }}>
-            {/* 비밀번호 찾기 */}
-            <TouchableOpacity
-              onPress={() => router.push("/my/ForgotPassword")}
-              style={{
-                backgroundColor: colors.surface,
-                padding: 20,
-                borderRadius: 16,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.06,
-                shadowRadius: 6,
-                elevation: 2,
-              }}
-            >
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
-              >
-                <View
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    backgroundColor: "#fef3c7",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Ionicons name="key-outline" size={20} color="#d97706" />
-                </View>
-                <Text style={{ fontSize: 16, color: colors.text }}>
-                  비밀번호 찾기
-                </Text>
-              </View>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={colors.subtext}
-              />
-            </TouchableOpacity>
-
-            {/* 회원 탈퇴 */}
-            <TouchableOpacity
-              onPress={handleDeleteAccount}
-              style={{
-                backgroundColor: colors.surface,
-                padding: 20,
-                borderRadius: 16,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.06,
-                shadowRadius: 6,
-                elevation: 2,
-              }}
-            >
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
-              >
-                <View
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    backgroundColor: "#fee2e2",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Ionicons name="trash-outline" size={20} color="#ef4444" />
-                </View>
-                <Text style={{ fontSize: 16, color: colors.error }}>
-                  회원 탈퇴
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.error} />
-            </TouchableOpacity>
-
-            {/* 로그아웃 */}
-            <TouchableOpacity
-              onPress={handleLogout}
-              style={{
-                backgroundColor: colors.surface,
-                padding: 20,
-                borderRadius: 16,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.06,
-                shadowRadius: 6,
-                elevation: 2,
-              }}
-            >
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
-              >
-                <View
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    backgroundColor: "#fee2e2",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Ionicons name="log-out-outline" size={20} color="#ef4444" />
-                </View>
-                <Text style={{ fontSize: 16, color: colors.error }}>
-                  로그아웃
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.error} />
-            </TouchableOpacity>
-          </View>
+              <Text style={{ fontSize: 16, color: colors.text }}>
+                피드백 보내기
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.subtext} />
+          </TouchableOpacity>
         </View>
 
         {/* 정회원 전환 모달 */}
@@ -1171,7 +905,7 @@ export default function MyScreen() {
           </View>
         </Modal>
 
-        {/* 비밀번호 변경 모달 */}
+        {/* 비밀번호 변경 모달  - 프로필 수정에서 사용*/}
         <Modal visible={showPasswordFields} transparent animationType="fade">
           <View
             style={{
