@@ -10,20 +10,137 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Dimensions,
     FlatList,
+    Image,
     Modal,
     Platform,
     RefreshControl,
-    SafeAreaView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    View,Image
+    View
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { EdgeInsets, useSafeAreaInsets } from 'react-native-safe-area-context';
+import styled from 'styled-components/native';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
+// Define the theme interface
+interface Theme {
+    colors: {
+        background: string;
+        primary: string;
+        surface: string;
+        text: string;
+        border: string;
+        subtext: string;
+    };
+    radius: {
+        lg: number;
+    };
+    spacing: {
+        md: number;
+        sm: number;
+    };
+    font: {
+        body: number;
+        heading: number;
+    };
+}
+
+// Styled components
+const SafeArea = styled.SafeAreaView<{ insets: EdgeInsets }>`
+    flex: 1;
+    background-color: ${({ theme }: { theme: Theme }) => theme.colors.background};
+    padding-top: ${({ insets }: { insets: EdgeInsets }) => Platform.OS === 'android' ? insets.top + 10 : 0}px;
+`;
+
+const Header = styled.View<{ theme: Theme }>`
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-top: ${Platform.OS === 'ios' ? 15 : 10}px;
+    padding-horizontal: 15px;
+`;
+
+const Title = styled.Text<{ theme: Theme }>`
+    font-size: 24px;
+    font-weight: bold;
+    color: ${({ theme }:any) => theme.colors.text};
+`;
+
+const Actions = styled.View<{ theme: Theme }>`
+    flex-direction: row;
+    gap: 16px;
+`;
+
+const SearchInputContainer = styled.View<{ theme: Theme }>`
+    padding-horizontal: 15px;
+    margin-bottom: 10px;
+`;
+
+const SearchInput = styled.TextInput<{ theme: Theme }>`
+    border-width: 1px;
+    border-color: ${({ theme }:any) => theme.colors.border};
+    border-radius: 8px;
+    padding-horizontal: 12px;
+    padding-vertical: 8px;
+    color: ${({ theme }:any) => theme.colors.text};
+    background-color: ${({ theme }:any) => theme.colors.surface};
+`;
+
+const FilterSortContainer = styled.View<{ theme: Theme }>`
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-color: ${({ theme }:any) => theme.colors.border};
+    margin-horizontal: ${({ theme }:any) => theme.spacing.md}px;
+    padding-vertical: ${({ theme }:any) => theme.spacing.sm}px;
+`;
+
+const FilterButton = styled(TouchableOpacity)<{ theme: Theme }>`
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    min-width: 100px;
+`;
+
+const CategoryButton = styled(TouchableOpacity)<{ theme: Theme }>`
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    flex: 1;
+    min-width: 150px;
+`;
+
+const SortButton = styled(TouchableOpacity)<{ theme: Theme }>`
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    min-width: 150px;
+`;
+
+const StyledText = styled.Text<{ theme: Theme }>`
+    color: ${({ theme }:any) => theme.colors.text};
+    font-size: ${({ theme }:any) => theme.font.body}px;
+`;
+
+const StyledIcon = styled(Ionicons)<{ theme: Theme }>`
+    color: ${({ theme }:any) => theme.colors.text};
+`;
+
+const NoTeamsView = styled.View<{ theme: Theme }>`
+    align-items: center;
+    margin-top: 40px;
+`;
+
+const NoTeamsText = styled.Text<{ theme: Theme }>`
+    color: ${({ theme }:any) => theme.colors.subtext};
+`;
 
 export default function TeamsScreen() {
     const [teams, setTeams] = useState<any[]>([]);
@@ -84,12 +201,17 @@ export default function TeamsScreen() {
 
 
     useEffect(() => {
-        if (firstLoad && filter && typeof filter === 'string') {
-          setCategoryOption(filter);
-          setFilterOption('');
-          setTeams(allTeams.filter(team => team.category === filter));
+        if (typeof filter === 'string' && filter.length > 0) {
+            setCategoryOption(filter);
+            setFilterOption('');
+            setTeams(allTeams.filter(team => team.category === filter));
+        } else {
+            // 🔁 filter 없으면 전체 목록
+            setCategoryOption('');
+            setFilterOption('');
+            setTeams(allTeams); // 또는 초기값
         }
-      }, [filter, allTeams, firstLoad]);
+    }, [filter, allTeams]);
 
     const fetchTeams = useCallback(async (isInitial = false) => {
         if (!hasMore && !isInitial) return;
@@ -133,15 +255,15 @@ export default function TeamsScreen() {
         fetchTeams(true);
     }, []);
 
-useFocusEffect(
-    useCallback(() => {
-        return () => {
-            setCategoryOption('');           // ✅ 카테고리 초기화
-            setFilterOption('전체');         // ✅ 기본 필터로 변경
-            fetchTeams(true);               // ✅ 전체 팀 다시 불러오기
-        };
-    }, [])
-);
+    useFocusEffect(
+        useCallback(() => {
+            if (!filter || filter === '') {
+                setCategoryOption('');
+                setFilterOption('전체');
+                fetchTeams(true);
+            }
+        }, [filter])
+    );
 
     useEffect(() => {
         const q = query(
@@ -220,7 +342,7 @@ useFocusEffect(
 
         if (updatedOptions.includes('내가 가입된 모임만 보기')) {
             filtered = filtered.filter(team =>
-                team.leaderEmail === userEmail
+                Array.isArray(team.membersList) && team.membersList.includes(userEmail)
             );
         }
 
@@ -467,7 +589,6 @@ useFocusEffect(
         const max = item.maxMembers ?? null;
         const isUnlimited = max === -1 || max === null || max === undefined;
         const isFull = !isUnlimited && typeof max === 'number' && members >= max;
-        const isClosed = item.isClosed;
         return (
             <TouchableOpacity
                 key={item.id}
@@ -555,107 +676,59 @@ useFocusEffect(
     );
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background,paddingTop: Platform.OS === 'android' ? insets.top+10 : 0 }}>
-            <View style={styles.header}>
-                <Text style={[styles.title, { color: colors.text }]}>📋 소모임 목록</Text>
-                <View style={styles.actions}>
+        <SafeArea insets={insets}>
+            <Header>
+                <Title>📋 소모임 목록</Title>
+                <Actions>
                     <TouchableOpacity
                         onPress={() => {
                             setIsSearchVisible(prev => !prev);
                             setTimeout(() => searchInputRef.current?.focus(), 100);
                         }}
                     >
-                        <Ionicons name={isSearchVisible ? 'close' : 'search'} size={24} color={colors.subtext} />
+                        <StyledIcon name={isSearchVisible ? 'close' : 'search'} size={24} />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => router.push('/teams/create')}>
-                        <Ionicons name="add-circle-outline" size={26} color={colors.primary} />
+                        <StyledIcon name="add-circle-outline" size={26} />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setIsGrid(!isGrid)}>
-                        <Ionicons name={isGrid ? 'list-outline' : 'grid-outline'} size={24} color={colors.subtext} />
+                        <StyledIcon name={isGrid ? 'list-outline' : 'grid-outline'} size={24} />
                     </TouchableOpacity>
-                </View>
-            </View>
+                </Actions>
+            </Header>
 
             {isSearchVisible && (
-                <View style={{ paddingHorizontal: 15, marginBottom: 10 }}>
-                    <TextInput
+                <SearchInputContainer>
+                    <SearchInput
                         ref={searchInputRef}
                         placeholder="팀 이름 또는 모임장으로 검색"
                         placeholderTextColor={colors.subtext}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
-                        style={{
-                            borderWidth: 1,
-                            borderColor: colors.border,
-                            borderRadius: 8,
-                            paddingHorizontal: 12,
-                            paddingVertical: 8,
-                            color: colors.text,
-                            backgroundColor: colors.surface,
-                        }}
                     />
-                </View>
+                </SearchInputContainer>
             )}
 
-            <View
-                style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    borderTopWidth: 1,
-                    borderBottomWidth: 1,
-                    borderColor: colors.border,
-                    marginHorizontal: spacing.md,
-                    paddingVertical: spacing.sm,
-                }}
-            >
-                <TouchableOpacity
-                    onPress={() => handleFilterChange('상세 필터')}
-                    style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        minWidth: 120,
-                    }}
-                >
-                    <Text style={{ color: colors.text, fontSize: font.body }}>상세 필터</Text>
-                    <Ionicons name="filter" size={18} color={colors.text} />
-                </TouchableOpacity>
+            <FilterSortContainer>
+                <FilterButton onPress={() => handleFilterChange('상세 필터')}>
+                    <StyledText>상세 필터</StyledText>
+                    <StyledIcon name="filter" size={18} />
+                </FilterButton>
 
-                <View style={{ height: '60%', width: 1, backgroundColor: colors.border }} />
+                <View style={{ height: '100%', width: 1, backgroundColor: colors.border }} />
 
-                {/* 가운데: 카테고리 필터 */}
-                <TouchableOpacity
-  onPress={() => setCategoryModalVisible(true)}
-  style={{
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-  }}
->
-  <Text style={{ color: colors.text, fontSize: font.body }}>
-    {categoryOption && categoryOption !== '전체' ? categoryOption : '카테고리'}
-  </Text>
-  <Ionicons name="chevron-down" size={18} color={colors.text} style={{ marginLeft: 4 }} />
-</TouchableOpacity>
+                <CategoryButton onPress={() => setCategoryModalVisible(true)}>
+                    <StyledText>{categoryOption && categoryOption !== '전체' ? categoryOption : '카테고리'}</StyledText>
+                    <StyledIcon name="chevron-down" size={18} style={{ marginLeft: 4 }} />
+                </CategoryButton>
 
-                {/* 중간 구분선 */}
-                <View style={{ height: '60%', width: 1, backgroundColor: colors.border }} />
+                <View style={{ height: '100%', width: 1, backgroundColor: colors.border }} />
 
-                <TouchableOpacity
-                    onPress={() => setSortModalVisible(true)}
-                    style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        minWidth: 150,
-                    }}
-                >
-                    <Text style={{ color: colors.text, fontSize: font.body }}>{sortOption}</Text>
-                    <Ionicons name="swap-vertical" size={18} color={colors.text} />
-                </TouchableOpacity>
-            </View>
+                <SortButton onPress={() => setSortModalVisible(true)}>
+                    <StyledText>{sortOption}</StyledText>
+                    <StyledIcon name="swap-vertical" size={18} />
+                </SortButton>
+            </FilterSortContainer>
 
             {renderFilterModal()}
             {renderCategoryModal()}
@@ -664,12 +737,11 @@ useFocusEffect(
             {loading && !refreshing ? (
                 renderSkeletons()
             ) : teams.length === 0 ? (
-                <View style={{ alignItems: 'center', marginTop: 40 }}>
-                    <Text style={{ color: colors.subtext }}>등록된 소모임이 없습니다.</Text>
-                </View>
+                <NoTeamsView>
+                    <NoTeamsText>등록된 소모임이 없습니다.</NoTeamsText>
+                </NoTeamsView>
             ) : (
-                <>
-                    <FlatList
+                <FlatList
                     ref={mainListRef}
                     data={filteredTeams}
                     key={isGrid ? 'grid' : 'list'}
@@ -677,35 +749,19 @@ useFocusEffect(
                     keyExtractor={(item) => item.id}
                     renderItem={renderItem}
                     contentContainerStyle={styles.listContent}
-                    columnWrapperStyle={isGrid && {gap: 4}}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh}/>}
+                    columnWrapperStyle={isGrid && { gap: 4 }}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                     onEndReachedThreshold={0.3}
-                    onEndReached={() => fetchTeams()}/></>
+                    onEndReached={() => fetchTeams()}
+                />
             )}
-        </SafeAreaView>
+        </SafeArea>
     );
 }
 
 const screenWidth = Dimensions.get('window').width;
 
 const styles = StyleSheet.create({
-    header: {
-        width: '100%',
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-        paddingTop: Platform.OS === 'ios' ? 15 : 10,
-        paddingHorizontal: 15,
-    },
-    title: {
-        fontSize: 24,
-        fontWeight: 'bold',
-    },
-    actions: {
-        flexDirection: 'row',
-        gap: 16,
-    },
     listContent: {
         alignItems: 'center',
         paddingBottom: 60,
@@ -722,7 +778,6 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.06,
         shadowRadius: 4,
         elevation: 3,
-        borderWidth: 1,
     },
     listItem: {
         width: screenWidth - 40,

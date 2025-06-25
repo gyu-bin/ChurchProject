@@ -8,8 +8,10 @@ import React, { useRef } from 'react';
 import { Platform, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
+import { ThemeProvider } from 'styled-components/native';
+import { useDesign } from '@/app/context/DesignSystem';
 
-export default function TabLayout() {
+export default function TabLayout({children}:any) {
     const { mode } = useAppTheme();
     const isDark = mode === 'dark';
     const insets = useSafeAreaInsets();
@@ -21,9 +23,12 @@ export default function TabLayout() {
     const pathname = usePathname(); // ✅ 여기에 있어야 함
     const scrollRefMap = useAppSelector((state: RootState) => state.scrollRef.refMap); // ✅ 여기도
     const lastPressTimestamps = useRef<Record<string, number>>({}); // ✅ 이 부분도
+    const theme = useDesign();
 
     return (
+        <ThemeProvider theme={theme}>
         <Tabs
+            initialRouteName="home"
             screenOptions={({ route }) => {
                 const baseHeight = Platform.OS === 'android' ? 60 : 75;
                 return {
@@ -48,7 +53,7 @@ export default function TabLayout() {
                             case 'departments':
                                 iconName = 'business-outline';
                                 break;
-                            case 'index':
+                            case 'home':
                                 iconName = 'home-outline';
                                 break;
                             case 'teams':
@@ -84,7 +89,7 @@ export default function TabLayout() {
                 }}
             />
             <Tabs.Screen
-                name="index"
+                name="home"
                 options={{
                     title: '',
                     tabBarIcon: ({ color, size }) => (
@@ -146,5 +151,6 @@ export default function TabLayout() {
                 }}
             />
         </Tabs>
+        </ThemeProvider>
     );
 }

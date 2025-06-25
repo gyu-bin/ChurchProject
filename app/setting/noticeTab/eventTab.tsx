@@ -114,7 +114,6 @@ export default function EventTab() {
     };
     const handleSave = async () => {
         try {
-            console.log('⚙️ handleSave called');
 
             if (!form.title || !form.content || imageURLs.length === 0) {
                 Alert.alert('모든 필드를 입력해주세요');

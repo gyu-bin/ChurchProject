@@ -25,6 +25,11 @@ import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import {getDownloadURL, ref, uploadBytes} from "firebase/storage";
 import {Calendar} from "react-native-calendars";
+import LottieView from "lottie-react-native";
+import loading1 from "@/assets/lottie/Animation - 1747201461030.json";
+import loading2 from "@/assets/lottie/Animation - 1747201431992.json";
+import loading3 from "@/assets/lottie/Animation - 1747201413764.json";
+import loading4 from "@/assets/lottie/Animation - 1747201330128.json";
 
 export default function CreateTeam() {
     const [name, setName] = useState('');
@@ -46,6 +51,11 @@ export default function CreateTeam() {
     const [imageURLs, setImageURLs] = useState<ImagePickerAsset[]>([]);
 
     const [showCalendar, setShowCalendar] = useState(false);
+
+    const [loading, setLoading] = useState(false);
+    const [loadingAnimation, setLoadingAnimation] = useState<any>(null); // 선택된 애니메이션
+
+    const loadingAnimations = [loading1, loading2, loading3, loading4];
 
     // yyyy-mm-dd 형식으로 포맷하는 함수
     const formatDate = (date: Date) => {
@@ -134,11 +144,14 @@ export default function CreateTeam() {
             return;
         }
 
+        setLoading(true);
+
         let max: number|null = null;
         if (!isUnlimited) {
             max = parseInt(memberCount);
             if (isNaN(max) || max < 2 || max > 99) {
                 Alert.alert('입력 오류', '참여 인원 수는 2명 이상 99명 이하로 설정해주세요.');
+                setLoading(false);
                 return;
             }
         } else {
@@ -232,9 +245,10 @@ export default function CreateTeam() {
 
             showToast('✅ 모임이 성공적으로 생성되었습니다.');
             router.replace('/teams');
-
         } catch (error: any) {
             Alert.alert('생성 실패', error.message);
+        }finally {
+            setLoading(false);
         }
     };
 
@@ -577,6 +591,27 @@ export default function CreateTeam() {
                     >
                         <Text style={{ color: '#fff', fontSize: font.body, fontWeight: 'bold' }}>소모임 생성</Text>
                     </TouchableOpacity>
+
+                    <Modal visible={loading} transparent animationType="fade">
+                        <View
+                            style={{
+                                flex: 1,
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                backgroundColor: 'rgba(0,0,0,0.3)',
+                            }}
+                        >
+                            {loadingAnimation && (
+                                <LottieView
+                                    source={loadingAnimation}
+                                    autoPlay
+                                    loop
+                                    style={{ width: 300, height: 300 }}
+                                />
+                            )}
+                            <Text style={{ color: '#fff', marginTop: 20, fontSize: 16 }}>로그인 중...</Text>
+                        </View>
+                    </Modal>
 
                     <Text style={{
                         fontSize: Platform.OS === 'android' ? 12 : 14,

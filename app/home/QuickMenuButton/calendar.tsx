@@ -3,9 +3,9 @@ import { useDesign } from '@/app/context/DesignSystem';
 import { db } from '@/firebase/config';
 import dayjs from 'dayjs';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {
-    Modal,
+    Modal, PanResponder, PanResponderGestureState,
     Platform,
     Pressable,
     ScrollView,
@@ -75,6 +75,22 @@ export default function CalendarModal({
     });
   };
 
+    const panResponder = useRef(
+        PanResponder.create({
+            onMoveShouldSetPanResponder: (_, gestureState) =>
+                Math.abs(gestureState.dx) > 20 && Math.abs(gestureState.dy) < 20,
+            onPanResponderRelease: (_, gestureState: PanResponderGestureState) => {
+                if (gestureState.dx > 50) {
+                    // 👉 오른쪽 스와이프 → 이전 달
+                    setCurrentMonth(prev => prev.subtract(1, 'month'));
+                } else if (gestureState.dx < -50) {
+                    // 👈 왼쪽 스와이프 → 다음 달
+                    setCurrentMonth(prev => prev.add(1, 'month'));
+                }
+            },
+        })
+    ).current;
+
   if (!visible) return null;
 
   return (
@@ -126,70 +142,68 @@ export default function CalendarModal({
           </View>
 
           {/* 달력 */}
-          <ScrollView style={{ maxHeight: 360 }}>
-            {getCalendarMatrix().map((week, i) => (
-              <View key={i} style={{ flexDirection: 'row' }}>
-                {week.map(date => {
-                  const dateStr = date.format('YYYY-MM-DD');
-                  const isSelected = dateStr === selectedDate;
-                  const isToday = dateStr === today.format('YYYY-MM-DD');
-                  const dayEvents = getEventsForDate(dateStr);
+            <View style={{ maxHeight: 360 }} {...panResponder.panHandlers}>
+                {getCalendarMatrix().map((week, i) => (
+                    <View key={i} style={{ flexDirection: 'row' }}>
+                        {week.map(date => {
+                            const dateStr = date.format('YYYY-MM-DD');
+                            const isSelected = dateStr === selectedDate;
+                            const isToday = dateStr === today.format('YYYY-MM-DD');
+                            const dayEvents = getEventsForDate(dateStr);
 
-                  return (
-                    <TouchableOpacity
-                      key={dateStr}
-                      style={{
-                        flex: 1,
-                        borderWidth: 0.5,
-                        borderColor: '#eee',
-                        // padding: 6,
-                        // margin: 2,
-                        borderRadius: 8,
-                        backgroundColor: isSelected ? colors.primary : undefined,
-                        minHeight: 70,
-                      }}
-                      onPress={() => setSelectedDate(dateStr)}
-                    >
-                      <Text
-                        style={{
-                          textAlign: 'center',
-                          color: isSelected ? '#fff' : colors.text,
-                          fontWeight: isToday ? 'bold' : 'normal',
-                        }}
-                      >
-                        {date.date()}
-                      </Text>
+                            return (
+                                <TouchableOpacity
+                                    key={dateStr}
+                                    style={{
+                                        flex: 1,
+                                        borderWidth: 0.5,
+                                        borderColor: '#eee',
+                                        borderRadius: 8,
+                                        backgroundColor: isSelected ? colors.primary : undefined,
+                                        minHeight: 70,
+                                    }}
+                                    onPress={() => setSelectedDate(dateStr)}
+                                >
+                                    <Text
+                                        style={{
+                                            textAlign: 'center',
+                                            color: isSelected ? '#fff' : colors.text,
+                                            fontWeight: isToday ? 'bold' : 'normal',
+                                        }}
+                                    >
+                                        {date.date()}
+                                    </Text>
 
-                      {dayEvents.slice(0, 2).map(ev => (
-                        <View
-                          key={ev.id}
-                          style={{
-                            backgroundColor: isSelected ? '#ffffff33' : '#eee',
-                            paddingHorizontal: 6,
-                            paddingVertical: 2,
-                            borderRadius: 6,
-                            marginTop: 4,
-                            alignSelf: 'center',
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 11,
-                              color: isSelected ? '#fff' : colors.text,
-                              fontWeight: '500',
-                            }}
-                            numberOfLines={1}
-                          >
-                            {ev.title}
-                          </Text>
-                        </View>
-                      ))}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            ))}
-          </ScrollView>
+                                    {dayEvents.slice(0, 2).map(ev => (
+                                        <View
+                                            key={ev.id}
+                                            style={{
+                                                backgroundColor: isSelected ? '#ffffff33' : '#eee',
+                                                paddingHorizontal: 6,
+                                                paddingVertical: 2,
+                                                borderRadius: 6,
+                                                marginTop: 4,
+                                                alignSelf: 'center',
+                                            }}
+                                        >
+                                            <Text
+                                                style={{
+                                                    fontSize: 11,
+                                                    color: isSelected ? '#fff' : colors.text,
+                                                    fontWeight: '500',
+                                                }}
+                                                numberOfLines={1}
+                                            >
+                                                {ev.title}
+                                            </Text>
+                                        </View>
+                                    ))}
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                ))}
+            </View>
 
           {/* 상세 일정 */}
           <View style={{ marginTop: spacing.lg }}>

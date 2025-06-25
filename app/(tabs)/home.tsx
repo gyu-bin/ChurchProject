@@ -22,20 +22,18 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Dimensions,
     FlatList,
-    Image,
     Modal,
     Platform,
     Pressable,
     RefreshControl,
-    SafeAreaView,
     Text,
-    TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DefaultTheme } from 'styled-components';
+import styled from 'styled-components/native';
 import QuickCalendar from '../home/QuickMenuButton/calendar';
-
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SIDE_MARGIN = 16;
@@ -65,6 +63,134 @@ interface EventNotice {
     banner?: string;
     type: 'banner';
 }
+
+// Define the theme interface
+interface Theme {
+    colors: {
+        background: string;
+        primary: string;
+        surface: string;
+        text: string;
+    };
+    radius: {
+        lg: number;
+    };
+    spacing: {
+        md: number;
+    };
+}
+
+// Styled components
+const SafeArea = styled.SafeAreaView<DefaultTheme>`
+    flex: 1;
+    background-color: ${({ theme }: { theme: Theme }) => theme.colors.background};
+`;
+
+const HeaderView = styled.View`
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+`;
+
+const LogoContainer = styled.View`
+    width: 40px;
+    height: 40px;
+    border-radius: 20px;
+    overflow: hidden;
+    background-color: #fff;
+    shadow-color: #000;
+    shadow-offset: 0px 2px;
+    shadow-opacity: 0.1;
+    shadow-radius: 4px;
+    elevation: 3;
+`;
+
+const LogoText = styled.Text`
+    font-size: 30px;
+    font-weight: 700;
+    color: #4cc9f0;
+    margin-left: 12px;
+    letter-spacing: 1px;
+    text-shadow-color: rgba(76, 201, 240, 0.3);
+    text-shadow-offset: 0px 2px;
+    text-shadow-radius: 4px;
+`;
+
+const NotificationBadge = styled.View<DefaultTheme>`
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background-color: ${({ theme }: { theme: Theme }) => theme.colors.primary};
+    border-radius: 12px;
+    min-width: 20px;
+    height: 20px;
+    align-items: center;
+    justify-content: center;
+    padding-horizontal: 4px;
+`;
+
+const QuickMenuContainer = styled.View`
+    flex-direction: row;
+    justify-content: space-around;
+    margin-vertical: 15px;
+`;
+
+const QuickMenuButtonContainer = styled.View`
+    width: 56px;
+    height: 56px;
+    border-radius: 28px;
+    background-color: #f5f6fa;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 6px;
+    shadow-color: #000;
+    shadow-opacity: 0.06;
+    shadow-radius: 4px;
+    elevation: 2;
+`;
+
+const QuickMenuLabel = styled.Text<DefaultTheme>`
+    color: ${({ theme }: { theme: Theme }) => theme.colors.text};
+    font-size: 15px;
+    font-weight: 500;
+`;
+
+// Additional styled components
+const ListHeaderContainer = styled.View<DefaultTheme>`
+    padding: ${({ theme }: { theme: Theme }) => theme.spacing.md}px;
+    gap: ${({ theme }: { theme: Theme }) => theme.spacing.md}px;
+`;
+
+const RowContainer = styled.View`
+    flex-direction: row;
+    align-items: center;
+`;
+
+const NotificationButton = styled(TouchableOpacity)`
+    position: relative;
+`;
+
+const StyledImage = styled.Image`
+    width: 100%;
+    height: 100%;
+`;
+
+const StyledText = styled.Text`
+    color: #fff;
+    font-size: 12px;
+    font-weight: bold;
+`;
+
+const StyledView = styled.View<DefaultTheme>`
+    background-color: ${({ theme }: { theme: Theme }) => theme.colors.surface};
+    border-radius: ${({ theme }: { theme: Theme }) => theme.radius.lg}px;
+    padding: ${({ theme }: { theme: Theme }) => theme.spacing.md}px;
+    shadow-color: #000;
+    shadow-offset: 0px 2px;
+    shadow-opacity: 0.08;
+    shadow-radius: 6px;
+    //elevation: 3;
+`;
 
 export default function HomeScreen() {
     const router = useRouter();
@@ -247,129 +373,78 @@ export default function HomeScreen() {
     }, []);
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>
+        <SafeArea style={{ paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>
             <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
             <FlatList
                 ref={mainListRef}
-                ListHeaderComponent={(<View style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <View style={{
-                                width: 40,
-                                height: 40,
-                                borderRadius: 20,
-                                overflow: 'hidden',
-                                backgroundColor: '#fff',
-                                shadowColor: '#000',
-                                shadowOffset: {
-                                    width: 0,
-                                    height: 2,
-                                },
-                                shadowOpacity: 0.1,
-                                shadowRadius: 4,
-                                elevation: 3,
-                            }}>
-                                <Image
+                ListHeaderComponent={(<ListHeaderContainer>
+                    <HeaderView>
+                        <RowContainer>
+                            <LogoContainer>
+                                <StyledImage
                                     source={require('@/assets/logoVer1.png')}
-                                    style={{ width: '100%', height: '100%' }}
                                     resizeMode="cover"
                                 />
-                            </View>
-                            <Text style={{
-                                fontSize: 30,
-                                fontWeight: '700',
-                                color: '#4cc9f0',
-                                marginLeft: 12,
-                                letterSpacing: 1,
-                                textShadowColor: 'rgba(76, 201, 240, 0.3)',
-                                textShadowOffset: { width: 0, height: 2 },
-                                textShadowRadius: 4,
-                            }}>Xion</Text>
-                        </View>
-                        <TouchableOpacity onPress={() => router.push('/home/notifications')} style={{ position: 'relative' }}>
+                            </LogoContainer>
+                            <LogoText>Xion</LogoText>
+                        </RowContainer>
+                        <NotificationButton onPress={() => router.push('/home/notifications')}>
                             <Ionicons name="notifications-outline" size={24} color={theme.colors.text} />
                             {notifications.length > 0 && (
-                                <View style={{ position: 'absolute', top: -6, right: -6, backgroundColor: theme.colors.primary, borderRadius: 12, minWidth: 20, height: 20, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
-                                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>{notifications.length}</Text>
-                                </View>
+                                <NotificationBadge>
+                                    <StyledText>{notifications.length}</StyledText>
+                                </NotificationBadge>
                             )}
-                        </TouchableOpacity>
-                    </View>
+                        </NotificationButton>
+                    </HeaderView>
 
                     {/* 상단배너*/}
-                    {/*{banners?.length > 0 && (*/}
-                        <BannerCarousel events={banners} goToEvent={goToEvent} theme={theme} />
-                    {/*)}*/}
+                    <BannerCarousel events={banners} goToEvent={goToEvent} theme={theme} />
 
-                        {/* 퀵메뉴 */}
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginVertical: 24 }}>
-                            {[
-                                {
-                                    icon: <Text style={{ fontSize: 30 }}>💕</Text>,
-                                    label: '오늘의 말씀',
-                                    action: () => router.push('../home/QuickMenuButton/todayVerse'),
-                                },
-                                {
-                                    icon: <Text style={{ fontSize: 30 }}>📅</Text>,
-                                    label: '캘린더',
-                                    action: () => setCalendarVisible(true),
-                                },
-                                {
-                                    icon: <Text style={{ fontSize: 30 }}>📖</Text>,
-                                    label: '교리',
-                                    action: () => router.push('../home/QuickMenuButton/catechism/'),
-                                },
-                                {
-                                    icon: <Text style={{ fontSize: 30 }}>💬</Text>,
-                                    label: '심방 요청',
-                                    action: () => router.push('../home/counseling'),
-                                },
-                                {
-                                    icon: <Text style={{ fontSize: 30 }}>🔖</Text>,
-                                    label: '함께 읽기',
-                                    action: () => router.push('../home/counseling'),
-                                },
-                                /*{
-                                    icon: <Text style={{ fontSize: 30 }}>🤖</Text>,
-                                    label: 'AI로 질문',
-                                    action: () => router.push('../home/QuickMenuButton/AiChatPage'),
-                                },*/
-                            ].map((item, idx) => (
-                                <TouchableOpacity key={idx} onPress={item.action} style={{ alignItems: 'center', width: 72 }}>
-                                    <View
-                                        style={{
-                                            width: 56,
-                                            height: 56,
-                                            borderRadius: 28,
-                                            backgroundColor: '#f5f6fa',
-                                            justifyContent: 'center',
-                                            alignItems: 'center',
-                                            marginBottom: 6,
-                                            shadowColor: '#000',
-                                            shadowOpacity: 0.06,
-                                            shadowRadius: 4,
-                                            elevation: 2,
-                                        }}
-                                    >
-                                        {item.icon}
-                                    </View>
-                                    <Text style={{ color: theme.colors.text, fontSize: 15, fontWeight: '500' }}>{item.label}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
+                    {/* 퀵메뉴 */}
+                    <QuickMenuContainer>
+                        {[
+                            {
+                                icon: <Text style={{ fontSize: 30 }}>💕</Text>,
+                                label: '오늘의 말씀',
+                                action: () => router.push('../home/QuickMenuButton/todayVerse'),
+                            },
+                            {
+                                icon: <Text style={{ fontSize: 30 }}>📅</Text>,
+                                label: '캘린더',
+                                action: () => setCalendarVisible(true),
+                            },
+                            {
+                                icon: <Text style={{ fontSize: 30 }}>📖</Text>,
+                                label: '교리',
+                                action: () => router.push('../home/QuickMenuButton/catechism/'),
+                            },
+                            {
+                                icon: <Text style={{ fontSize: 30 }}>💬</Text>,
+                                label: '심방 요청',
+                                action: () => router.push('../home/counseling'),
+                            },
+                        ].map((item, idx) => (
+                            <TouchableOpacity key={idx} onPress={item.action} style={{ alignItems: 'center', width: 72 }}>
+                                <QuickMenuButtonContainer>
+                                    {item.icon}
+                                </QuickMenuButtonContainer>
+                                <QuickMenuLabel>{item.label}</QuickMenuLabel>
+                            </TouchableOpacity>
+                        ))}
+                    </QuickMenuContainer>
 
-                        {/*반짝 & 기도*/}
-                        <View style={{ backgroundColor: theme.colors.surface,borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
-                            <ActiveSection />
-                        </View>
+                    {/*반짝 & 기도*/}
+                    <StyledView>
+                        <ActiveSection />
+                    </StyledView>
 
-                        {/*공지 & 일정*/}
-                        <View style={{ backgroundColor: theme.colors.surface,borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
-                            <HomeNotices />
-                        </View>
+                    {/*공지 & 일정*/}
+                    <StyledView>
+                        <HomeNotices />
+                    </StyledView>
 
-
-                </View>
+                </ListHeaderContainer>
                 )}
                 data={prayers}
                 keyExtractor={(item) => item.id}
@@ -420,20 +495,6 @@ export default function HomeScreen() {
                 </Pressable>
             </Modal>*/}
 
-        </SafeAreaView>
-    );
-}
-
-// 퀵 메뉴 버튼 컴포넌트
-function QuickMenuButton({ icon, label, onPress }: { icon: React.ReactNode | string, label: string, onPress: () => void }) {
-    return (
-        <TouchableOpacity onPress={onPress} style={{ alignItems: 'center', width: 72 }}>
-            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#f5f6fa', justifyContent: 'center', alignItems: 'center', marginBottom: 6, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }}>
-                {typeof icon === 'string' ? (
-                    <Text style={{ fontSize: 30 }}>{icon}</Text>
-                ) : icon}
-            </View>
-            <Text style={{ color: '#2d3748', fontSize: 15, fontWeight: '500' }}>{label}</Text>
-        </TouchableOpacity>
+        </SafeArea>
     );
 }

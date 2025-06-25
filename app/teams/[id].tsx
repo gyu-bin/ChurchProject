@@ -73,6 +73,7 @@ type Team = {
     meetingTime?: string;
     expirationDate?: any;
     thumbnail?: string;
+    isClosed?: boolean;
     [key: string]: any; // 기타 필드를 허용하는 경우
 };
 
@@ -128,7 +129,7 @@ export default function TeamDetail() {
 
     const [scheduleDate, setScheduleDate] = useState('');
     const [isDatePickerVisible, setDatePickerVisible] = useState(false);
-    const [isClosed, setIsClosed] = useState(team?.isClosed ?? false);
+    const [isClosed, setIsClosed] = useState<boolean>(false); // 초기값을 false로 고정하지 말고
     const [alreadyRequested, setAlreadyRequested] = useState(false);
 
     const [chatBadgeCount, setChatBadgeCount] = useState(0);
@@ -184,7 +185,9 @@ export default function TeamDetail() {
     useEffect(() => {
         if (team) {
             setEditCategory(team.category || '');
+            setIsClosed(team.isClosed ?? false);
         }
+
     }, [team]);
 
     useEffect(() => {
@@ -470,6 +473,7 @@ export default function TeamDetail() {
         if (!isUnlimited) {
             newMax = Number(editCapacity);
             if (isNaN(newMax) || newMax < currentCount) {
+                setUpdateLoading(false); // ✅ Alert 전에 모달 끄기
                 Alert.alert(
                     '유효하지 않은 최대 인원',
                     `현재 모임 인원(${currentCount}명)보다 작을 수 없습니다.`
@@ -736,10 +740,8 @@ export default function TeamDetail() {
 
             if (result.action === Share.sharedAction) {
                 if (result.activityType) {
-                    // shared with activity type of result.activityType
                     showToast('링크가 공유되었습니다');
                 } else {
-                    // shared
                     showToast('링크가 공유되었습니다');
                 }
             }
@@ -914,11 +916,6 @@ export default function TeamDetail() {
         }
     };
 
-      const handleDateChange = (event: any, selectedDate?: Date) => {
-        if (selectedDate) setExpirationDate(selectedDate);
-        setShowDatePicker(false);
-      };
-
     return (
         <SafeAreaView style={{
             flex: 1,
@@ -1045,7 +1042,7 @@ export default function TeamDetail() {
                     backgroundColor: colors.surface,
                     borderRadius: radius.lg,
                     padding: spacing.lg,
-                    marginTop: spacing.lg,
+                    // marginTop: spacing.lg,
                 }}>
                     {/* 썸네일 이미지 */}
                     {team.thumbnail && (
@@ -1252,9 +1249,9 @@ export default function TeamDetail() {
                     {!isFull && !isCreator && !team.membersList?.includes(user.email) && (
                         <TouchableOpacity
                             onPress={alreadyRequested ? undefined : handleJoin}
-                            disabled={isFull || alreadyRequested}
+                            disabled={isFull || alreadyRequested || team.isClosed === true}
                             style={{
-                                backgroundColor: isFull || alreadyRequested ? colors.border : colors.primary,
+                                backgroundColor: isFull || alreadyRequested || team.isClosed === true? colors.border : colors.primary,
                                 paddingVertical: spacing.sm,
                                 borderRadius: radius.md,
                                 alignItems: 'center',
@@ -1265,7 +1262,7 @@ export default function TeamDetail() {
                         >
                             <Ionicons name="person-add-outline" size={18} color="#fff" />
                             <Text style={{ color: '#fff', fontSize: font.body, fontWeight: '600' }}>
-                                {isFull ? '모집마감' : alreadyRequested ? '가입 신청 완료' : '가입 신청'}
+                                {isFull || team.isClosed === true ? '모집마감' : alreadyRequested ? '가입 신청 완료' : '가입 신청'}
                             </Text>
                         </TouchableOpacity>
                     )}
@@ -1275,8 +1272,8 @@ export default function TeamDetail() {
                 <View style={{
                     backgroundColor: colors.surface,
                     borderRadius: radius.lg,
-                    padding: spacing.lg,
-                    marginTop: spacing.md,
+                    padding: spacing.sm,
+                    // marginTop: spacing.md,
                 }}>
                     <View style={{
                         flexDirection: 'row',
@@ -1298,7 +1295,7 @@ export default function TeamDetail() {
                                     color: colors.text,
                                     marginTop: 4,
                                 }}>
-                                    {scheduleDate} (D{(() => {
+                                    {scheduleDate} (D{(():any => {
                                     const today = new Date();
                                     const target = new Date(scheduleDate);
                                     const diff = Math.ceil((target.getTime() - today.setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24));
@@ -1694,41 +1691,36 @@ export default function TeamDetail() {
                                         <TouchableOpacity onPress={handleUpdateTeam}>
                                             <Text style={{ color: colors.primary, fontWeight: 'bold' }}>저장</Text>
                                         </TouchableOpacity>
+
+                                        <Modal
+                                            visible={updateLoading}
+                                            transparent
+                                            animationType="fade"
+                                            statusBarTranslucent
+                                        >
+                                            <View
+                                                style={{
+                                                    flex: 1,
+                                                    justifyContent: 'center',
+                                                    alignItems: 'center',
+                                                    backgroundColor: 'rgba(0,0,0,0.3)',
+                                                }}
+                                            >
+                                                {loadingAnimation && (
+                                                    <LottieView
+                                                        source={loadingAnimation}
+                                                        autoPlay
+                                                        loop
+                                                        style={{ width: 300, height: 300 }}
+                                                    />
+                                                )}
+                                                <Text style={{ color: '#fff', marginTop: 20, fontSize: 16 }}>로그인 중...</Text>
+                                            </View>
+                                        </Modal>
                                     </View>
                                 </View>
                             </ScrollView>
                         </KeyboardAvoidingView>
-                    </View>
-                </Modal>
-
-                <Modal
-                    visible={updateLoading}
-                    transparent
-                    animationType="fade"
-                    statusBarTranslucent
-                >
-                    <View
-                        style={{
-                            flex: 1,
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            backgroundColor: 'rgba(0,0,0,0.4)',
-                            zIndex: 9999,
-                            elevation: 9999,
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                        }}
-                    >
-                        <LottieView
-                            source={require('@/assets/lottie/Animation - 1747201330128.json')}
-                            autoPlay
-                            loop
-                            style={{ width: 300, height: 300 }}
-                        />
-                        <Text style={{ color: '#fff', marginTop: 20, fontSize: 16 }}>수정중...</Text>
                     </View>
                 </Modal>
 
@@ -1823,22 +1815,6 @@ export default function TeamDetail() {
                                     </Text>
                                 </TouchableOpacity>
                             ))}
-
-                            {/* 투표 현황 보기 버튼 */}
-                           {/* <TouchableOpacity
-                                onPress={() => {
-                                    setShowVoteStatus(true);
-                                }}
-                                style={{
-                                    backgroundColor: colors.primary + '20',
-                                    paddingVertical: spacing.sm,
-                                    borderRadius: radius.md,
-                                    alignItems: 'center',
-                                    marginTop: spacing.md,
-                                }}
-                            >
-                                <Text style={{ color: colors.primary, fontWeight: 'bold' }}>투표 현황 보기</Text>
-                            </TouchableOpacity>*/}
 
                             {showVoteStatus && (
                                 <View style={{ marginTop: spacing.md }}>
@@ -2091,7 +2067,7 @@ export default function TeamDetail() {
                         backgroundColor: colors.surface,
                         borderRadius: radius.lg,
                         padding: spacing.lg,
-                        marginBottom: spacing.lg,
+                        marginBottom: spacing.sm,
                     }}>
                         <Text style={{
                             fontSize: font.body,
