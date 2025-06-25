@@ -112,7 +112,7 @@ export default function CalendarModal({
             paddingTop: 20,
             paddingHorizontal: 20,
             width: '100%',
-            minHeight: 700,
+            minHeight: 600,
             maxHeight: 700,
           }}
           onPress={() => {}}

@@ -1,4 +1,4 @@
-//app/teams/[id].tsx
+//app/teams/chat.tsx
 import { useDesign } from '@/app/context/DesignSystem';
 import { useAppTheme } from '@/app/context/ThemeContext';
 import {db, storage} from '@/firebase/config';
@@ -899,7 +899,13 @@ export default function TeamDetail() {
                 return;
             }
 
-            router.push(`/teams/${team.id}/chat?name=${encodeURIComponent(team.name)}`);
+            router.push({
+                pathname: '/teams/chat/chat',
+                params: {
+                    id: team.id,
+                    name: team.name, // 쿼리 파라미터는 params에 포함됨
+                },
+            });
         } catch (error) {
             console.error('채팅방 입장 오류:', error);
             showToast('⚠️ 채팅방 입장 중 오류가 발생했습니다.');
@@ -1390,7 +1396,7 @@ export default function TeamDetail() {
                                     fontSize: font.caption,
                                     color: colors.subtext,
                                 }}>
-                                    {(() => {
+                                    {(():any => {
                                         const stats = calculateVoteStats();
                                         const totalMembers = team.membersList?.length || 0;
                                         const participationRate = Math.round((stats.total / totalMembers) * 100);

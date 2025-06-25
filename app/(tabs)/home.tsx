@@ -422,7 +422,7 @@ export default function HomeScreen() {
                             {
                                 icon: <Text style={{ fontSize: 30 }}>💬</Text>,
                                 label: '심방 요청',
-                                action: () => router.push('../home/counseling'),
+                                action: () => router.push('../home/QuickMenuButton/counseling'),
                             },
                         ].map((item, idx) => (
                             <TouchableOpacity key={idx} onPress={item.action} style={{ alignItems: 'center', width: 72 }}>

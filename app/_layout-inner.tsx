@@ -73,8 +73,9 @@ export default function RootLayoutInner() {
           <Stack.Screen name="share/prayerModal" options={{ headerShown: false }} />
           <Stack.Screen name="home/active" options={{ headerShown: false }} />
           <Stack.Screen name="share/DailyBible" options={{ headerShown: false }} />
-          <Stack.Screen name="home/counseling" options={{ headerShown: false }} />
+          <Stack.Screen name="home/QuickMenuButton/counseling" options={{ headerShown: false }} />
           <Stack.Screen name="department/createDep" options={{ headerShown: false }} />
+          <Stack.Screen name="home/notice/allNotice" options={{ headerShown: false }} />
         </Stack>
         <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
       </ThemeProvider>

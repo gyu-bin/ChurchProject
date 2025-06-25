@@ -102,7 +102,7 @@ export default function NotificationsScreen() {
             }
             if (notification.type === 'team_join_approved' && notification.teamId) {
                 router.push({
-                    pathname: "/components/pages/teams/[id]",
+                    pathname: "/components/pages/teams/chat",
                     params: { id: notification.teamId }
                 } as any);
                 await deleteDoc(doc(db, 'notifications', notification.id));

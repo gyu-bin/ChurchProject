@@ -123,7 +123,7 @@ export default function ActiveSection() {
                     backgroundColor: colors.surface,
                     borderRadius: 12,
                     padding: spacing.md,
-                    width: SCREEN_WIDTH * 0.85,
+                    width: SCREEN_WIDTH * 0.75,
                     shadowColor: '#000',
                     shadowOpacity: 0.05,
                     shadowOffset: { width: 0, height: 1 },
@@ -216,7 +216,7 @@ export default function ActiveSection() {
                 shadowOffset: { width: 0, height: 1 },
                 shadowRadius: 4,
                 elevation: 2,
-                width: SCREEN_WIDTH * 0.85, // 👉 FlexibleCarousel 대응 사이즈
+                width: SCREEN_WIDTH * 0.75,
             }}
         >
             <Text

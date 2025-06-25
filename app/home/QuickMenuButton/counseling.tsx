@@ -24,6 +24,7 @@ import {
     View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {sendNotification, sendPushNotification} from "@/services/notificationService";
 
 export default function CounselRequestPage() {
   const { colors, spacing, font, radius } = useDesign();
@@ -46,51 +47,77 @@ const handleCloseHistory = () => setIsHistoryModalVisible(false);
     loadUser();
   }, []);
 
-  const handleSubmit = async () => {
-    if (!content.trim()) {
-      Alert.alert('알림', '상담 제목과 내용을 입력해주세요.');
-      return;
-    }
-
-    try {
-      await addDoc(collection(db, 'counsel_requests'), {
-        content,
-        email: user?.email ?? '',
-        name: user?.displayName ?? '익명',
-        createdAt: serverTimestamp(),
-      });
-
-      // 1. 교역자 리스트 조회
-      const pastorSnap = await getDocs(query(collection(db, 'users'), where('role', '==', 'pastor')));
-      const pastors = pastorSnap.docs.map(doc => doc.data());
-
-      // 2. 푸시 전송
-      for (const pastor of pastors) {
-        const token = pastor.expoPushToken;
-        if (token) {
-          await sendPushNotification(token, {
-            title: '📩 상담 요청이 도착했어요',
-            body: `${user?.displayName ?? '익명'}님이 상담을 요청했습니다.`,
-          });
+    const handleSubmit = async () => {
+        if (!content.trim()) {
+            Alert.alert('알림', '상담 제목과 내용을 입력해주세요.');
+            return;
         }
-      }
 
-      Alert.alert('제출 완료', '상담 요청이 등록되었습니다.');
-      router.back();
-    } catch (e) {
-      console.error('상담 등록 오류:', e);
-      Alert.alert('오류', '제출 중 문제가 발생했습니다.');
-    }
-  };
+        try {
+            // 1. 상담 요청 등록
+            await addDoc(collection(db, 'counsel_requests'), {
+                content,
+                email: user?.email,
+                name: user?.name,
+                createdAt: serverTimestamp(),
+            });
 
-  const sendPushNotification = async (to: string, { title, body }: { title: string; body: string }) => {
-    await axios.post('https://exp.host/--/api/v2/push/send', {
-      to,
-      sound: 'default',
-      title,
-      body,
-    });
-  };
+            // 2. 교역자 리스트 조회
+            try {
+                const pastorSnap = await getDocs(
+                    query(collection(db, 'users'), where('role', '==', '교역자'))
+                );
+
+                const sentTokens = new Set<string>();
+                const pushPromises: Promise<void>[] = [];
+                const notifyPromises: Promise<void>[] = [];
+
+                pastorSnap.docs.forEach((docSnap) => {
+                    const pastor = docSnap.data();
+                    const tokens: string[] = pastor.expoPushTokens || [];
+                    const toEmail = pastor.email;
+
+                    tokens.forEach((token) => {
+                        if (
+                            typeof token === 'string' &&
+                            token.startsWith('ExponentPushToken') &&
+                            !sentTokens.has(token)
+                        ) {
+                            sentTokens.add(token);
+
+                            pushPromises.push(
+                                sendPushNotification({
+                                    to: token,
+                                    title: '📩 상담 요청이 도착했어요',
+                                    body: `${user?.name}님이 심방을 요청했습니다.`,
+                                })
+                            );
+                        }
+                    });
+
+                    // 💬 알림(Notification) Firestore 저장
+                    notifyPromises.push(
+                        sendNotification({
+                            to: toEmail,
+                            message: `${user?.name}님이 심방을 요청했습니다.`,
+                            type: 'counsel_request',
+                        })
+                    );
+                });
+
+                await Promise.all([...pushPromises, ...notifyPromises]);
+                console.log(`✅ ${sentTokens.size}명의 교역자에게 푸시 + 알림 전송 완료`);
+            } catch (err) {
+                console.error('❌ 교역자 푸시/알림 실패:', err);
+            }
+
+            Alert.alert('제출 완료', '상담 요청이 등록되었습니다.');
+            router.back();
+        } catch (e) {
+            console.error('상담 등록 오류:', e);
+            Alert.alert('오류', '제출 중 문제가 발생했습니다.');
+        }
+    };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
