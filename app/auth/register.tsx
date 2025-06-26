@@ -107,7 +107,7 @@ export default function RegisterSlideScreen() {
                         // 🔒 최소 3초간 로딩 유지 후 홈 이동
                         setTimeout(() => {
                             setLoading(false);
-                            router.replace('/');
+                            router.replace('/(tabs)/home');
                         }, 2000);
                     } catch (e: any) {
                         console.error('❌ 회원가입 실패:', e);

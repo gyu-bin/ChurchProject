@@ -4,10 +4,12 @@ import { db } from '@/firebase/config';
 import bcrypt from 'bcryptjs';
 
 export async function login(email: string, inputPassword: string) {
+    console.log(`[AUTH] 로그인 시도: ${email}`);
     const ref = doc(db, 'users', email);
     const snap = await getDoc(ref);
 
     if (!snap.exists()) {
+        console.log(`[AUTH] 로그인 실패: 계정이 존재하지 않음 (${email})`);
         throw new Error('존재하지 않는 계정입니다.');
     }
 
@@ -34,6 +36,7 @@ export async function login(email: string, inputPassword: string) {
         throw new Error('비밀번호 형식이 유효하지 않습니다.');
     }*/
 
+    console.log(`[AUTH] 로그인 성공: ${email}`);
     return {
         ...user,
         email,
@@ -46,7 +49,16 @@ export async function getCurrentUser() {
 }
 
 export async function logout() {
-    await AsyncStorage.removeItem('currentUser');
+    console.log('[AUTH] 로그아웃 처리 시작');
+    try {
+        await AsyncStorage.removeItem('currentUser');
+        await AsyncStorage.setItem('isLoggedIn', 'false');
+        await AsyncStorage.removeItem('autoLogin');
+        console.log('[AUTH] 로그아웃 완료: 모든 세션 데이터 삭제됨');
+    } catch (error) {
+        console.error('[AUTH] 로그아웃 중 오류:', error);
+        throw error;
+    }
 }
 
 export async function reauthenticate(email: string, oldPassword: string) {

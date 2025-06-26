@@ -42,3 +42,12 @@ app-example
 .env
 /credentials.json
 /churchappexpo-firebase-adminsdk-fbsvc-c9b0c218d8.json
+/.idea/.gitignore
+/.idea/ChurchProject.iml
+/.idea/material_theme_project_new.xml
+/.idea/modules.xml
+/.idea/inspectionProfiles/Project_Default.xml
+/.idea/vcs.xml
+/.idea/watcherTasks.xml
+/.idea/jsLinters/eslint.xml
+/.idea/prettier.xml

@@ -1,5 +1,5 @@
-import { useDesign } from '@/app/context/DesignSystem';
-import { useAppTheme } from '@/app/context/ThemeContext';
+import { useDesign } from '@/context/DesignSystem';
+import { useAppTheme } from '@/context/ThemeContext';
 import { db } from '@/firebase/config';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
 import { showToast } from "@/utils/toast";
@@ -159,7 +159,10 @@ export default function NotificationsScreen() {
                 }
 
                 showToast(`✅ 승인 완료: ${selectedNotification.applicantName}님이 소모임에 가입되었습니다.`);
-                router.replace('/');
+                router.push({
+                    pathname: '/teams/[id]',
+                    params: { id: selectedNotification.teamId }
+                });
             }
 
             await deleteDoc(doc(db, 'notifications', selectedNotification.id));

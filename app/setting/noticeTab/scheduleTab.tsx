@@ -1,5 +1,5 @@
 // ScheduleTab.tsx
-import { useDesign } from '@/app/context/DesignSystem';
+import { useDesign } from '@/context/DesignSystem';
 import { db } from '@/firebase/config';
 import { addDoc, collection, deleteDoc, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';

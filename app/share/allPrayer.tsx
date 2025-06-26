@@ -1,5 +1,5 @@
-import { useDesign } from '@/app/context/DesignSystem';
-import { useAppTheme } from '@/app/context/ThemeContext';
+import { useDesign } from '@/context/DesignSystem';
+import { useAppTheme } from '@/context/ThemeContext';
 import { db } from '@/firebase/config'; // Firebase 초기화된 객체
 import { showToast } from "@/utils/toast";
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -40,7 +40,7 @@ export default function PrayerListScreen() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
-  
+
   useEffect(() => {
     const loadUser = async () => {
         const raw = await AsyncStorage.getItem('currentUser');
@@ -51,7 +51,7 @@ export default function PrayerListScreen() {
         }
     };
     loadUser();
-}, []); 
+}, []);
 
 
 

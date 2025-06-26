@@ -48,10 +48,11 @@ export default function LoginScreen() {
                 const raw = await AsyncStorage.getItem('currentUser');
                 if (raw) {
                     const user = JSON.parse(raw);
+                    await AsyncStorage.setItem('isLoggedIn', 'true'); // isLoggedIn 상태 추가
                     await registerPushToken();
                     await registerDevice();
                     await reload();
-                    router.replace('/');
+                    router.replace('/(tabs)/home'); // 홈 화면으로 직접 이동
                 }
             }
         };
@@ -63,33 +64,47 @@ export default function LoginScreen() {
         if (buttonDisabled) return;
         setButtonDisabled(true);
 
+        // 먼저 랜덤 로딩 애니메이션 선택 후 로딩 상태 설정
+        const randomIndex = Math.floor(Math.random() * loadingAnimations.length);
+        setLoadingAnimation(loadingAnimations[randomIndex]);
         setLoading(true);
-        setLoadingAnimation(loadingAnimations[Math.floor(Math.random() * loadingAnimations.length)]);
 
         try {
+            const user = await login(email.trim(), password.trim());
+            await AsyncStorage.setItem('isLoggedIn', 'true');
+            await AsyncStorage.setItem('currentUser', JSON.stringify(user)); // 사용자 저장
+
+            // 자동 로그인 설정 처리
             if (autoLoginChecked) {
                 await AsyncStorage.setItem('autoLogin', 'true');
             } else {
                 await AsyncStorage.removeItem('autoLogin');
             }
 
-            const user = await login(email.trim(), password.trim());
-            await AsyncStorage.setItem('currentUser', JSON.stringify(user));
+            // 디바이스 및 푸시 토큰 등록
+            try {
+                await registerPushToken();
+                await registerDevice();
+            } catch (regError) {
+                console.error('토큰 등록 실패:', regError);
+                // 토큰 등록 실패해도 로그인은 진행
+            }
 
-            await registerPushToken();
-            await registerDevice();
-            await reload();
+            await reload(); // 사용자 상태 즉시 로드
 
-            Toast.show('환영합니다.');
+            // 로그인 성공 메시지
+            Toast.show('로그인 성공!', {
+                duration: Toast.durations.SHORT,
+                position: Toast.positions.BOTTOM,
+            });
 
-            setTimeout(() => {
-                setLoading(false);
-                router.replace('/');
-            }, 2000);
-        } catch (error: any) {
-            Alert.alert('로그인 실패', error.message);
+            router.replace('/(tabs)/home'); // 홈 화면으로 직접 이동
+        } catch (error:any) {
+            console.error('로그인 실패:', error.message);
+            Alert.alert('로그인 실패', error.message || '이메일과 비밀번호를 확인해주세요.');
+        } finally {
             setLoading(false);
-            setButtonDisabled(false);  // 실패 시 복구
+            setButtonDisabled(false);
         }
     };
 
@@ -99,7 +114,7 @@ export default function LoginScreen() {
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 style={{ flex: 1 }}
             >
-                <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
+                <View style={styles.scrollContainer}>
                     <View style={styles.container}>
                         <Text style={styles.title}>로그인</Text>
 
@@ -188,7 +203,7 @@ export default function LoginScreen() {
                             </Text>
                         </TouchableOpacity>
                     </View>
-                </ScrollView>
+                </View>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );

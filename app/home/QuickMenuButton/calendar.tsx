@@ -1,5 +1,5 @@
 // components/CustomGridCalendar.tsx
-import { useDesign } from '@/app/context/DesignSystem';
+import { useDesign } from '@/context/DesignSystem';
 import { db } from '@/firebase/config';
 import dayjs from 'dayjs';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';

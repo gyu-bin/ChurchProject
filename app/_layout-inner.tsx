@@ -1,12 +1,13 @@
-import { useAppTheme } from '@/app/context/ThemeContext';
+import { useAppTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import * as Notifications from 'expo-notifications';
-import { router, Stack, usePathname } from 'expo-router';
+import {Redirect, router, Stack, usePathname} from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View } from 'react-native';
 import { useEffect } from 'react';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -27,19 +28,23 @@ export default function RootLayoutInner() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
-  useEffect(() => {
-    if (!loading && fontsLoaded) {
-      // 로그인 안 됐고 intro나 auth 아님 → intro로 이동
-      if (!user && pathname !== '/intro' && !pathname.startsWith('/auth')) {
-        router.replace('/intro');
-      }
+  if (!fontsLoaded || loading) {
+    return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#2563eb" />
+        </View>
+    );
+  }
 
-      // 로그인 됐고 auth에 있으면 → 홈으로 이동
-      if (user && pathname.startsWith('/auth')) {
-        router.replace('/(tabs)/home');
-      }
-    }
-  }, [user, loading, fontsLoaded, pathname]);
+  //로그인 안될시 intro화면으로
+  if (!user && pathname !== '/intro' && !pathname.startsWith('/auth')) {
+    return <Redirect href="/intro" />;
+  }
+
+  //로그인이 되었아면 /홈으로
+  if (user && pathname.startsWith('/auth')) {
+    return <Redirect href="/(tabs)/home" />;
+  }
 
   // 로딩 중이면 로딩 화면
   if (!fontsLoaded || loading) {

@@ -1,8 +1,8 @@
 import DeviceManager from '@/app/setting/DeviceManager';
 import ThemeToggle from "@/components/ThemeToggle";
 import PushSettings from "@/app/setting/VerseNotificationSettings";
-import { useDesign } from '@/app/context/DesignSystem';
-import { useAppTheme } from '@/app/context/ThemeContext';
+import { useDesign } from '@/context/DesignSystem';
+import { useAppTheme } from '@/context/ThemeContext';
 import { db } from '@/firebase/config';
 import { useAppDispatch } from '@/hooks/useRedux';
 import { clearPrayers } from "@/redux/slices/prayerSlice";
@@ -13,7 +13,7 @@ import { setScrollCallback } from "@/utils/scrollRefManager";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import bcrypt from "bcryptjs";
-import { useRouter } from 'expo-router';
+import {router, useRouter} from 'expo-router';
 import { deleteDoc, doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 import LottieView from 'lottie-react-native';
 import React, { useEffect, useRef, useState } from 'react';
@@ -139,13 +139,55 @@ export default function SettingsScreen() {
     };
 
     const handleLogout = async () => {
-        await removeDeviceToken();
-        await AsyncStorage.removeItem('currentUser');
-        await AsyncStorage.removeItem('useBiometric');
-        dispatch(logoutUser());
-        dispatch(clearPrayers());
-        dispatch(clearTeams());
-        router.replace('/auth/login');
+        try {
+            // 로그아웃 중 로딩 상태 표시 - 임의의 로딩 애니메이션 선택
+            const randomIndex = Math.floor(Math.random() * loadingAnimations.length);
+            setLoadingAnimation(loadingAnimations[randomIndex]);
+            // setLoading(true);
+
+            console.log('[로그아웃] 로그아웃 프로세스 시작');
+
+            // 토큰 제거 먼저 시도
+            try {
+                await removeDeviceToken(); // 기존 기기 토큰 제거
+                console.log('[로그아웃] 기기 토큰 제거 완료');
+            } catch (tokenError) {
+                console.error('[로그아웃] 토큰 제거 오류:', tokenError);
+                // 토큰 제거 실패해도 로그아웃은 진행
+            }
+
+            // Redux 데이터 정리
+            dispatch(clearPrayers());
+            dispatch(clearTeams());
+            dispatch(logoutUser());
+            console.log('[로그아웃] Redux 상태 초기화 완료');
+
+            // AsyncStorage 정리 - 세션 관련 정보 삭제
+            await AsyncStorage.removeItem('currentUser');
+            await AsyncStorage.setItem('isLoggedIn', 'false');
+            await AsyncStorage.removeItem('autoLogin');
+            console.log('[로그아웃] 세션 데이터 삭제 완료');
+
+            // 성공 메시지 표시
+            Toast.show('로그아웃 되었습니다.', {
+                duration: Toast.durations.SHORT,
+                position: Toast.positions.BOTTOM,
+            });
+
+            // 약간의 지연 후 화면 전환 (토스트 메시지가 보이도록)
+            setTimeout(() => {
+                router.replace('/auth/login');
+            }, 500);
+
+        } catch (error) {
+            console.error('[로그아웃] 처리 오류:', error);
+            Alert.alert('로그아웃 실패', '다시 시도해주세요.');
+        } finally {
+            // 로딩 상태 해제는 화면 전환 후에도 진행되도록 타이머 설정
+           /* setTimeout(() => {
+                setLoading(false);
+            }, 1000);*/
+        }
     };
 
     const handleSaveProfile = async () => {

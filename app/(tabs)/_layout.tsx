@@ -1,4 +1,4 @@
-import { useAppTheme } from "@/app/context/ThemeContext";
+import { useAppTheme } from "@/context/ThemeContext";
 import { useAppSelector } from "@/hooks/useRedux";
 import { RootState } from "@/redux/store";
 import { getScrollCallback } from '@/utils/scrollRefManager';
@@ -9,7 +9,7 @@ import { Platform, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { ThemeProvider } from 'styled-components/native';
-import { useDesign } from '@/app/context/DesignSystem';
+import { useDesign } from '@/context/DesignSystem';
 
 export default function TabLayout({children}:any) {
     const { mode } = useAppTheme();
@@ -123,10 +123,8 @@ export default function TabLayout({children}:any) {
                 }}
                 listeners={{
                     tabPress: () => {
-                        if (pathname === '/') {
-                            const cb = getScrollCallback('index');
-                            cb?.();
-                        }
+                        const cb = getScrollCallback('home');
+                        cb?.();
                     },
                 }}
             />

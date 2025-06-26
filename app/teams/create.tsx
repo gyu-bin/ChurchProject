@@ -14,7 +14,7 @@ import {
     View,Image
 } from 'react-native';
 // import { sendNotification, sendPushNotification } from '@/services/notificationService';
-import { useDesign } from '@/app/context/DesignSystem';
+import { useDesign } from '@/context/DesignSystem';
 import { sendPushNotification } from "@/services/notificationService";
 import { showToast } from "@/utils/toast";
 import { Ionicons } from "@expo/vector-icons";
@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import  {ImagePickerAsset} from "expo-image-picker";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
-import {getDownloadURL, ref, uploadBytes} from "firebase/storage";
+import {deleteObject, getDownloadURL, ref, uploadBytes} from "firebase/storage";
 import {Calendar} from "react-native-calendars";
 import LottieView from "lottie-react-native";
 import loading1 from "@/assets/lottie/Animation - 1747201461030.json";
@@ -96,19 +96,29 @@ export default function CreateTeam() {
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: false,
             quality: 0.8,
-            base64: false,
         });
 
         if (!result.canceled && result.assets.length > 0) {
             const selected = result.assets[0];
-            setImageURLs([selected]); // ✅ 하나만 선택
-            // setForm(prev => ({ ...prev, bannerImage: selected.uri })); // ✅ 미리보기용 uri 저장
+            setImageURLs([selected]);
         }
     };
 
-    const uploadImageToFirebase = async (imageUri: string): Promise<string> => {
+    const uploadImageToFirebase = async (
+        imageUri: string,
+        oldPath?: string // 기존 이미지 경로 (있으면 삭제)
+    ): Promise<{ downloadUrl: string; newPath: string }> => {
         try {
-            // 이미지 조작 (크기 그대로, 포맷만 JPEG으로 확실히 지정)
+            // 기존 이미지 삭제
+            if (oldPath) {
+                try {
+                    const oldRef = ref(storage, oldPath);
+                    await deleteObject(oldRef);
+                } catch (err) {
+                    console.warn('이전 이미지 삭제 실패:', err);
+                }
+            }
+
             const manipulated = await ImageManipulator.manipulateAsync(
                 imageUri,
                 [],
@@ -118,17 +128,15 @@ export default function CreateTeam() {
             const response = await fetch(manipulated.uri);
             const blob = await response.blob();
 
-            const filename = `uploads/${Date.now()}_${Math.floor(Math.random() * 10000)}.jpg`;
-            const storageRef = ref(storage, filename);
+            const newPath = `uploads/${Date.now()}_${Math.floor(Math.random() * 10000)}.jpg`;
+            const storageRef = ref(storage, newPath);
 
-            await uploadBytes(storageRef, blob, {
-                contentType: 'image/jpeg',
-            });
-
+            await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
             const downloadUrl = await getDownloadURL(storageRef);
-            return downloadUrl;
+
+            return { downloadUrl, newPath };
         } catch (err) {
-            console.error('🔥 업로드 실패:', err);
+            console.error('🔥 이미지 업로드 실패:', err);
             throw err;
         }
     };
@@ -158,14 +166,19 @@ export default function CreateTeam() {
             max = -1;
         }
 
-        const downloadUrls: string[] = [];
+   /*     const downloadUrls: string[] = [];
 
         for (const image of imageURLs) {
             const downloadUrl = await uploadImageToFirebase(image.uri);
             downloadUrls.push(downloadUrl);
         }
-
+*/
         try {
+            const { downloadUrl, newPath } = await uploadImageToFirebase(
+                imageURLs[0].uri,
+                undefined // 기존 이미지 경로가 있다면 여기에 전달
+            );
+
             const baseData = {
                 name,
                 leader,
@@ -177,7 +190,8 @@ export default function CreateTeam() {
                 category,
                 ...(category === '✨ 반짝소모임' && expirationDate && { expirationDate }),
                 ...(category === '✨ 반짝소모임' && location && { location }),
-                thumbnail: downloadUrls[0],
+                thumbnail: downloadUrl,
+                thumbnailPath: newPath, // ✅ 향후 삭제 대비
             };
 
             const teamRef = await addDoc(collection(db, 'teams'), {
@@ -268,7 +282,7 @@ export default function CreateTeam() {
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background,paddingTop: Platform.OS === 'android' ? insets.top : 20 }}>
-            {/* 상단 화살표 + 소모임생성 한 줄 */}
+
             <View
                 style={{
                     flexDirection: 'row',

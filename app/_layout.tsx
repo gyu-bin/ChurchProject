@@ -1,6 +1,6 @@
 // app/_layout.tsx
-import { DesignSystemProvider } from '@/app/context/DesignSystem';
-import { ThemeProvider } from '@/app/context/ThemeContext';
+import { DesignSystemProvider } from '@/context/DesignSystem';
+import { ThemeProvider } from '@/context/ThemeContext';
 import { db } from "@/firebase/config";
 import { clearPrayers } from "@/redux/slices/prayerSlice";
 import { clearTeams } from "@/redux/slices/teamSlice";

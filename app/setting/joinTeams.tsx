@@ -1,5 +1,5 @@
-import { useDesign } from '@/app/context/DesignSystem';
-import { useAppTheme } from '@/app/context/ThemeContext';
+import { useDesign } from '@/context/DesignSystem';
+import { useAppTheme } from '@/context/ThemeContext';
 import { db } from '@/firebase/config';
 import { getCurrentUser } from '@/services/authService';
 import { Ionicons } from '@expo/vector-icons';
@@ -131,12 +131,12 @@ export default function JoinedTeams() {
                 }}
             >
                 <View style={{ paddingHorizontal: 20 }}>
-                    <View style={{ 
-                        flexDirection: 'row', 
-                        alignItems: 'center', 
+                    <View style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
                         marginBottom: 32
                     }}>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             onPress={() => router.back()}
                             style={{
                                 width: 40,
@@ -159,15 +159,15 @@ export default function JoinedTeams() {
                         </Text>
                     </View>
                 </View>
-                <View style={{ 
-                    flex: 1, 
-                    justifyContent: 'center', 
-                    alignItems: 'center', 
+                <View style={{
+                    flex: 1,
+                    justifyContent: 'center',
+                    alignItems: 'center',
                     backgroundColor: colors.background,
                     paddingBottom: '15%'
                 }}>
-                    <Text style={{ 
-                        fontSize: 18, 
+                    <Text style={{
+                        fontSize: 18,
                         color: colors.subtext,
                         marginBottom: 8
                     }}>
@@ -201,14 +201,14 @@ export default function JoinedTeams() {
             }}
         >
             <View style={{ paddingHorizontal: 20 }}>
-                <View style={{ 
-                    flexDirection: 'row', 
+                <View style={{
+                    flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     marginBottom: 32
                 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             onPress={() => router.back()}
                             style={{
                                 width: 40,
@@ -241,7 +241,7 @@ export default function JoinedTeams() {
                             alignItems: 'center'
                         }}
                     >
-                        <Text style={{ 
+                        <Text style={{
                             color: selectMode ? '#fff' : colors.text,
                             fontSize: 15,
                             fontWeight: '500'
@@ -289,8 +289,8 @@ export default function JoinedTeams() {
                         >
                             <View style={{ flex: 1 }}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                                    <Text style={{ 
-                                        fontSize: 18, 
+                                    <Text style={{
+                                        fontSize: 18,
                                         fontWeight: '600',
                                         color: colors.text,
                                         marginRight: 8
@@ -304,7 +304,7 @@ export default function JoinedTeams() {
                                             paddingVertical: 4,
                                             borderRadius: 12
                                         }}>
-                                            <Text style={{ 
+                                            <Text style={{
                                                 color: '#d97706',
                                                 fontSize: 13,
                                                 fontWeight: '600'
@@ -314,7 +314,7 @@ export default function JoinedTeams() {
                                         </View>
                                     )}
                                 </View>
-                                <Text style={{ 
+                                <Text style={{
                                     color: colors.subtext,
                                     fontSize: 15
                                 }}>

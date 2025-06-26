@@ -1,24 +1,7 @@
 // styled.d.ts
 import 'styled-components';
+import { UseDesignReturnType } from '@/context/DesignSystem';
 
 declare module 'styled-components' {
-    export interface DefaultTheme {
-        colors: {
-            background: string;
-            text: string;
-            surface: string;
-            primary: string;
-            [key: string]: string;
-        };
-        spacing: {
-            sm: number;
-            md: number;
-            lg: number;
-        };
-        radius: {
-            sm: number;
-            md: number;
-            lg: number;
-        };
-    }
+    export interface DefaultTheme extends UseDesignReturnType {}
 }

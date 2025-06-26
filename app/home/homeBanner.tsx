@@ -5,7 +5,7 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/ko';
 import weekday from 'dayjs/plugin/weekday';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
-import {font} from "@/app/context/DesignSystem";
+import {font} from "@/context/DesignSystem";
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 

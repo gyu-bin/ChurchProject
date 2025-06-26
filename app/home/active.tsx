@@ -13,7 +13,7 @@ import {
 } from 'firebase/firestore';
 import React, { useCallback, useState } from 'react';
 import { Dimensions, Text, TouchableOpacity, View, Image } from 'react-native';
-import { useDesign } from '@/app/context/DesignSystem';
+import { useDesign } from '@/context/DesignSystem';
 import { Ionicons } from '@expo/vector-icons';
 import FlexibleCarousel from '../../components/FlexibleCarousel';
 

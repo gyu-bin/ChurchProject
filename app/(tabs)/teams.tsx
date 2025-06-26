@@ -1,4 +1,4 @@
-import { useDesign } from '@/app/context/DesignSystem';
+import { useDesign } from '@/context/DesignSystem';
 import SkeletonBox from '@/components/Skeleton';
 import { db } from '@/firebase/config';
 import { getCurrentUser } from '@/services/authService';

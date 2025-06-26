@@ -13,8 +13,8 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { useAppTheme } from '@/app/context/ThemeContext';
-import { useDesign } from '@/app/context/DesignSystem';
+import { useAppTheme } from '@/context/ThemeContext';
+import { useDesign } from '@/context/DesignSystem';
 import { useAppSelector } from '@/hooks/useRedux';
 import { doc, onSnapshot, setDoc, Timestamp } from 'firebase/firestore';
 import { db, storage } from '@/firebase/config';

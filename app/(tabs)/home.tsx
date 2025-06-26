@@ -1,5 +1,5 @@
-import { useDesign } from '@/app/context/DesignSystem';
-import { useAppTheme } from '@/app/context/ThemeContext';
+import { useDesign } from '@/context/DesignSystem';
+import { useAppTheme } from '@/context/ThemeContext';
 import ActiveSection from '@/app/home/active';
 import BannerCarousel from '@/app/home/homeBanner';
 import HomeNotices from "@/app/home/noticePage";
@@ -224,7 +224,7 @@ export default function HomeScreen() {
     const [calendarVisible, setCalendarVisible] = useState(false);
 
     useEffect(() => {
-        setScrollCallback('index', () => {
+        setScrollCallback('home', () => {
             mainListRef.current?.scrollToOffset({ offset: 0, animated: true });
         });
     }, []);

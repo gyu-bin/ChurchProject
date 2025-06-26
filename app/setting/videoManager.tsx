@@ -1,6 +1,6 @@
 // ✅ 드래그 정렬 + 순서 저장 + 순서 표시 + NaN 방지 VideoManager
-import { useDesign } from '@/app/context/DesignSystem';
-import { useAppTheme } from '@/app/context/ThemeContext';
+import { useDesign } from '@/context/DesignSystem';
+import { useAppTheme } from '@/context/ThemeContext';
 import { db } from '@/firebase/config';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';

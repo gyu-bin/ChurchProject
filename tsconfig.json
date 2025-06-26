@@ -8,7 +8,8 @@
     },
     "typeRoots": [
       "./node_modules/@types",
-      "./types/env.d.ts"
+      "./types/env.d.ts",
+      "./types"
     ]
   },
   "include": [

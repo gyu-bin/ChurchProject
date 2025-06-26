@@ -1,12 +1,11 @@
-//app/teams/chat.tsx
-import { useDesign } from '@/app/context/DesignSystem';
-import { useAppTheme } from '@/app/context/ThemeContext';
+//app/teams/[id].tsx
+import { useDesign } from '@/context/DesignSystem';
+import { useAppTheme } from '@/context/ThemeContext';
 import {db, storage} from '@/firebase/config';
 import { getCurrentUser } from '@/services/authService';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
 import { showToast } from "@/utils/toast"; // ✅ 추가
 import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -23,7 +22,7 @@ import {
     updateDoc,
     where,
     writeBatch
-} from 'firebase/firestore';
+, Timestamp } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -42,14 +41,8 @@ import {
     TouchableWithoutFeedback,
     View, Image, Switch
 } from 'react-native';
-import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import Toast from "react-native-root-toast";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Timestamp } from 'firebase/firestore';
-import * as ImagePicker from "expo-image-picker";
-import * as ImageManipulator from "expo-image-manipulator";
-import {getDownloadURL, ref, uploadBytes} from "firebase/storage"; // 필수
-import  {ImagePickerAsset} from "expo-image-picker";
 import {Calendar} from "react-native-calendars";
 import LottieView from 'lottie-react-native';
 
@@ -57,6 +50,12 @@ import loading4 from '@/assets/lottie/Animation - 1747201330128.json';
 import loading3 from '@/assets/lottie/Animation - 1747201413764.json';
 import loading2 from '@/assets/lottie/Animation - 1747201431992.json';
 import loading1 from '@/assets/lottie/Animation - 1747201461030.json';
+
+// 모달 컴포넌트 임포트
+import EditTeamModal from './teamDetailModal/EditTeamModal';
+import VoteModal from './teamDetailModal/VoteModal';
+import LocationModal from './teamDetailModal/LocationModal';
+import DatePickerModal from './teamDetailModal/DatePickerModal';
 
 type Team = {
     id: string;
@@ -121,74 +120,30 @@ export default function TeamDetail() {
 
     //수정
     const [editModalVisible, setEditModalVisible] = useState(false);
-    const [editName, setEditName] = useState('');
-    const [editDescription, setEditDescription] = useState('');
-    const [editCapacity, setEditCapacity] = useState('');
-    const [isUnlimited, setIsUnlimited] = useState(false);
-    const [announcement, setAnnouncement] = useState('');
+    const [showVoteStatus, setShowVoteStatus] = useState(true);
 
     const [scheduleDate, setScheduleDate] = useState('');
     const [isDatePickerVisible, setDatePickerVisible] = useState(false);
-    const [isClosed, setIsClosed] = useState<boolean>(false); // 초기값을 false로 고정하지 말고
     const [alreadyRequested, setAlreadyRequested] = useState(false);
+    const [announcement, setAnnouncement] = useState('');
 
     const [chatBadgeCount, setChatBadgeCount] = useState(0);
     const [isVoteModalVisible, setVoteModalVisible] = useState(false);
     const [votes, setVotes] = useState<{ [key: string]: Vote }>({});
     const [myVote, setMyVote] = useState<VoteStatus | null>(null);
-    const [selectedVote, setSelectedVote] = useState<VoteStatus | null>(null);
-    const [showVoteStatus, setShowVoteStatus] = useState(false);
     const [isLocationModalVisible, setLocationModalVisible] = useState(false);
-    const [locationInput, setLocationInput] = useState('');
-    const [category, setCategory] = useState('');
-    const [expirationDate, setExpirationDate] = useState(new Date());
-    const [showDatePicker, setShowDatePicker] = useState(false); // 모달 표시 제어
-    const [isCategoryModalVisible, setCategoryModalVisible] = useState(false);
-    const [selectedThumbnail, setSelectedThumbnail] = useState<string | null>(null);
-    const [isSparkleModalVisible, setSparkleModalVisible] = useState(false);
-    const [imageURLs, setImageURLs] = useState<ImagePickerAsset[]>([]);
-    const [showCalendar, setShowCalendar] = useState(false);
     const [loadingAnimation, setLoadingAnimation] = useState<any>(null);
     const loadingAnimations = [loading1, loading2, loading3, loading4];
     useEffect(() => {
         const random = Math.floor(Math.random() * loadingAnimations.length);
         setLoadingAnimation(loadingAnimations[random]);
     }, []);
-    const [updateLoading, setUpdateLoading] = useState(false); // 🔸 수정 중 로딩용
     const randomLoadingAnimation = () => {
         const index = Math.floor(Math.random() * loadingAnimations.length);
         return loadingAnimations[index];
     };
 
-    const [commonLocations] = useState([
-        '본당',
-        '카페',
-    ]);
-    const categories = [
-        { label: '✨ 반짝소모임', value: '반짝소모임' },
-        { label: '🏃 운동/스포츠', value: '운동/스포츠' },
-        { label: '📚 책모임', value: '책모임' },
-        { label: '🎮 게임', value: '게임' },
-        { label: '🎭 문화생활', value: '문화생활' },
-        { label: '🤝 봉사', value: '봉사' },
-        { label: '📖 스터디', value: '스터디' },
-        { label: '🐾 동물', value: '동물' },
-        { label: '🍳 요리/제조', value: '요리/제조' },
-    ];
-
-    const [editCategory, setEditCategory] = useState(team?.category || '');
-
-    const formatDate = (date: Date) => {
-        return date.toISOString().split('T')[0];
-    };
-
-    useEffect(() => {
-        if (team) {
-            setEditCategory(team.category || '');
-            setIsClosed(team.isClosed ?? false);
-        }
-
-    }, [team]);
+    // handleCategorySelect 함수는 EditTeamModal 컴포넌트로 이동했습니다
 
     useEffect(() => {
         getCurrentUser().then(setCurrentUser);
@@ -382,187 +337,12 @@ export default function TeamDetail() {
     };
 
     const openEditModal = () => {
-        if (!team) return;
-        setEditName(team.name);
-        setEditDescription(team.description || '');
-        setAnnouncement(team.announcement || '');
-        if (team.maxMembers === null || team.maxMembers === undefined || team.maxMembers === -1) {
-            setIsUnlimited(true);
-            setEditCapacity('');
-        } else {
-            setIsUnlimited(false);
-            setEditCapacity(String(team.maxMembers));
-        }
-        setCategory(team.category || '');
-
-        if (team.expirationDate) {
-            const parsedDate =
-                team.expirationDate instanceof Date
-                    ? team.expirationDate
-                    : team.expirationDate.toDate?.() || new Date(team.expirationDate);
-            setExpirationDate(parsedDate);
-        }
-
-        if (team.thumbnail) {
-            const uri = team.thumbnail;
-            setImageURLs([{ uri } as ImagePickerAsset]); // 타입 단언으로 오류 제거
-            setSelectedThumbnail(uri);
-        } else {
-            setImageURLs([]);
-            setSelectedThumbnail(null);
-        }
         setEditModalVisible(true);
     };
 
-    const pickImage = async () => {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
-            Alert.alert('권한 필요', '이미지 라이브러리에 접근 권한이 필요합니다.');
-            return;
-        }
+    // pickImage와 uploadImageToFirebase 함수는 EditTeamModal 컴포넌트로 이동했습니다
 
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: false,
-            quality: 0.8,
-            base64: false,
-        });
-
-        if (!result.canceled && result.assets.length > 0) {
-            const selected = result.assets[0];
-            setImageURLs([selected]); // ✅ 하나만 선택
-            // setForm(prev => ({ ...prev, bannerImage: selected.uri })); // ✅ 미리보기용 uri 저장
-        }
-    };
-
-    const uploadImageToFirebase = async (imageUri: string): Promise<string> => {
-        try {
-            // 이미지 조작 (크기 그대로, 포맷만 JPEG으로 확실히 지정)
-            const manipulated = await ImageManipulator.manipulateAsync(
-                imageUri,
-                [],
-                { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
-            );
-
-            const response = await fetch(manipulated.uri);
-            const blob = await response.blob();
-
-            const filename = `uploads/${Date.now()}_${Math.floor(Math.random() * 10000)}.jpg`;
-            const storageRef = ref(storage, filename);
-
-            await uploadBytes(storageRef, blob, {
-                contentType: 'image/jpeg',
-            });
-
-            const downloadUrl = await getDownloadURL(storageRef);
-            return downloadUrl;
-        } catch (err) {
-            console.error('🔥 업로드 실패:', err);
-            throw err;
-        }
-    };
-
-    const handleUpdateTeam = async () => {
-        if (!team) return;
-
-        setUpdateLoading(true); // ✅ 여기서 모달 표시
-
-        const currentCount = team.membersList?.length ?? 0;
-        let newMax: number | null = null;
-
-        if (!isUnlimited) {
-            newMax = Number(editCapacity);
-            if (isNaN(newMax) || newMax < currentCount) {
-                setUpdateLoading(false); // ✅ Alert 전에 모달 끄기
-                Alert.alert(
-                    '유효하지 않은 최대 인원',
-                    `현재 모임 인원(${currentCount}명)보다 작을 수 없습니다.`
-                );
-                return;
-            }
-        } else {
-            newMax = -1; // 무제한은 -1로 저장
-        }
-
-        const downloadUrls: string[] = [];
-
-        try {
-
-            for (const image of imageURLs) {
-                const downloadUrl = await uploadImageToFirebase(image.uri);
-                downloadUrls.push(downloadUrl);
-            }
-
-            const teamRef = doc(db, 'teams', team.id);
-            await updateDoc(teamRef, {
-                name: editName,
-                description: editDescription,
-                maxMembers: newMax,
-                announcement,
-                scheduleDate,
-                category: category,
-                ...(category === '✨ 반짝소모임' && {
-                    expirationDate: new Date(expirationDate),
-                }),
-                thumbnail: downloadUrls[0],
-                isClosed, // ✅ 추가됨
-            });
-
-            setTeam(prev => prev && {
-                ...prev,
-                name: editName,
-                description: editDescription,
-                maxMembers: newMax,
-                announcement,
-                scheduleDate,
-                category: category,
-            });
-
-            setTimeout(() => {
-                Toast.show('✅ 수정 완료', { duration: 1500 });
-                fetchTeam();
-                setEditModalVisible(false);
-            }, 1500);
-
-            // ✅ 반짝소모임이면 푸시 알림 발송
-            /*if (editCategory === '✨ 반짝소모임') {
-                const snapshot = await getDocs(collection(db, 'users'));
-                const sentTokens = new Set<string>();
-                const pushPromises: Promise<void>[] = [];
-
-                snapshot.docs.forEach((docSnap) => {
-                    const user = docSnap.data();
-                    const tokens: string[] = user.expoPushTokens || [];
-
-                    tokens.forEach(token => {
-                        if (
-                            typeof token === 'string' &&
-                            token.startsWith('ExponentPushToken') &&
-                            !sentTokens.has(token)
-                        ) {
-                            sentTokens.add(token);
-                            pushPromises.push(
-                                sendPushNotification({
-                                    to: token,
-                                    title: '✨ 반짝소모임 업데이트!',
-                                    body: `반짝소모임${editName}에 지금 참여해보세요!`,
-                                })
-                            );
-                        }
-                    });
-                });
-
-                await Promise.all(pushPromises);
-                console.log(`✅ ✨ 반짝소모임 수정 푸시 완료: ${sentTokens.size}명`);
-            }*/
-
-        } catch (e) {
-            console.error('❌ 모임 정보 수정 실패:', e);
-            Alert.alert('에러', '모임 수정 중 문제가 발생했습니다.');
-        } finally {
-            setUpdateLoading(false); // ✅ 수정 끝났을 때 모달 닫기
-        }
-    };
+    // handleUpdateTeam 함수는 EditTeamModal 컴포넌트로 이동했습니다
 
     const handleKick = async (email: string) => {
         if (!team) return;
@@ -630,102 +410,7 @@ export default function TeamDetail() {
         ]);
     };
 
-    const handleDateConfirm = async (date: Date) => {
-        if (!team || !user) return;
-
-        const newDate = date.toISOString().slice(0, 10); // YYYY-MM-DD
-
-        // 동일한 날짜면 업데이트/알림 스킵
-        if (team.scheduleDate === newDate) {
-            setDatePickerVisible(false);
-            return;
-        }
-
-        handleScheduleUpdate(newDate);
-        setDatePickerVisible(false);
-    };
-
-    const handleScheduleUpdate = async (newDate: string) => {
-        if (!team || !user) return;
-
-        try {
-            // 1. 팀 문서 업데이트
-            const teamRef = doc(db, 'teams', team.id);
-            await updateDoc(teamRef, {
-                scheduleDate: newDate,
-                lastScheduleUpdate: Date.now(),
-            });
-
-            // 2. 스케줄 컬렉션에 새로운 일정 추가
-            const scheduleRef = doc(collection(db, 'teams', team.id, 'schedules'));
-            const scheduleData: Schedule = {
-                date: newDate,
-                createdAt: Date.now(),
-                createdBy: user.email,
-                creatorName: user.name,
-                status: 'active',
-            };
-            await setDoc(scheduleRef, scheduleData);
-
-            setScheduleDate(newDate);
-
-            // 3. 기존 투표 데이터 초기화
-            const votesRef = collection(db, 'teams', team.id, 'scheduleVotes');
-            const votesSnapshot = await getDocs(votesRef);
-            const batch = writeBatch(db);
-            votesSnapshot.docs.forEach((doc) => {
-                batch.delete(doc.ref);
-            });
-            await batch.commit();
-
-            // 4. 모임원들에게 알림 전송
-            if (!team.membersList) return;
-
-            const emails = team.membersList.filter(email => email !== team.leaderEmail);
-            if (emails.length > 0) {
-            const tokenQueryBatches = [];
-            const emailClone = [...emails];
-
-            while (emailClone.length) {
-                const batch = emailClone.splice(0, 10);
-                tokenQueryBatches.push(
-                    query(collection(db, 'expoTokens'), where('email', 'in', batch))
-                );
-            }
-
-            const tokenSnapshots = await Promise.all(tokenQueryBatches.map(q => getDocs(q)));
-            const tokens = tokenSnapshots.flatMap(snap =>
-                snap.docs.map(doc => doc.data().token).filter(Boolean)
-            );
-
-            if (tokens.length > 0) {
-                await sendPushNotification({
-                    to: tokens,
-                    title: `📅 ${team.name} 모임 일정 안내`,
-                        body: `모임 일정이 ${newDate}로 정해졌어요! 참석 여부를 투표해주세요.`,
-                    });
-                }
-
-                const notificationPromises = emails.map(email =>
-                    sendNotification({
-                        to: email,
-                        message: `${team.name} 모임의 일정이 ${newDate}로 정해졌습니다.`,
-                        type: 'schedule_update',
-                        link: `/teams/${team.id}`,
-                        teamId: team.id,
-                        teamName: team.name,
-                        scheduleDate: newDate,
-                    })
-                );
-                await Promise.all(notificationPromises);
-            }
-
-            showToast('✅ 일정이 저장되었습니다.');
-        } catch (e) {
-            console.error('❌ 일정 저장 실패:', e);
-            showToast('⚠️ 일정 저장에 실패했습니다.');
-        }
-    };
+    // handleDateConfirm와 handleScheduleUpdate 함수는 DatePickerModal 컴포넌트로 이동했습니다
 
     const handleShare = async () => {
         try {
@@ -753,56 +438,7 @@ export default function TeamDetail() {
         }
     };
 
-    const handleVote = async (status: VoteStatus) => {
-        if (!team?.id || !scheduleDate || !user) return;
-
-        const voteRef = doc(db, 'teams', team.id, 'scheduleVotes', user.email);
-
-        // 같은 걸 눌렀다면 → 삭제
-        if (myVote === status) {
-            try {
-                await deleteDoc(voteRef);
-                setMyVote(null);
-                setSelectedVote(null);
-                setShowVoteStatus(false);
-                showToast('⛔️ 투표가 취소되었습니다.');
-            } catch (e) {
-                console.error('❌ 투표 취소 실패:', e);
-                showToast('⚠️ 투표 취소 중 문제가 발생했습니다.');
-            }
-            return;
-        }
-
-        try {
-            await setDoc(voteRef, {
-                userId: user.email,
-                userName: user.name,
-                status,
-                scheduleDate,
-                timestamp: Date.now(),
-            });
-
-            setMyVote(status);
-            setSelectedVote(null);
-            setShowVoteStatus(true);
-            showToast('✅ 투표가 완료되었습니다.');
-        } catch (error) {
-            console.error('투표 저장 실패:', error);
-            showToast('⚠️ 투표 저장에 실패했습니다.');
-        }
-    };
-
-    // Add function to calculate vote statistics
-    const calculateVoteStats = (): VoteStats => {
-        const voteArray = Object.values(votes);
-        const total = voteArray.length;
-        return {
-            yes: voteArray.filter(v => v.status === 'yes').length,
-            no: voteArray.filter(v => v.status === 'no').length,
-            maybe: voteArray.filter(v => v.status === 'maybe').length,
-            total
-        };
-    };
+    // handleVote 함수는 VoteModal 컴포넌트로 이동했습니다
 
     const VoteStatusBar = ({ status, count, total, color }: { status: string; count: number; total: number; color: string }) => (
         <View style={{ marginBottom: spacing.sm }}>
@@ -826,28 +462,7 @@ export default function TeamDetail() {
         </View>
     );
 
-    const handleUpdateLocation = async (location: string) => {
-        if (!team) return;
-
-        try {
-            const teamRef = doc(db, 'teams', team.id);
-            await updateDoc(teamRef, {
-                location: location,
-            });
-
-            setTeam(prev => prev && {
-                ...prev,
-                location: location,
-            });
-
-            setLocationModalVisible(false);
-            setLocationInput('');
-            showToast('✅ 장소가 업데이트되었습니다.');
-        } catch (e) {
-            console.error('❌ 장소 업데이트 실패:', e);
-            showToast('⚠️ 장소 업데이트에 실패했습니다.');
-        }
-    };
+    // handleUpdateLocation 함수는 LocationModal 컴포넌트로 이동했습니다
 
     if (loading) {
         return (
@@ -914,13 +529,13 @@ export default function TeamDetail() {
 
     const isFull = (team?.members ?? 0) >= (team?.capacity ?? 99);
 
-    const handleCategorySelect = (cat: { label: string; value: string }) => {
-        setCategory(cat.label);
-        setCategoryModalVisible(false);
-        if (cat.value === '✨ 반짝소모임') {
-            setSparkleModalVisible(true);
-        }
-    };
+    // const handleCategorySelect = (cat: { label: string; value: string }) => {
+    //     setCategory(cat.label);
+    //     setCategoryModalVisible(false);
+    //     if (cat.value === '✨ 반짝소모임') {
+    //         setSparkleModalVisible(true);
+    //     }
+    // };
 
     return (
         <SafeAreaView style={{
@@ -1377,7 +992,15 @@ export default function TeamDetail() {
                                     flex: 1,
                                 }}>
                                     {(() => {
-                                        const stats = calculateVoteStats();
+                                        // 인라인으로 계산
+                                        const voteArray = Object.values(votes);
+                                        const total = voteArray.length;
+                                        const stats = {
+                                            yes: voteArray.filter(v => v.status === 'yes').length,
+                                            no: voteArray.filter(v => v.status === 'no').length,
+                                            maybe: voteArray.filter(v => v.status === 'maybe').length,
+                                            total
+                                        };
                                         const maxVotes = Math.max(stats.yes, stats.no, stats.maybe);
                                         const totalMembers = team.membersList?.length || 0;
                                         const participationRate = Math.round((stats.total / totalMembers) * 100);
@@ -1397,7 +1020,15 @@ export default function TeamDetail() {
                                     color: colors.subtext,
                                 }}>
                                     {(():any => {
-                                        const stats = calculateVoteStats();
+                                        // 인라인으로 계산
+                                        const voteArray = Object.values(votes);
+                                        const total = voteArray.length;
+                                        const stats = {
+                                            yes: voteArray.filter(v => v.status === 'yes').length,
+                                            no: voteArray.filter(v => v.status === 'no').length,
+                                            maybe: voteArray.filter(v => v.status === 'maybe').length,
+                                            total
+                                        };
                                         const totalMembers = team.membersList?.length || 0;
                                         const participationRate = Math.round((stats.total / totalMembers) * 100);
                                         return `참여율 ${participationRate}%`;
@@ -1437,635 +1068,47 @@ export default function TeamDetail() {
                 )}
 
                 {/* 모임 수정 모달 */}
-                <Modal visible={editModalVisible} animationType="slide" transparent>
-                    <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                        <KeyboardAvoidingView
-                            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                            style={{ flex: 1 }}
-                        >
-                            <ScrollView
-                                contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 20 }}
-                                keyboardShouldPersistTaps="handled"
-                            >
-                                <View style={{ backgroundColor: colors.surface, padding: spacing.lg, borderRadius: radius.lg }}>
-                                    {/* 썸네일 선택 */}
-                                    <TouchableOpacity onPress={pickImage} style={{ alignItems: 'center', marginBottom: spacing.md }}>
-                                        {imageURLs.length ? (
-                                            <Image
-                                                source={{ uri: imageURLs[0].uri }}
-                                                style={{ width: 100, height: 100, borderRadius: 12, marginBottom: 8 }}
-                                            />
-                                        ) : (
-                                            <View
-                                                style={{
-                                                    width: 100,
-                                                    height: 100,
-                                                    borderRadius: 12,
-                                                    backgroundColor: '#eee',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    marginBottom: 8,
-                                                }}
-                                            >
-                                                <Ionicons name="image-outline" size={40} color={colors.subtext} />
-                                            </View>
-                                        )}
-                                        <Text style={{ color: colors.primary, fontSize: font.caption }}>썸네일 선택</Text>
-                                    </TouchableOpacity>
-
-                                    <Text style={{ fontSize: font.body, color: colors.text, marginBottom: spacing.sm }}>모임명</Text>
-                                    <TextInput
-                                        value={editName}
-                                        onChangeText={setEditName}
-                                        style={{
-                                            borderColor: colors.border,
-                                            borderWidth: 1,
-                                            borderRadius: radius.sm,
-                                            padding: spacing.sm,
-                                            marginBottom: spacing.md,
-                                            color: colors.text,
-                                        }}
-                                    />
-
-                                    <Text style={{ fontSize: font.body, color: colors.text, marginBottom: spacing.sm }}>모임 소개</Text>
-                                    <TextInput
-                                        value={editDescription}
-                                        onChangeText={setEditDescription}
-                                        multiline
-                                        style={{
-                                            borderColor: colors.border,
-                                            borderWidth: 1,
-                                            borderRadius: radius.sm,
-                                            padding: spacing.sm,
-                                            height: 100,
-                                            marginBottom: spacing.md,
-                                            color: colors.text,
-                                        }}
-                                    />
-
-                                    <Text style={{ fontSize: font.body, color: colors.text, marginBottom: spacing.sm }}>공지사항</Text>
-                                    <TextInput
-                                        value={announcement}
-                                        onChangeText={setAnnouncement}
-                                        multiline
-                                        style={{
-                                            borderColor: colors.border,
-                                            borderWidth: 1,
-                                            borderRadius: radius.sm,
-                                            padding: spacing.sm,
-                                            height: 100,
-                                            marginBottom: spacing.md,
-                                            color: colors.text,
-                                        }}
-                                    />
-
-                                    <Text style={{ fontSize: font.body, color: colors.text, marginBottom: spacing.sm }}>최대 인원수</Text>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
-                                        <TextInput
-                                            value={isUnlimited ? '무제한' : editCapacity}
-                                            onChangeText={setEditCapacity}
-                                            keyboardType="number-pad"
-                                            editable={!isUnlimited}
-                                            style={{
-                                                flex: 1,
-                                                backgroundColor: colors.surface,
-                                                padding: spacing.md,
-                                                borderRadius: radius.md,
-                                                borderWidth: 1,
-                                                borderColor: colors.border,
-                                                color: colors.text,
-                                                fontSize: font.body,
-                                                opacity: isUnlimited ? 0.5 : 1,
-                                                marginRight: 12,
-                                            }}
-                                        />
-                                        <TouchableOpacity
-                                            onPress={() => setIsUnlimited(prev => !prev)}
-                                            style={{
-                                                flexDirection: 'row',
-                                                alignItems: 'center',
-                                                paddingVertical: 6,
-                                                paddingHorizontal: 10,
-                                                borderRadius: 8,
-                                                backgroundColor: isUnlimited ? colors.primary + '15' : 'transparent',
-                                            }}
-                                        >
-                                            <Ionicons
-                                                name={isUnlimited ? 'checkbox' : 'square-outline'}
-                                                size={20}
-                                                color={isUnlimited ? colors.primary : colors.subtext}
-                                            />
-                                            <Text style={{ color: colors.text, marginLeft: 6, fontSize: font.body }}>무제한</Text>
-                                        </TouchableOpacity>
-                                    </View>
-
-                            <View>
-      {/* 카테고리 선택 */}
-      <TouchableOpacity
-        onPress={() => setCategoryModalVisible(true)}
-        style={{
-          backgroundColor: colors.surface,
-          padding: spacing.md,
-          borderRadius: radius.md,
-          borderWidth: 1,
-          borderColor: colors.border,
-          marginBottom: spacing.md,
-        }}
-      >
-        <Text style={{ color: colors.text, fontSize: font.body }}>
-  {category
-    ? `카테고리: ${categories.find(c => c.value === category)?.label || category}`
-    : '카테고리를 선택하세요'}
-</Text>
-      </TouchableOpacity>
-
-      <Modal visible={isCategoryModalVisible} transparent animationType="slide">
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <View style={{ width: '80%', backgroundColor: colors.background, borderRadius: radius.md, padding: spacing.md }}>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }}>
-              {categories.map(cat => (
-                <TouchableOpacity
-                  key={cat.value}
-                  onPress={() => handleCategorySelect(cat)}
-                  style={{ width: '30%', margin: 5, alignItems: 'center' }}
-                >
-                  <Text style={{ fontSize: 30, marginBottom: 5 }}>{cat.label.split(' ')[0]}</Text>
-                  <Text style={{ color: colors.text, fontSize: font.body }}>{cat.label.split(' ')[1]}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TouchableOpacity onPress={() => setCategoryModalVisible(false)} style={{ marginTop: spacing.md }}>
-              <Text style={{ color: colors.primary, textAlign: 'center', fontSize: font.body }}>닫기</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* 날짜 선택 (반짝소모임일 때만) */}
-      {category === '✨ 반짝소모임' && (
-        <TouchableOpacity
-            onPress={() => setShowCalendar(true)}
-          style={{
-            backgroundColor: colors.surface,
-            padding: spacing.md,
-            borderRadius: radius.md,
-            borderWidth: 1,
-            borderColor: colors.border,
-            marginBottom: spacing.md,
-          }}
-        >
-          <Text style={{ color: colors.text, fontSize: font.body }}>
-            {`날짜 선택: ${expirationDate.toLocaleDateString()}`}
-          </Text>
-          <Text style={{ color: colors.text, fontSize: font.caption }}>
-            {'선택한 날짜 다음날 모임이 삭제됩니다.'}
-          </Text>
-
-            {category === '✨ 반짝소모임' && (
-                <Modal visible={showCalendar} transparent animationType="fade">
-                    <View style={{
-                        flex: 1,
-                        backgroundColor: 'rgba(0,0,0,0.4)',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                    }}>
-                        <View style={{
-                            width: '90%',
-                            backgroundColor: colors.background,
-                            borderRadius: radius.md,
-                            padding: spacing.md,
-                        }}>
-                            <Calendar
-                                onDayPress={(day:any) => {
-                                    setExpirationDate(new Date(day.dateString));
-                                    setShowCalendar(false);
-                                }}
-                                markedDates={{
-                                    [formatDate(expirationDate)]: {
-                                        selected: true,
-                                        marked: true,
-                                        selectedColor: colors.primary,
-                                    },
-                                }}
-                                theme={{
-                                    backgroundColor: colors.background,
-                                    calendarBackground: colors.background,
-                                    textSectionTitleColor: colors.text,
-                                    dayTextColor: colors.text,
-                                    selectedDayTextColor: '#fff',
-                                    selectedDayBackgroundColor: colors.primary,
-                                    monthTextColor: colors.text,
-                                    arrowColor: colors.primary,
-                                }}
-                            />
-
-                            <TouchableOpacity
-                                onPress={() => setShowCalendar(false)}
-                                style={{ marginTop: spacing.md, alignItems: 'center' }}
-                            >
-                                <Text style={{ color: colors.primary, fontSize: font.body }}>닫기</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </Modal>
-            )}
-        </TouchableOpacity>
-      )}
-      <Modal visible={isSparkleModalVisible} transparent animationType="slide">
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <View style={{ width: '80%', backgroundColor: colors.background, borderRadius: radius.md, padding: spacing.md }}>
-            <Text style={{ color: colors.text, fontSize: font.body, marginBottom: spacing.md }}>
-              반짝 소모임은 선택한 날짜 다음날 모임이 삭제되는 번개모임입니다. 반짝 소모임 생성 시 모든 회원에게 알림이 갑니다.
-            </Text>
-            <TouchableOpacity onPress={() => setSparkleModalVisible(false)}>
-              <Text style={{ color: colors.primary, textAlign: 'center', fontSize: font.body }}>확인</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-    </View>
-
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
-                                        <Text style={{ fontSize: 16, color: colors.text, marginRight: 8 }}>🙅‍♂️ 모임마감</Text>
-                                        <Switch value={isClosed} onValueChange={setIsClosed} />
-                                    </View>
-
-                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.md }}>
-                                        <TouchableOpacity onPress={() => setEditModalVisible(false)}>
-                                            <Text style={{ color: colors.subtext }}>취소</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity onPress={handleUpdateTeam}>
-                                            <Text style={{ color: colors.primary, fontWeight: 'bold' }}>저장</Text>
-                                        </TouchableOpacity>
-
-                                        <Modal
-                                            visible={updateLoading}
-                                            transparent
-                                            animationType="fade"
-                                            statusBarTranslucent
-                                        >
-                                            <View
-                                                style={{
-                                                    flex: 1,
-                                                    justifyContent: 'center',
-                                                    alignItems: 'center',
-                                                    backgroundColor: 'rgba(0,0,0,0.3)',
-                                                }}
-                                            >
-                                                {loadingAnimation && (
-                                                    <LottieView
-                                                        source={loadingAnimation}
-                                                        autoPlay
-                                                        loop
-                                                        style={{ width: 300, height: 300 }}
-                                                    />
-                                                )}
-                                                <Text style={{ color: '#fff', marginTop: 20, fontSize: 16 }}>로그인 중...</Text>
-                                            </View>
-                                        </Modal>
-                                    </View>
-                                </View>
-                            </ScrollView>
-                        </KeyboardAvoidingView>
-                    </View>
-                </Modal>
-
-                <Modal
-                    visible={isVoteModalVisible}
-                    transparent
-                    animationType="fade"
-                    onRequestClose={() => setVoteModalVisible(false)}
-                >
-                    <View style={{
-                        flex: 1,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        backgroundColor: 'rgba(0,0,0,0.5)',
-                    }}>
-                        <View style={{
-                            width: '80%',
-                            backgroundColor: colors.surface,
-                            borderRadius: radius.lg,
-                            padding: spacing.lg,
-                        }}>
-                            <Text style={{
-                                fontSize: font.body,
-                                fontWeight: 'bold',
-                                color: colors.text,
-                                marginBottom: spacing.md,
-                                textAlign: 'center',
-                            }}>
-                                {scheduleDate ? `${scheduleDate} 참석 여부` : '일정 투표'}
-                            </Text>
-
-                            {/* 투표 옵션 */}
-                            {[
-                                { status: 'yes' as VoteStatus, label: '가능', icon: '✅' },
-                                { status: 'maybe' as VoteStatus, label: '미정', icon: '🤔' },
-                                { status: 'no' as VoteStatus, label: '불가능', icon: '❌' },
-                            ].map((option) => (
-                                <TouchableOpacity
-                                    key={option.status}
-                                    onPress={() => {
-                                        if (myVote === option.status) {
-                                            // 같은 옵션을 선택하면 투표 취소
-                                            handleVote(option.status);
-                                        } else {
-                                            handleVote(option.status);
-                                        }
-                                        setVoteModalVisible(false);
-                                    }}
-                                    style={{
-                                        flexDirection: 'row',
-                                        alignItems: 'center',
-                                        paddingVertical: spacing.sm,
-                                        paddingHorizontal: spacing.md,
-                                        marginBottom: spacing.sm,
-                                        backgroundColor: myVote === option.status ? colors.primary + '20' : 'transparent',
-                                        borderRadius: radius.md,
-                                        borderWidth: 1,
-                                        borderColor: myVote === option.status ? colors.primary : colors.border,
-                                    }}
-                                >
-                                    <View style={{
-                                        width: 24,
-                                        height: 24,
-                                        borderRadius: 12,
-                                        borderWidth: 2,
-                                        borderColor: myVote === option.status ? colors.primary : colors.border,
-                                        marginRight: spacing.md,
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                    }}>
-                                        {myVote === option.status && (
-                                            <View style={{
-                                                width: 12,
-                                                height: 12,
-                                                borderRadius: 6,
-                                                backgroundColor: colors.primary,
-                                            }} />
-                                        )}
-                                    </View>
-                                    <Text style={{
-                                        fontSize: font.body,
-                                        color: colors.text,
-                                        marginRight: spacing.sm,
-                                    }}>
-                                        {option.icon}
-                                    </Text>
-                                    <Text style={{
-                                        fontSize: font.body,
-                                        color: colors.text,
-                                    }}>
-                                        {option.label}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-
-                            {showVoteStatus && (
-                                <View style={{ marginTop: spacing.md }}>
-                                    <View style={{
-                                        flexDirection: 'row',
-                                        justifyContent: 'space-between',
-                                        marginBottom: spacing.sm,
-                                    }}>
-                                        <Text style={{ color: colors.text, fontWeight: 'bold' }}>
-                                            투표 현황
-                                        </Text>
-                                        <Text style={{ color: colors.subtext }}>
-                                            총 {Object.keys(votes).length}명 참여
-                                        </Text>
-                                    </View>
-
-                                    <View style={{
-                                        backgroundColor: colors.background,
-                                        padding: spacing.sm,
-                                        borderRadius: radius.md,
-                                        marginBottom: spacing.md,
-                                    }}>
-                                        {[
-                                            { status: 'yes', label: '✅ 참석', count: calculateVoteStats().yes },
-                                            { status: 'maybe', label: '🤔 미정', count: calculateVoteStats().maybe },
-                                            { status: 'no', label: '❌ 불참', count: calculateVoteStats().no },
-                                        ].map((item) => (
-                                            <View key={item.status} style={{
-                                                flexDirection: 'row',
-                                                justifyContent: 'space-between',
-                                                paddingVertical: spacing.xs,
-                                            }}>
-                                                <Text style={{ color: colors.text }}>{item.label}</Text>
-                                                <Text style={{ color: colors.text }}>{item.count}명</Text>
-                                            </View>
-                                        ))}
-                                    </View>
-
-                                    <Text style={{ color: colors.text, fontWeight: 'bold', marginBottom: spacing.sm }}>
-                                        투표자 명단
-                                    </Text>
-                                    <View style={{
-                                        backgroundColor: colors.background,
-                                        padding: spacing.sm,
-                                        borderRadius: radius.md,
-                                        maxHeight: 150,
-                                    }}>
-                                        <ScrollView>
-                                            {Object.values(votes).map((vote) => (
-                                                <View
-                                                    key={vote.userId}
-                                                    style={{
-                                                        flexDirection: 'row',
-                                                        justifyContent: 'space-between',
-                                                        paddingVertical: spacing.xs,
-                                                    }}
-                                                >
-                                                    <Text style={{ color: colors.text }}>{vote.userName}</Text>
-                                                    <Text style={{ color: colors.text }}>
-                                                        {vote.status === 'yes' ? '✅ 참석' :
-                                                         vote.status === 'maybe' ? '🤔 미정' : '❌ 불참'}
-                                                    </Text>
-                                                </View>
-                                            ))}
-                                        </ScrollView>
-                                    </View>
-                                </View>
-                            )}
-
-                            {/* 닫기 버튼 */}
-                            <TouchableOpacity
-                                onPress={() => {
-                                    setVoteModalVisible(false);
-                                    setSelectedVote(null);
-                                }}
-                                style={{
-                                    paddingVertical: spacing.sm,
-                                    alignItems: 'center',
-                                    marginTop: spacing.sm,
-                                }}
-                            >
-                                <Text style={{ color: colors.subtext }}>닫기</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </Modal>
-
-                {/* 일정 선택 모달 */}
-                <DateTimePickerModal
-                    isVisible={isDatePickerVisible}
-                    mode="date"
-                    display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
-                    onConfirm={handleDateConfirm}
-                    onCancel={() => setDatePickerVisible(false)}
-                    minimumDate={new Date()}
+                <EditTeamModal
+                  team={team}
+                  visible={editModalVisible}
+                  onClose={() => setEditModalVisible(false)}
+                  fetchTeam={fetchTeam}
+                  loadingAnimation={loadingAnimation}
                 />
 
-                {/* 장소 선택 모달 */}
-                <Modal
-                    visible={isLocationModalVisible}
-                    transparent
-                    animationType="slide"
-                    onRequestClose={() => setLocationModalVisible(false)}
-                >
-                    <KeyboardAvoidingView
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        style={{ flex: 1 }}
-                    >
-                        <TouchableWithoutFeedback onPress={() => setLocationModalVisible(false)}>
-                            <View style={{
-                                flex: 1,
-                                backgroundColor: 'rgba(0,0,0,0.5)',
-                                justifyContent: 'flex-end'
-                            }}>
-                                <TouchableWithoutFeedback>
-                                    <View style={{
-                                        backgroundColor: colors.surface,
-                                        borderTopLeftRadius: radius.lg,
-                                        borderTopRightRadius: radius.lg,
-                                        maxHeight: '80%',
-                                    }}>
-                                        <View style={{
-                                            flexDirection: 'row',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            padding: spacing.lg,
-                                            borderBottomWidth: StyleSheet.hairlineWidth,
-                                            borderBottomColor: colors.border,
-                                        }}>
-                                            <Text style={{
-                                                fontSize: font.heading,
-                                                fontWeight: 'bold',
-                                                color: colors.text,
-                                            }}>
-                                                장소 선택
-                                            </Text>
-                                            <TouchableOpacity onPress={() => setLocationModalVisible(false)}>
-                                                <Ionicons name="close" size={24} color={colors.text} />
-                                            </TouchableOpacity>
-                                        </View>
+                <VoteModal
+                  visible={isVoteModalVisible}
+                  onClose={() => setVoteModalVisible(false)}
+                  teamId={team.id}
+                  scheduleDate={scheduleDate}
+                  votes={votes}
+                  myVote={myVote}
+                  user={user}
+                />
 
-                                        <ScrollView
-                                            style={{ maxHeight: '100%' }}
-                                            contentContainerStyle={{ padding: spacing.lg }}
-                                            keyboardShouldPersistTaps="handled"
-                                        >
-                                            {/* 직접 입력 */}
-                                            <View style={{ marginBottom: spacing.lg }}>
-                                                <Text style={{
-                                                    fontSize: font.body,
-                                                    color: colors.text,
-                                                    marginBottom: spacing.sm,
-                                                }}>
-                                                    직접 입력
-                                                </Text>
-                                                <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                                                    <TextInput
-                                                        value={locationInput}
-                                                        onChangeText={setLocationInput}
-                                                        placeholder="장소를 입력하세요"
-                                                        style={{
-                                                            flex: 1,
-                                                            borderWidth: 1,
-                                                            borderColor: colors.border,
-                                                            borderRadius: radius.sm,
-                                                            padding: spacing.sm,
-                                                            color: colors.text,
-                                                            backgroundColor: colors.background,
-                                                        }}
-                                                        placeholderTextColor={colors.subtext}
-                                                    />
-                                                    <TouchableOpacity
-                                                        onPress={() => handleUpdateLocation(locationInput)}
-                                                        disabled={!locationInput.trim()}
-                                                        style={{
-                                                            backgroundColor: locationInput.trim() ? colors.primary : colors.border,
-                                                            paddingHorizontal: spacing.lg,
-                                                            justifyContent: 'center',
-                                                            borderRadius: radius.sm,
-                                                        }}
-                                                    >
-                                                        <Text style={{ color: '#fff' }}>저장</Text>
-                                                    </TouchableOpacity>
-                                                </View>
-                                            </View>
+                <DatePickerModal
+                  visible={isDatePickerVisible}
+                  onClose={() => setDatePickerVisible(false)}
+                  teamId={team.id}
+                  teamName={team.name}
+                  membersList={team.membersList || []}
+                  leaderEmail={team.leaderEmail}
+                  user={user}
+                  onDateSelected={(date) => setScheduleDate(date)}
+                />
 
-                                            {/* 자주 사용하는 장소 */}
-                                            <View>
-                                                <Text style={{
-                                                    fontSize: font.body,
-                                                    color: colors.text,
-                                                    marginBottom: spacing.sm,
-                                                }}>
-                                                    자주 사용하는 장소
-                                                </Text>
-                                                <View style={{
-                                                    flexDirection: 'row',
-                                                    flexWrap: 'wrap',
-                                                    gap: spacing.sm,
-                                                }}>
-                                                    {commonLocations.map((location) => (
-                                                        <TouchableOpacity
-                                                            key={location}
-                                                            onPress={() => handleUpdateLocation(location)}
-                                                            style={{
-                                                                backgroundColor: colors.background,
-                                                                paddingHorizontal: spacing.md,
-                                                                paddingVertical: spacing.sm,
-                                                                borderRadius: radius.sm,
-                                                                borderWidth: 1,
-                                                                borderColor: colors.border,
-                                                            }}
-                                                        >
-                                                            <Text style={{ color: colors.text }}>{location}</Text>
-                                                        </TouchableOpacity>
-                                                    ))}
-                                                </View>
-                                            </View>
-
-                                            {/* 추후 지도 선택 기능 추가 예정 */}
-                                            <TouchableOpacity
-                                                style={{
-                                                    marginTop: spacing.xl,
-                                                    marginBottom: Platform.OS === 'ios' ? spacing.xl * 2 : spacing.xl,
-                                                    padding: spacing.md,
-                                                    backgroundColor: colors.background,
-                                                    borderRadius: radius.md,
-                                                    borderWidth: 1,
-                                                    borderColor: colors.border,
-                                                    flexDirection: 'row',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    opacity: 0.5,
-                                                }}
-                                            >
-                                                <Ionicons name="map" size={20} color={colors.text} style={{ marginRight: spacing.sm }} />
-                                                <Text style={{ color: colors.text }}>지도에서 선택 (준비중)</Text>
-                                            </TouchableOpacity>
-                                        </ScrollView>
-                                    </View>
-                                </TouchableWithoutFeedback>
-                            </View>
-                        </TouchableWithoutFeedback>
-                    </KeyboardAvoidingView>
-                </Modal>
+                <LocationModal
+                  visible={isLocationModalVisible}
+                  onClose={() => setLocationModalVisible(false)}
+                  teamId={team.id}
+                  initialLocation={team.location}
+                  onLocationUpdate={(location) => {
+                    setTeam(prev => prev && {
+                      ...prev,
+                      location: location,
+                    });
+                  }}
+                />
 
                 {/* 멤버 리스트 */}
                 {memberUsers.length > 0 && (

@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/firebase/config';
-import { useDesign } from '../../context/DesignSystem';
+import { useDesign } from '@/context/DesignSystem';
 import {useSafeAreaInsets} from "react-native-safe-area-context";
 
 interface NoticeItem {
@@ -49,7 +49,7 @@ export default function NoticePage() {
     }
 
     return (
-        <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? insets.top : 0,}}>
+        <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? insets.top : insets.top}}>
             {/* ✅ 상단 헤더 */}
             <View
                 style={{
