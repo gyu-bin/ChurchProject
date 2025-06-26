@@ -16,14 +16,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
-import { doc, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import {collection, deleteDoc, doc, getDocs, updateDoc} from 'firebase/firestore';
+import {ref, uploadBytes, getDownloadURL, deleteObject} from 'firebase/storage';
 import { ImagePickerAsset } from 'expo-image-picker';
 import { db, storage } from '@/firebase/config';
 import Toast from 'react-native-root-toast';
 import LottieView from 'lottie-react-native';
 import { useDesign } from '@/context/DesignSystem';
 import { showToast } from '@/utils/toast';
+import {sendPushNotification} from "@/services/notificationService";
 
 type Team = {
   id: string;
@@ -83,6 +84,8 @@ const EditTeamModal: React.FC<EditTeamModalProps> = ({
     { label: '🐾 동물', value: '동물' },
     { label: '🍳 요리/제조', value: '요리/제조' },
   ];
+
+  const [editCategory, setEditCategory] = useState(team?.category || '');
 
   // 데이터 초기화
   useEffect(() => {
@@ -146,26 +149,32 @@ const EditTeamModal: React.FC<EditTeamModalProps> = ({
   };
 
   // 이미지 업로드 함수
-  const uploadImageToFirebase = async (imageUri: string): Promise<string> => {
+  const uploadImageToFirebase = async (imageUri: string, oldPath?: string): Promise<{ downloadUrl: string; path: string }> => {
     try {
+      if (oldPath) {
+        try {
+          await deleteObject(ref(storage, oldPath));
+          console.log('🧹 기존 이미지 삭제 완료');
+        } catch (err) {
+          console.warn('⚠️ 기존 이미지 삭제 실패 (무시):', err);
+        }
+      }
+
       const manipulated = await ImageManipulator.manipulateAsync(
-        imageUri,
-        [],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+          imageUri,
+          [],
+          { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
       );
 
       const response = await fetch(manipulated.uri);
       const blob = await response.blob();
 
-      const filename = `uploads/${Date.now()}_${Math.floor(Math.random() * 10000)}.jpg`;
-      const storageRef = ref(storage, filename);
-
-      await uploadBytes(storageRef, blob, {
-        contentType: 'image/jpeg',
-      });
+      const newPath = `uploads/${Date.now()}_${Math.floor(Math.random() * 10000)}.jpg`;
+      const storageRef = ref(storage, newPath);
+      await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
 
       const downloadUrl = await getDownloadURL(storageRef);
-      return downloadUrl;
+      return { downloadUrl, path: newPath };
     } catch (err) {
       console.error('🔥 업로드 실패:', err);
       throw err;
@@ -186,30 +195,24 @@ const EditTeamModal: React.FC<EditTeamModalProps> = ({
     if (!team) return;
 
     setUpdateLoading(true);
-
     const currentCount = team.membersList?.length ?? 0;
-    let newMax: number | null = null;
+    let newMax: number | null = isUnlimited ? -1 : Number(editCapacity);
 
-    if (!isUnlimited) {
-      newMax = Number(editCapacity);
-      if (isNaN(newMax) || newMax < currentCount) {
-        setUpdateLoading(false);
-        Alert.alert(
-          '유효하지 않은 최대 인원',
-          `현재 모임 인원(${currentCount}명)보다 작을 수 없습니다.`
-        );
-        return;
-      }
-    } else {
-      newMax = -1;
+    if (!isUnlimited && (isNaN(newMax) || newMax < currentCount)) {
+      setUpdateLoading(false);
+      Alert.alert('유효하지 않은 최대 인원', `현재 모임 인원(${currentCount}명)보다 작을 수 없습니다.`);
+      return;
     }
 
-    const downloadUrls: string[] = [];
-
     try {
-      for (const image of imageURLs) {
-        const downloadUrl = await uploadImageToFirebase(image.uri);
-        downloadUrls.push(downloadUrl);
+      let newThumbnailUrl = team.thumbnail;
+      let newThumbnailPath = null;
+
+      if (imageURLs.length > 0) {
+        const oldPath = team.thumbnail?.split('uploads/')[1]; // 기존 경로 추출
+        const { downloadUrl, path } = await uploadImageToFirebase(imageURLs[0].uri, `uploads/${oldPath}`);
+        newThumbnailUrl = downloadUrl;
+        newThumbnailPath = path;
       }
 
       const teamRef = doc(db, 'teams', team.id);
@@ -219,13 +222,58 @@ const EditTeamModal: React.FC<EditTeamModalProps> = ({
         maxMembers: newMax,
         announcement,
         scheduleDate,
-        category: category,
-        ...(category === '✨ 반짝소모임' && {
-          expirationDate: new Date(expirationDate),
-        }),
-        thumbnail: downloadUrls[0],
+        category,
+        ...(category === '✨ 반짝소모임' && { expirationDate: new Date(expirationDate) }),
+        thumbnail: newThumbnailUrl,
         isClosed,
       });
+
+      // ✅ 반짝소모임 → 푸시 알림 & 자동 삭제 예약
+      if (category === '✨ 반짝소모임' && expirationDate) {
+        const deletionDate = new Date(expirationDate);
+        deletionDate.setDate(deletionDate.getDate() + 1);
+        const timeUntilDeletion = deletionDate.getTime() - new Date().getTime();
+
+        setTimeout(async () => {
+          try {
+            await deleteDoc(doc(db, 'teams', team.id));
+            console.log('✅ 반짝소모임 자동 삭제 완료');
+          } catch (e) {
+            console.error('❌ 삭제 실패:', e);
+          }
+        }, timeUntilDeletion);
+
+        try {
+          const snapshot = await getDocs(collection(db, 'users'));
+          const sentTokens = new Set<string>();
+          const pushPromises: Promise<void>[] = [];
+
+          snapshot.docs.forEach((docSnap) => {
+            const user = docSnap.data();
+            const tokens: string[] = user.expoPushTokens || [];
+
+            tokens.forEach(token => {
+              if (
+                  typeof token === 'string' &&
+                  token.startsWith('ExponentPushToken') &&
+                  !sentTokens.has(token)
+              ) {
+                sentTokens.add(token);
+                pushPromises.push(sendPushNotification({
+                  to: token,
+                  title: '✨ 반짝소모임이 수정되었어요!',
+                  body: `${team.leader}님의 반짝소모임 "${editName}" 확인해보세요!`,
+                }));
+              }
+            });
+          });
+
+          await Promise.all(pushPromises);
+          console.log(`✅ ${sentTokens.size}개 푸시 전송 완료`);
+        } catch (err) {
+          console.error('❌ 푸시 알림 실패:', err);
+        }
+      }
 
       setTimeout(() => {
         Toast.show('✅ 수정 완료', { duration: 1500 });
@@ -529,7 +577,7 @@ const EditTeamModal: React.FC<EditTeamModalProps> = ({
               style={{ width: 300, height: 300 }}
             />
           )}
-          <Text style={{ color: '#fff', marginTop: 20, fontSize: 16 }}>로딩 중...</Text>
+          <Text style={{ color: '#fff', marginTop: 20, fontSize: 16 }}>수정 중...</Text>
         </View>
       </Modal>
     </Modal>
