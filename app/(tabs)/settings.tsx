@@ -546,7 +546,7 @@ export default function SettingsScreen() {
                 </View>
 
                 {/* 관리자 설정 */}
-                {(user?.role === '교역자' || user?.role === '관리자') && (
+                {(user?.role === '교역자' || user?.role === '관리자' || user?.role === '임원') && (
                     <View style={{ marginBottom: 32 }}>
                         <Text style={{
                             fontSize: 18,

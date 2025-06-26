@@ -388,14 +388,26 @@ export default function HomeScreen() {
                             </LogoContainer>
                             <LogoText>Xion</LogoText>
                         </RowContainer>
-                        <NotificationButton onPress={() => router.push('/home/notifications')}>
-                            <Ionicons name="notifications-outline" size={24} color={theme.colors.text} />
-                            {notifications.length > 0 && (
-                                <NotificationBadge>
-                                    <StyledText>{notifications.length}</StyledText>
-                                </NotificationBadge>
-                            )}
-                        </NotificationButton>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 }}>
+                            {/* 📅 캘린더 버튼 */}
+                            <TouchableOpacity onPress={() => setCalendarVisible(true)} style={{ alignItems: 'center' }}>
+                                <View>
+                                    <Text style={{ fontSize: 30 }}>📅</Text>
+                                </View>
+                                <QuickMenuLabel>캘린더</QuickMenuLabel>
+                            </TouchableOpacity>
+
+                            {/* 🔔 알림 버튼 */}
+                            <NotificationButton onPress={() => router.push('/home/notifications')}>
+                                <Ionicons name="notifications-outline" size={24} color={theme.colors.text} />
+                                {notifications.length > 0 && (
+                                    <NotificationBadge>
+                                        <StyledText>{notifications.length}</StyledText>
+                                    </NotificationBadge>
+                                )}
+                            </NotificationButton>
+                        </View>
+
                     </HeaderView>
 
                     {/* 상단배너*/}

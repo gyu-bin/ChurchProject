@@ -2,7 +2,7 @@
 import { useDesign } from '@/context/DesignSystem';
 import { db } from '@/firebase/config';
 import dayjs from 'dayjs';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import {collection, doc, onSnapshot, query, where} from 'firebase/firestore';
 import React, {useEffect, useRef, useState} from 'react';
 import {
     Modal, PanResponder, PanResponderGestureState,
@@ -13,6 +13,8 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import {Ionicons} from "@expo/vector-icons";
 
 const daysOfWeek = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -28,6 +30,32 @@ export default function CalendarModal({
   const [currentMonth, setCurrentMonth] = useState(dayjs());
   const [selectedDate, setSelectedDate] = useState(dayjs().format('YYYY-MM-DD'));
   const today = dayjs();
+    const [user, setUser] = useState<any>(null);
+
+    useEffect(() => {
+        let unsubscribe: () => void;
+
+        const listenUser = async () => {
+            const raw = await AsyncStorage.getItem('currentUser');
+            if (!raw) return;
+            const cachedUser = JSON.parse(raw);
+            const userRef = doc(db, 'users', cachedUser.email);
+
+            unsubscribe = onSnapshot(userRef, async (docSnap) => {
+                if (docSnap.exists()) {
+                    const fresh = { ...docSnap.data(), email: cachedUser.email };
+                    setUser(fresh); // ✅ 실시간 업데이트
+                    await AsyncStorage.setItem('currentUser', JSON.stringify(fresh));
+                }
+            });
+        };
+
+        listenUser();
+
+        return () => {
+            if (unsubscribe) unsubscribe();
+        };
+    }, []);
 
   useEffect(() => {
     const q = query(collection(db, 'notice'), where('type', '==', 'event'));
@@ -223,26 +251,48 @@ export default function CalendarModal({
           </View>
 
           {/* 우측 하단 오늘 버튼 */}
-          <TouchableOpacity
-            onPress={handleToday}
-            style={{
-              position: 'absolute',
-              bottom: 16,
-              right: 16,
-              backgroundColor: colors.primary,
-              paddingHorizontal: 14,
-              paddingVertical: 8,
-              borderRadius: 20,
-              shadowColor: '#000',
-              shadowOpacity: 0.2,
-              shadowOffset: { width: 0, height: 2 },
-              elevation: 4,
-            }}
-          >
-            <Text style={{ color: '#fff', fontWeight: 'bold' }}>오늘</Text>
-          </TouchableOpacity>
+            <View style={{ position: 'absolute', bottom: 16, right: 16, flexDirection: 'row', alignItems: 'center' }}>
+                {/* 일정 추가 버튼 - 관리자/임원/교역자만 */}
+                {(user?.role === '관리자' || user?.role === '교역자' || user?.role === '임원') && (
+                    <TouchableOpacity
+                        // onPress={() => setModalVisible(true)}
+                        style={{
+                            backgroundColor: colors.primary,
+                            paddingHorizontal: 14,
+                            paddingVertical: 8,
+                            borderRadius: 20,
+                            marginRight: 12,
+                            shadowColor: '#000',
+                            shadowOpacity: 0.2,
+                            shadowOffset: { width: 0, height: 2 },
+                            elevation: 4,
+                        }}
+                    >
+                        <Ionicons name="add" size={20} color="#fff" />
+                    </TouchableOpacity>
+                )}
+
+                {/* 오늘 버튼 */}
+                <TouchableOpacity
+                    onPress={handleToday}
+                    style={{
+                        backgroundColor: colors.primary,
+                        paddingHorizontal: 14,
+                        paddingVertical: 8,
+                        borderRadius: 20,
+                        shadowColor: '#000',
+                        shadowOpacity: 0.2,
+                        shadowOffset: { width: 0, height: 2 },
+                        elevation: 4,
+                    }}
+                >
+                    <Text style={{ color: '#fff', fontWeight: 'bold' }}>오늘</Text>
+                </TouchableOpacity>
+            </View>
         </Pressable>
       </Pressable>
+
+
     </Modal>
   );
 }

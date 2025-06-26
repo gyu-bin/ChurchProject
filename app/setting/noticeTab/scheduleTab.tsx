@@ -1,7 +1,7 @@
 // ScheduleTab.tsx
 import { useDesign } from '@/context/DesignSystem';
 import { db } from '@/firebase/config';
-import { addDoc, collection, deleteDoc, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
+import {addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, query, updateDoc, where} from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
     Alert,
@@ -17,6 +17,8 @@ import {
     View,
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Toast from "react-native-root-toast";
 
 export default function ScheduleTab() {
     const { colors, spacing } = useDesign();
@@ -26,6 +28,8 @@ export default function ScheduleTab() {
         place: '',
         startDate: '',
         endDate: '',
+        campus: '',
+        division: '',
         id: '',
     });
     const [isDatePickerVisible, setDatePickerVisible] = useState(false);
@@ -34,6 +38,9 @@ export default function ScheduleTab() {
     const [tempEnd, setTempEnd] = useState<Date | null>(null);
     const [refreshing, setRefreshing] = useState(false);
     const [scheduleList, setScheduleList] = useState<any[]>([]);
+
+    const campuses = ['전체','문래', '신촌', '시선교회'];
+    const divisions = ['전체','유치부', '초등부', '중고등부', '청년1부', '청년2부', '장년부'];
 
     const getMarkedRange = (start: Date, end: Date) => {
         const range: any = {};
@@ -74,6 +81,8 @@ export default function ScheduleTab() {
             place: form.place,
             startDate: new Date(form.startDate),
             endDate: new Date(form.endDate),
+            division: form.division,
+            campus: form.campus,
             type: 'event',
         };
 
@@ -82,9 +91,9 @@ export default function ScheduleTab() {
         } else {
             await addDoc(collection(db, 'notice'), payload);
         }
-
+        Toast.show('수정되었습니다.')
         setModalVisible(false);
-        setForm({ title: '', place: '', startDate: '', endDate: '', id: '' });
+        setForm({ title: '', place: '', startDate: '', endDate: '', division: '', campus: '',id: '' });
         fetchSchedules();
     };
 
@@ -98,7 +107,24 @@ export default function ScheduleTab() {
 
         return (
             <View style={{ marginBottom: spacing.md }}>
-                <Text style={{ color: colors.text, fontWeight: 'bold' }}>{item.title}</Text>
+                <View style={{flexDirection: 'row'}}>
+                    <Text style={{ color: colors.text, fontWeight: 'bold' }}>{item.title}</Text>
+                    {/* 캠퍼스와 부서 정보 표시 */}
+                    {(item.campus || item.division) && (
+                        <View style={{ flexDirection: 'row', marginTop: 4, flexWrap: 'wrap' }}>
+                            {item.campus && (
+                                <View style={{ backgroundColor: colors.primary + '20', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, marginRight: 6, marginTop: 4 }}>
+                                    <Text style={{ color: colors.primary, fontSize: 12 }}>{item.campus}</Text>
+                                </View>
+                            )}
+                            {item.division && (
+                                <View style={{ backgroundColor: colors.success + '20', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, marginRight: 6, marginTop: 4 }}>
+                                    <Text style={{ color: colors.success, fontSize: 12 }}>{item.division}</Text>
+                                </View>
+                            )}
+                        </View>
+                    )}
+                </View>
                 <Text style={{ color: colors.subtext }}>{item.place}</Text>
                 <Text style={{ color: colors.subtext }}>
                     {toDateString(item.startDate)} ~ {toDateString(item.endDate)}
@@ -115,6 +141,8 @@ export default function ScheduleTab() {
                                 place: item.place,
                                 startDate: start.toISOString().split('T')[0],
                                 endDate: end.toISOString().split('T')[0],
+                                division: item.division,
+                                campus: item.campus,
                             });
                             setTempStart(start);
                             setTempEnd(end);
@@ -158,7 +186,7 @@ export default function ScheduleTab() {
 
             <TouchableOpacity
                 onPress={() => {
-                    setForm({ title: '', place: '', startDate: '', endDate: '', id: '' });
+                    setForm({ title: '', place: '', startDate: '', endDate: '', id: '',division: '', campus: '' });
                     setTempStart(null);
                     setTempEnd(null);
                     setModalVisible(true);
@@ -189,6 +217,77 @@ export default function ScheduleTab() {
                                 onChangeText={(t) => setForm((prev) => ({ ...prev, place: t }))}
                                 style={{ color: colors.text, borderColor: colors.border, borderWidth: 1, borderRadius: 8, marginBottom: spacing.sm, padding: spacing.sm }}
                             />
+
+                            {/* 캠퍼스 선택 */}
+                            <View style={{ marginBottom: spacing.sm }}>
+                                <Text style={{ marginBottom: 5, fontWeight: '500', color: colors.text }}>캠퍼스</Text>
+                                <TouchableOpacity
+                                    style={{
+                                        borderWidth: 1,
+                                        borderColor: colors.border,
+                                        borderRadius: 8,
+                                        padding: spacing.sm,
+                                        marginBottom: spacing.sm,
+                                        flexDirection: 'row',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center'
+                                    }}
+                                    onPress={() => {
+                                        Alert.alert(
+                                            '캠퍼스 선택',
+                                            '캠퍼스를 선택해주세요',
+                                            [
+                                                ...campuses.map(campus => ({
+                                                    text: campus,
+                                                    onPress: () => setForm(prev => ({ ...prev, campus }))
+                                                })),
+                                                { text: '취소', style: 'cancel' }
+                                            ]
+                                        );
+                                    }}
+                                >
+                                    <Text style={{ color: form.campus ? colors.text : colors.subtext }}>
+                                        {form.campus || '캠퍼스 선택'}
+                                    </Text>
+                                    <Text style={{ color: colors.subtext }}>▼</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* 부서 선택 */}
+                            <View style={{ marginBottom: spacing.sm }}>
+                                <Text style={{ marginBottom: 5, fontWeight: '500', color: colors.text }}>부서</Text>
+                                <TouchableOpacity
+                                    style={{
+                                        borderWidth: 1,
+                                        borderColor: colors.border,
+                                        borderRadius: 8,
+                                        padding: spacing.sm,
+                                        marginBottom: spacing.sm,
+                                        flexDirection: 'row',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center'
+                                    }}
+                                    onPress={() => {
+                                        Alert.alert(
+                                            '부서 선택',
+                                            '부서를 선택해주세요',
+                                            [
+                                                ...divisions.map(division => ({
+                                                    text: division,
+                                                    onPress: () => setForm(prev => ({ ...prev, division }))
+                                                })),
+                                                { text: '취소', style: 'cancel' }
+                                            ]
+                                        );
+                                    }}
+                                >
+                                    <Text style={{ color: form.division ? colors.text : colors.subtext }}>
+                                        {form.division || '부서 선택'}
+                                    </Text>
+                                    <Text style={{ color: colors.subtext }}>▼</Text>
+                                </TouchableOpacity>
+                            </View>
+
                             <TouchableOpacity
                                 onPress={() => {
                                     setModalVisible(false);
