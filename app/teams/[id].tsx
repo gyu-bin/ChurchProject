@@ -40,7 +40,9 @@ import {
     TextInput,
     TouchableOpacity,
     TouchableWithoutFeedback,
-    View, Image, Switch
+    View,
+    // Image,
+    Switch
 } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import Toast from "react-native-root-toast";
@@ -51,6 +53,7 @@ import {getDownloadURL, ref, uploadBytes} from "firebase/storage"; // 필수
 import  {ImagePickerAsset} from "expo-image-picker";
 import {Calendar} from "react-native-calendars";
 import LottieView from 'lottie-react-native';
+import { Image } from 'expo-image';
 
 import loading4 from '@/assets/lottie/Animation - 1747201330128.json';
 import loading3 from '@/assets/lottie/Animation - 1747201413764.json';
@@ -148,6 +151,10 @@ export default function TeamDetail() {
     const [showCalendar, setShowCalendar] = useState(false);
     const [loadingAnimation, setLoadingAnimation] = useState<any>(null);
     const loadingAnimations = [loading1, loading2, loading3, loading4];
+
+
+    const [loaded, setLoaded] = useState(false);
+
     useEffect(() => {
         const random = Math.floor(Math.random() * loadingAnimations.length);
         setLoadingAnimation(loadingAnimations[random]);
@@ -1048,12 +1055,30 @@ export default function TeamDetail() {
                 }}>
                     {/* 썸네일 이미지 */}
                     {team.thumbnail && (
-                        <View style={{
-                            marginBottom: spacing.md,
-                            borderRadius: radius.lg,
-                            overflow: 'hidden',
-                            alignItems: 'center'
-                        }}>
+                        <View
+                            style={{
+                                marginBottom: spacing.md,
+                                borderRadius: radius.lg,
+                                overflow: 'hidden',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '100%',
+                            }}
+                        >
+                            <View style={{
+                                position: 'absolute',
+                                width: '50%',
+                                height: 120,
+                                borderRadius: radius.lg,
+                                backgroundColor: '#eee',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 1,
+                                display: loaded ? 'none' : 'flex'
+                            }}>
+                                <ActivityIndicator size="small" color="#888" />
+                            </View>
+
                             <Image
                                 source={{ uri: team.thumbnail }}
                                 style={{
@@ -1061,7 +1086,10 @@ export default function TeamDetail() {
                                     height: 120,
                                     borderRadius: radius.lg,
                                 }}
-                                resizeMode="cover"
+                                contentFit="cover"
+                                cachePolicy="disk"
+                                onLoad={() => setLoaded(true)}
+                                onError={() => setLoaded(true)}
                             />
                         </View>
                     )}

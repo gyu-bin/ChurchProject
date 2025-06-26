@@ -6,7 +6,7 @@ import 'dayjs/locale/ko';
 import weekday from 'dayjs/plugin/weekday';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import {font} from "@/context/DesignSystem";
-
+import { Image } from 'expo-image';
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
 dayjs.extend(weekday);
@@ -102,7 +102,7 @@ export default function EventBannerCarousel({ events = [], goToEvent, theme }: a
                 }}
             >
               {/* 배너 이미지 */}
-              <ImageBackground
+              <Image
                   source={{ uri: item.bannerImage }}
                   style={{
                     marginTop: 20,
@@ -112,7 +112,8 @@ export default function EventBannerCarousel({ events = [], goToEvent, theme }: a
                     marginBottom: 16,
                     overflow: 'hidden',
                   }}
-                  resizeMode="cover"
+                  contentFit="cover"
+                  cachePolicy="disk"
               />
 
               {/* 제목 */}

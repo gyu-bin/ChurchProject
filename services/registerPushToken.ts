@@ -22,10 +22,10 @@ import { PermissionsAndroid, Platform } from 'react-native';
 export async function registerPushToken() {
     try {
         // 시뮬레이터 체크
-        if (!Device.isDevice) {
+        /*if (!Device.isDevice) {
             console.log('📱 시뮬레이터에서는 푸시 알림을 사용할 수 없습니다.');
             return;
-        }
+        }*/
 
         // ✅ Android 13 이상 알림 권한 요청
         const androidVersion = typeof Platform.Version === 'string'

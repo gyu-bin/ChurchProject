@@ -107,6 +107,7 @@ export default function CounselRequestPage() {
                 content,
                 email: user?.email,
                 name: user?.name,
+                pastorName: selectedPastor,
                 createdAt: serverTimestamp(),
             });
 
@@ -143,7 +144,7 @@ export default function CounselRequestPage() {
                 notifyPromises.push(
                     sendNotification({
                         to: toEmail,
-                        message: `${user?.name}님이 심방을 요청했습니다.`,
+                        message: `📩 ${user?.name}님이 심방을 요청했습니다.`,
                         type: 'counsel_request',
                     })
                 );
@@ -197,7 +198,7 @@ export default function CounselRequestPage() {
                                 valueField="value"
                                 placeholder="교역자를 선택해주세요"
                                 value={selectedPastor}
-                                onChange={item => setSelectedPastor(item.value)}
+                                onChange={item => setSelectedPastor(item.label)}
                             />
                         </View>
 

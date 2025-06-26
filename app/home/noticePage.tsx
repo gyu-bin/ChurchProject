@@ -73,7 +73,7 @@ export default function HomeNotices() {
                 id: doc.id,
                 ...(doc.data() as any),
             }));
-            setNews(newsList.slice(0, 5)); // 최대 3개만 표시
+            setNews(newsList); // 최대 3개만 표시
         });
 
         return () => {

@@ -12,10 +12,11 @@ import {
     where,
 } from 'firebase/firestore';
 import React, { useCallback, useState } from 'react';
-import { Dimensions, Text, TouchableOpacity, View, Image } from 'react-native';
+import { Dimensions, Text, TouchableOpacity, View } from 'react-native';
 import { useDesign } from '@/context/DesignSystem';
 import { Ionicons } from '@expo/vector-icons';
 import FlexibleCarousel from '../../components/FlexibleCarousel';
+import { Image } from 'expo-image';
 
 interface Team {
     id: string;
@@ -143,6 +144,8 @@ export default function ActiveSection() {
                             borderRadius: 8,
                             backgroundColor: '#eee',
                         }}
+                        contentFit="cover"
+                        cachePolicy="disk"
                     />
                 ) : (
                     <View

@@ -10,7 +10,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Dimensions,
     FlatList,
-    Image,
+    // Image,
     Modal,
     Platform,
     RefreshControl,
@@ -22,6 +22,7 @@ import {
 } from 'react-native';
 import { EdgeInsets, useSafeAreaInsets } from 'react-native-safe-area-context';
 import styled from 'styled-components/native';
+import { Image } from 'expo-image';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -620,6 +621,8 @@ export default function TeamsScreen() {
                             backgroundColor: '#eee',
                             marginRight: 12,
                         }}
+                        cachePolicy="disk"
+                        contentFit="cover"
                     />
                 ) : (
                     <View
@@ -726,7 +729,7 @@ export default function TeamsScreen() {
 
                 <SortButton onPress={() => setSortModalVisible(true)}>
                     <StyledText>{sortOption}</StyledText>
-                    <StyledIcon name="swap-vertical" size={18} />
+                    <StyledIcon name="swap-vertical" size={18} style={{marginRight: 20}}/>
                 </SortButton>
             </FilterSortContainer>
 
