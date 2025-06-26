@@ -390,7 +390,7 @@ export default function HomeScreen() {
                         </RowContainer>
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 }}>
                             {/* 📅 캘린더 버튼 */}
-                            <TouchableOpacity onPress={() => setCalendarVisible(true)} style={{ alignItems: 'center' }}>
+                            <TouchableOpacity onPress={() => setCalendarVisible(true)} style={{ alignItems: 'center', paddingRight: 10}}>
                                 <View>
                                     <Text style={{ fontSize: 30 }}>📅</Text>
                                 </View>
@@ -422,9 +422,9 @@ export default function HomeScreen() {
                                 action: () => router.push('../home/QuickMenuButton/todayVerse'),
                             },
                             {
-                                icon: <Text style={{ fontSize: 30 }}>📅</Text>,
-                                label: '캘린더',
-                                action: () => setCalendarVisible(true),
+                                icon: <Text style={{ fontSize: 30 }}>📰</Text>,
+                                label: '시광 뉴스',
+                                action: () => router.push('../home/QuickMenuButton/churchNewsPage'),
                             },
                             {
                                 icon: <Text style={{ fontSize: 30 }}>📖</Text>,
@@ -436,6 +436,12 @@ export default function HomeScreen() {
                                 label: '심방 요청',
                                 action: () => router.push('../home/QuickMenuButton/counseling'),
                             },
+                         /*   {
+                                icon: <Text style={{ fontSize: 30 }}>📅</Text>,
+                                label: '캘린더',
+                                action: () => setCalendarVisible(true),
+                            }*/
+
                         ].map((item, idx) => (
                             <TouchableOpacity key={idx} onPress={item.action} style={{ alignItems: 'center', width: 72 }}>
                                 <QuickMenuButtonContainer>
