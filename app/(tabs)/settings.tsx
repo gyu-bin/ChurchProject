@@ -1,6 +1,6 @@
-import DeviceManager from '@/app/setting/DeviceManager';
+import DeviceManager from '@/app/my/DeviceManager';
 import ThemeToggle from "@/components/ThemeToggle";
-import PushSettings from "@/app/setting/VerseNotificationSettings";
+import PushSettings from "@/app/my/VerseNotificationSettings";
 import { useDesign } from '@/context/DesignSystem';
 import { useAppTheme } from '@/context/ThemeContext';
 import { db } from '@/firebase/config';
@@ -464,7 +464,7 @@ export default function SettingsScreen() {
                     <View style={{ gap: 12 }}>
                         {/* 내 모임 관리 */}
                         <TouchableOpacity
-                            onPress={() => router.push('/setting/joinTeams')}
+                            onPress={() => router.push('/my/joinTeams')}
                             style={{
                                 backgroundColor: colors.surface,
                                 padding: 20,
@@ -561,7 +561,7 @@ export default function SettingsScreen() {
                         <View style={{ gap: 12 }}>
                             {/* 공지사항 관리 */}
                             <TouchableOpacity
-                                onPress={() => router.push('/setting/noticeManager')}
+                                onPress={() => router.push('/my/noticeManager')}
                                 style={{
                                     backgroundColor: colors.surface,
                                     padding: 20,
@@ -594,7 +594,7 @@ export default function SettingsScreen() {
 
                             {/* 유튜브 영상 관리 */}
                             <TouchableOpacity
-                                onPress={() => router.push('/setting/videoManager')}
+                                onPress={() => router.push('/my/videoManager')}
                                 style={{
                                     backgroundColor: colors.surface,
                                     padding: 20,
@@ -643,7 +643,7 @@ export default function SettingsScreen() {
                     <View style={{ gap: 12 }}>
                         {/* 피드백 */}
                         <TouchableOpacity
-                            onPress={() => router.push('/setting/feedback')}
+                            onPress={() => router.push('/my/feedback')}
                             style={{
                                 backgroundColor: colors.surface,
                                 padding: 20,
@@ -725,7 +725,7 @@ export default function SettingsScreen() {
                     <View style={{ gap: 12 }}>
                         {/* 비밀번호 찾기 */}
                         <TouchableOpacity
-                            onPress={() => router.push('/setting/ForgotPassword')}
+                            onPress={() => router.push('/my/ForgotPassword')}
                             style={{
                                 backgroundColor: colors.surface,
                                 padding: 20,

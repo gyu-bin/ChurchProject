@@ -1,7 +1,7 @@
 import ThemeToggle from "@/components/ThemeToggle";
 import PushSettings from "@/app/my/VerseNotificationSettings";
-import { useDesign } from "@/app/context/DesignSystem";
-import { useAppTheme } from "@/app/context/ThemeContext";
+import { useDesign } from "@/context/DesignSystem";
+import { useAppTheme } from "@/context/ThemeContext";
 import { db } from "@/firebase/config";
 import { setScrollCallback } from "@/utils/scrollRefManager";
 import { Ionicons } from "@expo/vector-icons";
