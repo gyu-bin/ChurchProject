@@ -30,6 +30,7 @@ import loading1 from "@/assets/lottie/Animation - 1747201461030.json";
 import loading2 from "@/assets/lottie/Animation - 1747201431992.json";
 import loading3 from "@/assets/lottie/Animation - 1747201413764.json";
 import loading4 from "@/assets/lottie/Animation - 1747201330128.json";
+import Toast from "react-native-root-toast";
 
 export default function CreateTeam() {
     const [name, setName] = useState('');
@@ -52,9 +53,11 @@ export default function CreateTeam() {
 
     const [showCalendar, setShowCalendar] = useState(false);
 
+    const [updateLoading, setUpdateLoading] = useState(false); // 🔸 수정 중 로딩용
     const [loading, setLoading] = useState(false);
     const [loadingAnimation, setLoadingAnimation] = useState<any>(null); // 선택된 애니메이션
-
+// 상태 정의
+    const [openContact, setOpenContact] = useState('');
     const loadingAnimations = [loading1, loading2, loading3, loading4];
 
     // yyyy-mm-dd 형식으로 포맷하는 함수
@@ -84,6 +87,13 @@ export default function CreateTeam() {
             }
         });
     }, []);
+
+
+    useEffect(() => {
+        const random = Math.floor(Math.random() * loadingAnimations.length);
+        setLoadingAnimation(loadingAnimations[random]);
+    }, []);
+
 
     const pickImage = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -139,19 +149,12 @@ export default function CreateTeam() {
             return;
         }
 
-        if (role === '새가족') {
-            Alert.alert('권한 부족', '정회원 또는 교역자만 소모임을 생성할 수 있습니다.');
-            return;
-        }
-
-        setLoading(true);
-
         let max: number|null = null;
         if (!isUnlimited) {
             max = parseInt(memberCount);
             if (isNaN(max) || max < 2 || max > 99) {
                 Alert.alert('입력 오류', '참여 인원 수는 2명 이상 99명 이하로 설정해주세요.');
-                setLoading(false);
+                setUpdateLoading(false);
                 return;
             }
         } else {
@@ -173,6 +176,7 @@ export default function CreateTeam() {
                 description,
                 membersList: [creatorEmail],
                 createdAt: new Date(),
+                openContact,
                 maxMembers: max,
                 category,
                 ...(category === '✨ 반짝소모임' && expirationDate && { expirationDate }),
@@ -242,13 +246,15 @@ export default function CreateTeam() {
                     console.error('❌ 푸시 알림 실패:', err);
                 }*/
             }
-
-            showToast('✅ 모임이 성공적으로 생성되었습니다.');
+            setTimeout(() => {
+                Toast.show('✅ 모임이 성공적으로 생성되었습니다.', { duration: 1500 });
+                setTimeout(() => {
+                    setUpdateLoading(false); // 데이터 로드 후 로딩 상태 종료
+                }, 500);
+            }, 1500);
             router.replace('/teams');
         } catch (error: any) {
             Alert.alert('생성 실패', error.message);
-        }finally {
-            setLoading(false);
         }
     };
 
@@ -260,11 +266,11 @@ export default function CreateTeam() {
         }
     };
 
-    const handleDateChange = (event: any, selectedDate: Date | undefined) => {
+/*    const handleDateChange = (event: any, selectedDate: Date | undefined) => {
         const currentDate = selectedDate || expirationDate;
         setShowDatePicker(Platform.OS === 'ios');
         setExpirationDate(currentDate);
-    };
+    };*/
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background,paddingTop: Platform.OS === 'android' ? insets.top : 20 }}>
@@ -273,24 +279,35 @@ export default function CreateTeam() {
                 style={{
                     flexDirection: 'row',
                     alignItems: 'center',
-                    justifyContent: 'flex-start',
+                    justifyContent: 'center',
                     paddingTop: 20,
                     paddingHorizontal: spacing.lg,
+                    position: 'relative',
                 }}
             >
                 <TouchableOpacity
                     onPress={() => router.back()}
                     style={{
-                        paddingLeft: 8,
-                        zIndex: 1,
+                        position: 'absolute',
+                        left: spacing.lg,
+                        padding: 8,
                     }}
                 >
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.text, textAlign: 'center' }}>
+
+                <Text
+                    style={{
+                        fontSize: font.heading,
+                        fontWeight: 'bold',
+                        color: colors.text,
+                        textAlign: 'center',
+                    }}
+                >
                     소모임 생성
                 </Text>
             </View>
+
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -371,6 +388,23 @@ export default function CreateTeam() {
                             textAlignVertical: 'top',
                         }}
                     />
+
+                        <TextInput
+                            placeholder="오픈카톡 / 연락처"
+                            placeholderTextColor={colors.placeholder}
+                            value={openContact}
+                            onChangeText={setOpenContact}
+                            style={{
+                                backgroundColor: colors.surface,
+                                padding: spacing.md,
+                                borderRadius: radius.md,
+                                borderWidth: 1,
+                                borderColor: colors.border,
+                                marginBottom: spacing.md,
+                                color: colors.text,
+                                fontSize: font.body,
+                            }}
+                        />
 
                     {/* 최대 인원수 + 무제한 체크박스 */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
@@ -580,7 +614,12 @@ export default function CreateTeam() {
                     </Modal>
 
                     <TouchableOpacity
-                        onPress={handleSubmit}
+                        onPress={()=>{
+                            const random = Math.floor(Math.random() * loadingAnimations.length);
+                            setLoadingAnimation(loadingAnimations[random]);
+                            setUpdateLoading(true);
+                            handleSubmit();
+                        }}
                         style={{
                             backgroundColor: colors.primary,
                             paddingVertical: spacing.md,
@@ -592,24 +631,36 @@ export default function CreateTeam() {
                         <Text style={{ color: '#fff', fontSize: font.body, fontWeight: 'bold' }}>소모임 생성</Text>
                     </TouchableOpacity>
 
-                    <Modal visible={loading} transparent animationType="fade">
+                    <Modal
+                        visible={updateLoading}
+                        transparent={true}
+                        animationType="fade"
+                        statusBarTranslucent={true}
+                    >
                         <View
                             style={{
                                 flex: 1,
                                 justifyContent: 'center',
                                 alignItems: 'center',
-                                backgroundColor: 'rgba(0,0,0,0.3)',
+                                backgroundColor: 'rgba(0,0,0,0.7)',
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
                             }}
                         >
-                            {loadingAnimation && (
-                                <LottieView
-                                    source={loadingAnimation}
-                                    autoPlay
-                                    loop
-                                    style={{ width: 300, height: 300 }}
-                                />
-                            )}
-                            <Text style={{ color: '#fff', marginTop: 20, fontSize: 16 }}>로그인 중...</Text>
+                            <LottieView
+                                source={loadingAnimation}
+                                autoPlay={true}
+                                loop={true}
+                                speed={0.8}
+                                style={{ width: 400, height: 400 }}
+                            />
+                            <View style={{ alignItems: 'center' }}>
+                                <Text style={{ color: '#fff', fontSize: 22, fontWeight: '600', marginTop: 16 }}>저장 중...</Text>
+                                <Text style={{ color: '#fff', fontSize: 14, marginTop: 8, opacity: 0.8 }}>잠시만 기다려주세요</Text>
+                            </View>
                         </View>
                     </Modal>
 

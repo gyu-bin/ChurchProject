@@ -23,6 +23,7 @@ import {
 import { EdgeInsets, useSafeAreaInsets } from 'react-native-safe-area-context';
 import styled from 'styled-components/native';
 import { Image } from 'expo-image';
+import dayjs from "dayjs";
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -157,16 +158,21 @@ export default function TeamsScreen() {
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearchVisible, setIsSearchVisible] = useState(false);
     const searchInputRef = useRef<TextInput>(null);
-    const [filterOption, setFilterOption] = useState('모집중,가입된 모임만 보기');
     const [sortOption, setSortOption] = useState('최신개설순');
     const [isCategoryModalVisible, setCategoryModalVisible] = useState(false);
     const [isSortModalVisible, setSortModalVisible] = useState(false);
     const [userEmail, setUserEmail] = useState('');
     const [allTeams, setAllTeams] = useState<any[]>([]);
-    const [filterOptions, setFilterOptions] = useState<string[]>([]);
     const [currentUserUid, setCurrentUserUid] = useState('');
     const [isFilterModalVisible, setFilterModalVisible] = useState(false);
-    const [categoryOption, setCategoryOption] = useState(''); // '✨ 반짝소모임' 등
+    // 통합 필터 상태 관리
+    const [filters, setFilters] = useState({
+        category: '',
+        memberStatus: {
+            recruitingOnly: false,
+            joinedOnly: false
+        }
+    });
     const { filter } = useLocalSearchParams(); // filter param 받아오기
     const [firstLoad, setFirstLoad] = useState(true);
     const categories = [
@@ -203,16 +209,19 @@ export default function TeamsScreen() {
 
     useEffect(() => {
         if (typeof filter === 'string' && filter.length > 0) {
-            setCategoryOption(filter);
-            setFilterOption('');
-            setTeams(allTeams.filter(team => team.category === filter));
+            setFilters(prev => ({ ...prev, category: filter }));
         } else {
             // 🔁 filter 없으면 전체 목록
-            setCategoryOption('');
-            setFilterOption('');
-            setTeams(allTeams); // 또는 초기값
+            setFilters(prev => ({ ...prev, category: '' }));
         }
-    }, [filter, allTeams]);
+    }, [filter]);
+
+    // 필터링 적용 로직
+    useEffect(() => {
+        if (!allTeams.length) return;
+
+        applyFilters();
+    }, [filters, allTeams, searchQuery]);
 
     const fetchTeams = useCallback(async (isInitial = false) => {
         if (!hasMore && !isInitial) return;
@@ -258,9 +267,9 @@ export default function TeamsScreen() {
 
     useFocusEffect(
         useCallback(() => {
+            // 화면에 포커스될 때마다 필터링 초기화 및 데이터 새로고침
             if (!filter || filter === '') {
-                setCategoryOption('');
-                setFilterOption('전체');
+                setFilters(prev => ({ ...prev, category: '' }));
                 fetchTeams(true);
             }
         }, [filter])
@@ -307,47 +316,78 @@ export default function TeamsScreen() {
         router.push(`/teams/${id}`);
     };
 
-    const filteredTeams = teams.filter((team) => {
-        const keyword = searchQuery.toLowerCase();
-        return (
-            team.name?.toLowerCase().includes(keyword) ||
-            team.leader?.toLowerCase().includes(keyword)
-        );
-    });
+    // 필터 적용 함수
+    const applyFilters = () => {
+        let filtered = [...allTeams];
 
-    const handleFilterChange = (option: string) => {
-        if (option === '상세 필터') {
-            setFilterModalVisible(true); // ✅ 올바른 모달 오픈
-            return;
+        // 카테고리 필터 적용
+        if (filters.category) {
+            filtered = filtered.filter(team => team.category === filters.category);
         }
 
-        let updatedOptions = [...filterOptions];
-        if (updatedOptions.includes(option)) {
-            updatedOptions = updatedOptions.filter(opt => opt !== option);
-        } else {
-            updatedOptions.push(option);
-        }
-        setFilterOptions(updatedOptions);
-
-        let filtered = allTeams;
-
-        if (updatedOptions.includes('멤버 모집중인 모임만 보기')) {
+        // 모집 상태 필터 적용
+        if (filters.memberStatus.recruitingOnly) {
             filtered = filtered.filter(team => {
                 const members = team.membersList?.length ?? 0;
                 const max = team.maxMembers ?? null;
                 const isUnlimited = max === -1 || max === null || max === undefined;
                 const isFull = !isUnlimited && typeof max === 'number' && members >= max;
-                return !isFull;
+                return !isFull && !team.isClosed;
             });
         }
 
-        if (updatedOptions.includes('내가 가입된 모임만 보기')) {
+        // 가입된 모임 필터 적용
+        if (filters.memberStatus.joinedOnly) {
             filtered = filtered.filter(team =>
                 Array.isArray(team.membersList) && team.membersList.includes(userEmail)
             );
         }
 
+        // 검색어 적용
+        if (searchQuery) {
+            const keyword = searchQuery.toLowerCase();
+            filtered = filtered.filter(team =>
+                team.name?.toLowerCase().includes(keyword) ||
+                team.leader?.toLowerCase().includes(keyword)
+            );
+        }
+
+        // 정렬 적용
+        if (sortOption === '최신개설순') {
+            filtered.sort((a, b) => b.createdAt - a.createdAt);
+        } else if (sortOption === '멤버수 많은 순') {
+            filtered.sort((a, b) => (b.membersList?.length || 0) - (a.membersList?.length || 0));
+        } else if (sortOption === '멤버수 적은 순') {
+            filtered.sort((a, b) => (a.membersList?.length || 0) - (b.membersList?.length || 0));
+        }
+
         setTeams(filtered);
+    };
+
+    const handleFilterChange = (option: string) => {
+        if (option === '상세 필터') {
+            setFilterModalVisible(true);
+            return;
+        }
+
+        // 간소화된 필터 적용 - 상태 업데이트만 수행
+        if (option === '멤버 모집중인 모임만 보기') {
+            setFilters(prev => ({
+                ...prev,
+                memberStatus: {
+                    ...prev.memberStatus,
+                    recruitingOnly: !prev.memberStatus.recruitingOnly
+                }
+            }));
+        } else if (option === '내가 가입된 모임만 보기') {
+            setFilters(prev => ({
+                ...prev,
+                memberStatus: {
+                    ...prev.memberStatus,
+                    joinedOnly: !prev.memberStatus.joinedOnly
+                }
+            }));
+        }
     };
 
     const renderFilterModal = () => (
@@ -387,10 +427,10 @@ export default function TeamsScreen() {
                         }}
                     >
                         <Text style={{ fontSize: font.body, color: colors.text, marginRight: 10 }}>
-                            모집상태:멤버 모집중인 모임만 보기
+                            모집상태: 멤버 모집중인 모임만 보기
                         </Text>
                         <Ionicons
-                            name={filterOptions.includes('멤버 모집중인 모임만 보기') ? 'checkbox' : 'square-outline'}
+                            name={filters.memberStatus.recruitingOnly ? 'checkbox' : 'square-outline'}
                             size={20}
                             color={colors.primary}
                         />
@@ -409,7 +449,7 @@ export default function TeamsScreen() {
                             내 모임: 내가 가입된 모임만 보기
                         </Text>
                         <Ionicons
-                            name={filterOptions.includes('내가 가입된 모임만 보기') ? 'checkbox' : 'square-outline'}
+                            name={filters.memberStatus.joinedOnly ? 'checkbox' : 'square-outline'}
                             size={20}
                             color={colors.primary}
                         />
@@ -469,8 +509,8 @@ export default function TeamsScreen() {
                         <Text
                             style={{
                                 fontSize: font.body,
-                                color: filterOption === '전체' ? colors.primary : colors.text,
-                                fontWeight: filterOption === '전체' ? 'bold' : 'normal',
+                                color: filters.category === '' ? colors.primary : colors.text,
+                                fontWeight: filters.category === '' ? 'bold' : 'normal',
                             }}
                         >
                             전체
@@ -493,8 +533,8 @@ export default function TeamsScreen() {
                             <Text
                                 style={{
                                     fontSize: font.body,
-                                    color: filterOption === category ? colors.primary : colors.text,
-                                    fontWeight: filterOption === category ? 'bold' : 'normal',
+                                    color: filters.category === category ? colors.primary : colors.text,
+                                    fontWeight: filters.category === category ? 'bold' : 'normal',
                                 }}
                             >
                                 {category}
@@ -507,29 +547,22 @@ export default function TeamsScreen() {
     );
 
     const handleSortChange = (option: string) => {
+        // 정렬 옵션 설정만 수행 - applyFilters에서 실제 정렬 로직 실행
         setSortOption(option);
-        const sorted = [...teams];
-        if (option === '최신개설 모임 순') {
-            sorted.sort((a, b) => b.createdAt - a.createdAt);
-        } else if (option === '멤버수 많은 순') {
-            sorted.sort((a, b) => (b.membersList?.length || 0) - (a.membersList?.length || 0));
-        } else if (option === '멤버수 적은 순') {
-            sorted.sort((a, b) => (a.membersList?.length || 0) - (b.membersList?.length || 0));
-        }
-        setTeams(sorted);
+        setSortModalVisible(false);
+
+        // 정렬 즉시 적용
+        setTimeout(applyFilters, 0);
     };
 
     const handleCategorySelect = (category: string) => {
-        setCategoryOption(category);
+        // 상태 업데이트만 수행
+        setFilters(prev => ({
+            ...prev,
+            category: category === '전체' ? '' : category
+        }));
         setCategoryModalVisible(false);
-
-        if (category === '전체') {
-          setTeams(allTeams);
-        } else {
-          const filtered = allTeams.filter(team => team.category === category);
-          setTeams(filtered);
-        }
-      };
+          };
 
     const renderSortModal = () => (
         <Modal visible={isSortModalVisible} transparent animationType="slide">
@@ -594,15 +627,15 @@ export default function TeamsScreen() {
             <TouchableOpacity
                 key={item.id}
                 style={{
-                    flexDirection: 'column',
+                    flexDirection: isGrid ? 'column' : 'row',
                     alignItems: 'center',
                     backgroundColor: colors.surface,
                     borderColor: colors.border,
                     borderWidth: 1,
                     borderRadius: 16,
-                    padding: 8, // 🔽 패딩 줄임
+                    padding: 12,
                     margin: 6,
-                    width: (SCREEN_WIDTH - 3 * 12) / 2, // 🔽 좌우 margin 고려한 2열 정렬
+                    width: isGrid ? (SCREEN_WIDTH - 3 * 12) / 2 : SCREEN_WIDTH - 32, // 리스트 모드일 때 더 넓게
                     shadowColor: '#000',
                     shadowOffset: { width: 0, height: 1 },
                     shadowOpacity: 0.05,
@@ -620,6 +653,7 @@ export default function TeamsScreen() {
                             borderRadius: 8,
                             backgroundColor: '#eee',
                             marginRight: 12,
+                            marginBottom: isGrid ? 8 : 0,
                         }}
                         cachePolicy="disk"
                         contentFit="cover"
@@ -632,14 +666,30 @@ export default function TeamsScreen() {
                             borderRadius: 8,
                             backgroundColor: '#eee',
                             marginRight: 12,
+                            marginBottom: isGrid ? 8 : 0,
                         }}
                     />
                 )}
 
                 <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text, marginBottom: 4 }}>
-                        {item.name}
-                    </Text>
+                    <View
+                        style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            marginBottom: 4,
+                        }}
+                    >
+                        <Text style={{ fontSize: isGrid ? 16 : 18, fontWeight: '600', color: colors.text }}>
+                            {item.name}
+                        </Text>
+
+                        {item.category === '✨ 반짝소모임' && (
+                            <Text style={{ fontSize: 12, color: colors.notification, fontWeight: 'bold' }}>
+                                D-{dayjs(item.expirationDate.seconds * 1000).diff(dayjs(), 'day')}
+                            </Text>
+                        )}
+                    </View>
                     <Text style={{ fontSize: 13, color: colors.primary, marginBottom: 8 }}>
                         {item.category ? `(${item.category})` : '(카테고리 없음)'}
                     </Text>
@@ -707,7 +757,13 @@ export default function TeamsScreen() {
                         placeholder="팀 이름 또는 모임장으로 검색"
                         placeholderTextColor={colors.subtext}
                         value={searchQuery}
-                        onChangeText={setSearchQuery}
+                        onChangeText={(text:any) => {
+                            setSearchQuery(text);
+                            // 디바운스 효과를 위해 타이머 설정
+                            if (text.length === 0 || text.length > 2) {
+                                setTimeout(applyFilters, 300);
+                            }
+                        }}
                     />
                 </SearchInputContainer>
             )}
@@ -721,7 +777,7 @@ export default function TeamsScreen() {
                 <View style={{ height: '100%', width: 1, backgroundColor: colors.border }} />
 
                 <CategoryButton onPress={() => setCategoryModalVisible(true)}>
-                    <StyledText>{categoryOption && categoryOption !== '전체' ? categoryOption : '카테고리'}</StyledText>
+                    <StyledText>{filters.category ? filters.category : '카테고리'}</StyledText>
                     <StyledIcon name="chevron-down" size={18} style={{ marginLeft: 4 }} />
                 </CategoryButton>
 
@@ -746,12 +802,12 @@ export default function TeamsScreen() {
             ) : (
                 <FlatList
                     ref={mainListRef}
-                    data={filteredTeams}
+                    data={teams}
                     key={isGrid ? 'grid' : 'list'}
                     numColumns={isGrid ? 2 : 1}
                     keyExtractor={(item) => item.id}
                     renderItem={renderItem}
-                    contentContainerStyle={styles.listContent}
+                    contentContainerStyle={[styles.listContent, !isGrid && { paddingHorizontal: 10 }]}
                     columnWrapperStyle={isGrid && { gap: 4 }}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                     onEndReachedThreshold={0.3}

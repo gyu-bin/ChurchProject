@@ -36,7 +36,7 @@ export default function NoticePage() {
     const [modalVisible, setModalVisible] = useState(false);
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
-    const allowedRoles = ['교역자', '관리자', '임원'];
+    const allowedRoles = ['교역자', '관리자'];
     const [userRole, setUserRole] = useState<string | null>(null);
     const { colors, spacing, font } = useDesign();
     const router = useRouter();

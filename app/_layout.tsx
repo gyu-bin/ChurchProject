@@ -24,7 +24,7 @@ import RootLayoutInner from './_layout-inner';
 
 export default function RootLayout() {
     const colorScheme = useColorScheme();
-    const isDark = colorScheme === 'dark';
+    const isDark = colorScheme === 'light';
     const router = useRouter();
     const [isAppReady, setIsAppReady] = useState(false);
 

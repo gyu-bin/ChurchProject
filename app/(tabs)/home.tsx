@@ -1,6 +1,8 @@
 import { useDesign } from '@/context/DesignSystem';
 import { useAppTheme } from '@/context/ThemeContext';
 import ActiveSection from '@/app/home/active';
+import HomeNews from '@/app/home/homeNews';
+import TodayBible from '@/app/home/todayBible';
 import BannerCarousel from '@/app/home/homeBanner';
 import HomeNotices from "@/app/home/noticePage";
 import catechismData from '@/assets/catechism/catechism.json';
@@ -8,7 +10,7 @@ import { verses } from '@/assets/verses';
 import { db } from '@/firebase/config';
 import { useAppDispatch } from '@/hooks/useRedux';
 import { setScrollCallback } from '@/utils/scrollRefManager';
-import { Ionicons } from '@expo/vector-icons';
+import {AntDesign, Ionicons} from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -209,7 +211,6 @@ export default function HomeScreen() {
     const [listKey, setListKey] = useState(Date.now());
     const dispatch = useAppDispatch();
 
-    const [videoData, setVideoData] = useState<any[]>([]);
 
     const mainListRef = useRef<FlatList>(null);
     const [quickModal, setQuickModal] = useState<null | 'verse' | 'calendar' | 'catechism' | 'ai'>(null);
@@ -290,17 +291,9 @@ export default function HomeScreen() {
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
         setVerse(verses[Math.floor(Math.random() * verses.length)]);
-
-        if (videoData.length > 2) {
-            const random = Math.floor(Math.random() * (videoData.length - 2));
-            setInitialIndex(random + 1);
-            setCurrentIndex(random + 1);
-            setListKey(Date.now()); // 🔁 FlatList 재생성
-        }
-
         await fetchPrayers();
         setRefreshing(false);
-    }, [videoData]); // ✅ 의존성 추가
+    }, []); // ✅ 의존성 추가
 
     const goToEvent = (id: string) => {
         router.push({
@@ -392,9 +385,9 @@ export default function HomeScreen() {
                             {/* 📅 캘린더 버튼 */}
                             <TouchableOpacity onPress={() => setCalendarVisible(true)} style={{ alignItems: 'center', paddingRight: 10}}>
                                 <View>
-                                    <Text style={{ fontSize: 30 }}>📅</Text>
+                                    <AntDesign name="calendar" size={30} color={theme.colors.text}/>
                                 </View>
-                                <QuickMenuLabel>캘린더</QuickMenuLabel>
+                                {/*<QuickMenuLabel>캘린더</QuickMenuLabel>*/}
                             </TouchableOpacity>
 
                             {/* 🔔 알림 버튼 */}
@@ -452,15 +445,24 @@ export default function HomeScreen() {
                         ))}
                     </QuickMenuContainer>
 
+                        <StyledView>
+                            <HomeNews />
+                        </StyledView>
+
                     {/*반짝 & 기도*/}
                     <StyledView>
                         <ActiveSection />
                     </StyledView>
 
+                        <StyledView>
+                            <TodayBible />
+                        </StyledView>
+
                     {/*공지 & 일정*/}
                     <StyledView>
                         <HomeNotices />
                     </StyledView>
+
 
                 </ListHeaderContainer>
                 )}

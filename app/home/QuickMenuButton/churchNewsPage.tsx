@@ -34,7 +34,7 @@ export default function ChurchNewsPage() {
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [newType, setNewType] = useState('공지');
-
+    const [link, setLink] = useState('');
     const isAuthor = (post: any) => user && post.author === user?.name;
 
     useEffect(() => {
@@ -65,6 +65,7 @@ export default function ChurchNewsPage() {
                 title,
                 content,
                 type: newType,
+                link,
                 date: serverTimestamp(), // 수정 시간도 업데이트
             });
         } else {
@@ -76,6 +77,7 @@ export default function ChurchNewsPage() {
                 date: serverTimestamp(),
                 author: user?.name,
                 authorEmail: user?.email || '',
+                link
             });
         }
 
@@ -83,6 +85,7 @@ export default function ChurchNewsPage() {
         setTitle('');
         setContent('');
         setNewType('공지');
+        setLink('');
         setSelectedPost(null); // 수정 모드 종료
         setShowModal(false);
         Toast.show('저장되었습니다.')
@@ -101,7 +104,7 @@ export default function ChurchNewsPage() {
             },
         ]);
     };
-    const allowedRoles = ['관리자', '교역자', '임원'];
+    const allowedRoles = ['관리자', '교역자'];
     const canDelete = (post: any) =>
         user && (allowedRoles.includes(user?.role) || post.authorEmail === user?.email);
 
@@ -119,7 +122,7 @@ export default function ChurchNewsPage() {
                 borderBottomColor: colors.border,
             }}>
                 <TouchableOpacity onPress={() => router.back()}>
-                    <Text style={{ color: colors.text, fontSize: 16 }}>←</Text>
+                    <Text style={{ color: colors.text, fontSize: 30 }}>←</Text>
                 </TouchableOpacity>
                 <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.text }}>시광 뉴스</Text>
                 <View style={{ width: 24 }} />
@@ -160,6 +163,9 @@ export default function ChurchNewsPage() {
                         </Text>
                         <Text style={{ fontSize: 12, color: colors.subtext, marginTop: 4 }}>
                             작성자: {item.author} / 작성일: {new Date(item.date?.seconds * 1000).toLocaleDateString()}
+                        </Text>
+                        <Text style={{ fontSize: 12, color: colors.subtext, marginTop: 4 }}>
+                            {item.link}
                         </Text>
 
                         {(canDelete(item) || isAuthor(item)) && (
@@ -212,6 +218,9 @@ export default function ChurchNewsPage() {
                             <Text style={{ fontSize: 14, color: colors.subtext, marginVertical: 10 }}>
                                 {selectedPost?.content}
                             </Text>
+                            <Text style={{ fontSize: 14, color: colors.subtext, marginVertical: 10 }}>
+                                {selectedPost?.link}
+                            </Text>
                         </ScrollView>
                         <TouchableOpacity onPress={() => setSelectedPost(null)} style={{ marginTop: 20 }}>
                             <Text style={{ textAlign: 'center', color: colors.primary }}>닫기</Text>
@@ -224,6 +233,13 @@ export default function ChurchNewsPage() {
             <Modal visible={showModal} transparent animationType="slide">
                 <View style={{ flex: 1, backgroundColor: '#00000088', justifyContent: 'center', padding: 20 }}>
                     <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 20 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                            {types.map(t => (
+                                <TouchableOpacity key={t} onPress={() => setNewType(t)}>
+                                    <Text style={{ fontSize:font.heading, color: newType === t ? colors.primary : colors.text }}>{t}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
                         <TextInput
                             placeholder="제목"
                             value={title}
@@ -239,13 +255,17 @@ export default function ChurchNewsPage() {
                             style={{ height: 100, borderWidth: 1, padding: 10, marginBottom: 12, color: colors.text }}
                             placeholderTextColor="#aaa"
                         />
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-                            {types.map(t => (
-                                <TouchableOpacity key={t} onPress={() => setNewType(t)}>
-                                    <Text style={{ color: newType === t ? colors.primary : colors.text }}>{t}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
+                        {/* ✅ 링크 */}
+                        <TextInput
+                            placeholder="관련 링크 (선택사항)"
+                            value={link}
+                            onChangeText={setLink}
+                            style={{ borderBottomWidth: 1, marginBottom: 12, fontSize: 15, color: colors.text }}
+                            placeholderTextColor="#bbb"
+                            autoCapitalize="none"
+                            keyboardType="url"
+                        />
+
                         <TouchableOpacity onPress={handleSubmit} style={{ backgroundColor: colors.primary, padding: 10, borderRadius: 6 }}>
                             <Text style={{ color: '#fff', textAlign: 'center' }}>등록</Text>
                         </TouchableOpacity>

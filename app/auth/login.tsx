@@ -174,7 +174,7 @@ export default function LoginScreen() {
                                         source={loadingAnimation}
                                         autoPlay
                                         loop
-                                        style={{ width: 300, height: 300 }}
+                                        style={{ width: 400, height: 400 }}
                                     />
                                 )}
                                 <Text style={{ color: '#fff', marginTop: 20, fontSize: 16 }}>로그인 중...</Text>

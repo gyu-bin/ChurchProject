@@ -41,7 +41,7 @@ export default function DevotionPage() {
     const [filterUserName, setFilterUserName] = useState<string | null>(null);
     const theme = useDesign();
     const { colors, spacing, font, radius } = useDesign();
-    const { mode } = useAppTheme();
+    const { mode, setThemeMode } = useAppTheme();
     const isDark = mode === 'dark';
     const insets = useSafeAreaInsets();
     const [rankingRangeText, setRankingRangeText] = useState<string>(''); // 📅 날짜 표시용 추가

@@ -28,7 +28,7 @@ import { useAuth } from "@/hooks/useAuth";
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const campuses = ['문래', '신촌', '시선교회'];
 const divisions = ['유치부', '초등부', '중고등부', '청년1부', '청년2부', '장년부'];
-const roles = ['새가족', '정회원', '임원','교역자','관리자'];
+const roles = [ '정회원','교역자','관리자'];
 
 export default function RegisterSlideScreen() {
     const router = useRouter();
@@ -39,7 +39,7 @@ export default function RegisterSlideScreen() {
     const [loading, setLoading] = useState(false);
     const [loadingAnimation, setLoadingAnimation] = useState<any>(null);
     const loadingAnimations = [loading1, loading2, loading3, loading4];
-    const { reload } = useAuth();
+    const { reload , login} = useAuth();
 
     const steps = ['email_name', 'password_confirm', 'info'] as const;
 
@@ -79,7 +79,7 @@ export default function RegisterSlideScreen() {
 
                         setTimeout(() => {
                             setLoading(false);
-                            router.replace('/(tabs)/home');
+                            router.replace('/home');
                         }, 2000);
                     } catch (e: any) {
                         console.error('❌ 회원가입 실패:', e);
@@ -155,7 +155,7 @@ export default function RegisterSlideScreen() {
 
                 <Modal visible={loading} transparent animationType="fade">
                     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.3)' }}>
-                        {loadingAnimation && <LottieView source={loadingAnimation} autoPlay loop style={{ width: 300, height: 300 }} />}
+                        {loadingAnimation && <LottieView source={loadingAnimation} autoPlay loop style={{ width: 400, height: 400 }} />}
                         <Text style={{ color: '#fff', marginTop: 20, fontSize: 16 }}>가입 처리 중...</Text>
                     </View>
                 </Modal>

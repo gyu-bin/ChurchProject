@@ -6,7 +6,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 export default function ThemeToggle() {
     const { mode, toggleTheme } = useAppTheme();
-    const isDark = mode === 'dark';
+    const isDark = mode === 'light';
     const { colors } = useDesign();
 
     return (
