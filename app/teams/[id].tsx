@@ -1,14 +1,13 @@
 //app/teams/[id].tsx
-import { useDesign } from '@/context/DesignSystem';
-import { useAppTheme } from '@/context/ThemeContext';
+import {useDesign} from '@/context/DesignSystem';
+import {useAppTheme} from '@/context/ThemeContext';
 import {db, storage} from '@/firebase/config';
-import { getCurrentUser } from '@/services/authService';
-import { sendNotification, sendPushNotification } from '@/services/notificationService';
-import { showToast } from "@/utils/toast"; // ✅ 추가
-import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker from '@react-native-community/datetimepicker';
+import {getCurrentUser} from '@/services/authService';
+import {sendNotification, sendPushNotification} from '@/services/notificationService';
+import {showToast} from "@/utils/toast"; // ✅ 추가
+import {Ionicons} from "@expo/vector-icons";
 import * as Clipboard from 'expo-clipboard';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import {useLocalSearchParams, useRouter} from 'expo-router';
 import {
     arrayRemove,
     collection,
@@ -20,11 +19,12 @@ import {
     onSnapshot,
     query,
     setDoc,
+    Timestamp,
     updateDoc,
     where,
     writeBatch
-    , Timestamp } from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
+} from 'firebase/firestore';
+import React, {useEffect, useState} from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -36,24 +36,22 @@ import {
     ScrollView,
     Share,
     StyleSheet,
+    Switch,
     Text,
     TextInput,
     TouchableOpacity,
     TouchableWithoutFeedback,
-    View,
-    // Image,
-    Switch
+    View
 } from 'react-native';
-import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import Toast from "react-native-root-toast";
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import * as ImagePicker from "expo-image-picker";
+import {ImagePickerAsset} from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import {getDownloadURL, ref, uploadBytes} from "firebase/storage"; // 필수
-import  {ImagePickerAsset} from "expo-image-picker";
 import {Calendar} from "react-native-calendars";
 import LottieView from 'lottie-react-native';
-import { Image } from 'expo-image';
+import {Image} from 'expo-image';
 
 import loading4 from '@/assets/lottie/Animation - 1747201330128.json';
 import loading3 from '@/assets/lottie/Animation - 1747201413764.json';
@@ -162,10 +160,6 @@ export default function TeamDetail() {
         setLoadingAnimation(loadingAnimations[random]);
     }, []);
     const [updateLoading, setUpdateLoading] = useState(false); // 🔸 수정 중 로딩용
-    const randomLoadingAnimation = () => {
-        const index = Math.floor(Math.random() * loadingAnimations.length);
-        return loadingAnimations[index];
-    };
 
     const [commonLocations] = useState([
         '본당',
@@ -228,11 +222,9 @@ export default function TeamDetail() {
         checkJoinRequest();
     }, [user, team]);
 
-    // Add schedule and announcement subscription
     useEffect(() => {
         if (!id) return;
 
-        // Subscribe to team document for schedule and announcement updates
         const teamRef = doc(db, 'teams', id);
         const unsubscribe = onSnapshot(teamRef, (docSnap) => {
             if (!docSnap.exists()) return;
@@ -300,32 +292,6 @@ export default function TeamDetail() {
     }, []);
 
     useEffect(() => {
-        const setupBadgeListener = async () => {
-            if (!id) return; // `id`는 useLocalSearchParams에서 가져온 팀 ID
-            const user = await getCurrentUser();
-            if (!user?.email) return;
-
-            const badgeRef = doc(db, 'teams', id, 'chatBadge', user.email);
-            const unsubscribe = onSnapshot(badgeRef, (snap) => {
-                const count = snap.exists() ? snap.data()?.count || 0 : 0;
-                // console.log('📥 실시간 badge count:', count); // ✅ 디버깅 로그
-                setChatBadgeCount(count);
-            });
-
-            return unsubscribe;
-        };
-
-        let unsubscribe: (() => void) | undefined;
-        setupBadgeListener().then((unsub) => {
-            unsubscribe = unsub;
-        });
-
-        return () => {
-            if (unsubscribe) unsubscribe();
-        };
-    }, [id]); // team.id 대신 id 사용
-
-    useEffect(() => {
         if (!team?.id || !scheduleDate || !user) return;
 
         const votesRef = collection(db, 'teams', team.id, 'scheduleVotes');
@@ -347,6 +313,7 @@ export default function TeamDetail() {
         return () => unsubscribe();
     }, [team?.id, scheduleDate, user]);  // ✅ user를 의존성에 추가
 
+    // 모임가입
     const handleJoin = async () => {
         if (!team || !user) return;
 
@@ -467,14 +434,14 @@ export default function TeamDetail() {
                 contentType: 'image/jpeg',
             });
 
-            const downloadUrl = await getDownloadURL(storageRef);
-            return downloadUrl;
+            return await getDownloadURL(storageRef);
         } catch (err) {
             console.error('🔥 업로드 실패:', err);
             throw err;
         }
     };
 
+    //수정함수
     const handleUpdateTeam = async () => {
         if (!team) return;
 
@@ -554,7 +521,7 @@ export default function TeamDetail() {
             }, 1500);
 
             // ✅ 반짝소모임이면 푸시 알림 발송
-            /*if (editCategory === '✨ 반짝소모임') {
+            if (editCategory === '✨ 반짝소모임') {
                 const snapshot = await getDocs(collection(db, 'users'));
                 const sentTokens = new Set<string>();
                 const pushPromises: Promise<void>[] = [];
@@ -583,7 +550,7 @@ export default function TeamDetail() {
 
                 await Promise.all(pushPromises);
                 console.log(`✅ ✨ 반짝소모임 수정 푸시 완료: ${sentTokens.size}명`);
-            }*/
+            }
 
         } catch (e) {
             console.error('❌ 모임 정보 수정 실패:', e);
@@ -776,10 +743,8 @@ export default function TeamDetail() {
 
             if (result.action === Share.sharedAction) {
                 if (result.activityType) {
-                    // shared with activity type of result.activityType
                     showToast('링크가 공유되었습니다');
                 } else {
-                    // shared
                     showToast('링크가 공유되었습니다');
                 }
             }
@@ -842,7 +807,7 @@ export default function TeamDetail() {
         };
     };
 
-    const VoteStatusBar = ({ status, count, total, color }: { status: string; count: number; total: number; color: string }) => (
+/*    const VoteStatusBar = ({ status, count, total, color }: { status: string; count: number; total: number; color: string }) => (
         <View style={{ marginBottom: spacing.sm }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
                 <Text style={{ fontSize: font.caption, color: colors.text }}>{status}</Text>
@@ -862,7 +827,7 @@ export default function TeamDetail() {
                 }} />
             </View>
         </View>
-    );
+    );*/
 
     const handleUpdateLocation = async (location: string) => {
         if (!team) return;

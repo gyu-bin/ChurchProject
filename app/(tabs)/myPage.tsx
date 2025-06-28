@@ -1,4 +1,4 @@
-import PushSettings from "@/app/my/VerseNotificationSettings";
+import PushSettings from "@/app/myPage/VerseNotificationSettings";
 import ThemeToggle from "@/components/ThemeToggle";
 import { db } from "@/firebase/config";
 import { setScrollCallback } from "@/utils/scrollRefManager";
@@ -56,7 +56,7 @@ export default function MyScreen() {
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
-    setScrollCallback("my", () => {
+    setScrollCallback("myPage", () => {
       scrollRef.current?.scrollTo({ y: 0, animated: true });
     });
   }, []);
@@ -77,7 +77,7 @@ export default function MyScreen() {
   return (
     <MyScreenContainer scrollRef={scrollRef}>
       <ScreenHeader title="마이페이지">
-        <TouchableOpacity onPress={() => router.push("/my/setting")}>
+        <TouchableOpacity onPress={() => router.push("/myPage/setting")}>
           <Ionicons name="settings-outline" size={24} color={colors.text} />
         </TouchableOpacity>
       </ScreenHeader>
@@ -112,7 +112,7 @@ export default function MyScreen() {
               color: "#10b981",
               backgroundColor: "#d1fae5",
             }}
-            onPress={() => router.push("/my/joinTeams")}
+            onPress={() => router.push("/myPage/joinTeams")}
           />
 
           {/* 다크모드 */}
@@ -144,7 +144,7 @@ export default function MyScreen() {
                 color: "#10b981",
                 backgroundColor: "#d1fae5",
               }}
-              onPress={() => router.push("/my/noticeManager")}
+              onPress={() => router.push("/myPage/noticeManager")}
             />
             <SettingCard
               title="유튜브 영상 관리"
@@ -153,7 +153,7 @@ export default function MyScreen() {
                 color: "#ef4444",
                 backgroundColor: "#fee2e2",
               }}
-              onPress={() => router.push("/my/videoManager")}
+              onPress={() => router.push("/myPage/videoManager")}
             />
           </View>
         </View>
@@ -167,96 +167,9 @@ export default function MyScreen() {
             color: "#7c3aed",
             backgroundColor: "#ddd6fe",
           }}
-          onPress={() => router.push("/my/feedback")}
+          onPress={() => router.push("/myPage/feedback")}
         />
       </View>
-
-      {/* 정회원 전환 모달 */}
-      {user?.role === "새가족" && (
-        <Modal visible={showUpgradeModal} transparent animationType="fade">
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "rgba(0,0,0,0.5)",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <View
-              style={{
-                backgroundColor: colors.surface,
-                borderRadius: 24,
-                padding: 24,
-                width: "85%",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 12,
-                elevation: 5,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 20,
-                  fontWeight: "600",
-                  color: colors.text,
-                  marginBottom: 8,
-                }}
-              >
-                정회원 전환
-              </Text>
-              <Text
-                style={{
-                  fontSize: 15,
-                  color: colors.subtext,
-                  marginBottom: 24,
-                  lineHeight: 20,
-                }}
-              >
-                교역자나 목회자에게 확인받고{"\n"}정회원으로 전환해주세요.
-              </Text>
-
-              <TouchableOpacity
-                onPress={handleUpgrade}
-                style={{
-                  backgroundColor: colors.primary,
-                  paddingVertical: 16,
-                  borderRadius: 16,
-                  alignItems: "center",
-                  marginBottom: 12,
-                }}
-              >
-                <Text
-                  style={{
-                    color: "#fff",
-                    fontSize: 16,
-                    fontWeight: "600",
-                  }}
-                >
-                  정회원 전환하기
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => setShowUpgradeModal(false)}
-                style={{
-                  paddingVertical: 16,
-                  alignItems: "center",
-                }}
-              >
-                <Text
-                  style={{
-                    color: colors.subtext,
-                    fontSize: 15,
-                  }}
-                >
-                  닫기
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-      )}
     </MyScreenContainer>
   );
 }

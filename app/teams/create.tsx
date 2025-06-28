@@ -1,27 +1,27 @@
 import {db, storage} from '@/firebase/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
-import { addDoc, collection, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
+import {useRouter} from 'expo-router';
+import {addDoc, collection, deleteDoc, doc, getDocs, updateDoc} from 'firebase/firestore';
+import React, {useEffect, useState} from 'react';
 import {
     Alert,
+    Image,
     KeyboardAvoidingView,
     Modal,
     Platform,
     SafeAreaView,
     ScrollView,
-    Text, TextInput, TouchableOpacity,
-    View,Image
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
-// import { sendNotification, sendPushNotification } from '@/services/notificationService';
-import { useDesign } from '@/context/DesignSystem';
-import { sendPushNotification } from "@/services/notificationService";
-import { showToast } from "@/utils/toast";
-import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import  {ImagePickerAsset} from "expo-image-picker";
+import { sendNotification, sendPushNotification } from '@/services/notificationService';
+import {useDesign} from '@/context/DesignSystem';
+import {Ionicons} from "@expo/vector-icons";
+import {useSafeAreaInsets} from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
+import {ImagePickerAsset} from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import {getDownloadURL, ref, uploadBytes} from "firebase/storage";
 import {Calendar} from "react-native-calendars";
@@ -45,7 +45,6 @@ export default function CreateTeam() {
     const [isCategoryModalVisible, setCategoryModalVisible] = useState(false);
     const [isSparkleModalVisible, setSparkleModalVisible] = useState(false);
     const [expirationDate, setExpirationDate] = useState(new Date());
-    const [showDatePicker, setShowDatePicker] = useState(false);
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const { colors, spacing, radius, font } = useDesign();
@@ -54,7 +53,6 @@ export default function CreateTeam() {
     const [showCalendar, setShowCalendar] = useState(false);
 
     const [updateLoading, setUpdateLoading] = useState(false); // 🔸 수정 중 로딩용
-    const [loading, setLoading] = useState(false);
     const [loadingAnimation, setLoadingAnimation] = useState<any>(null); // 선택된 애니메이션
 // 상태 정의
     const [openContact, setOpenContact] = useState('');
@@ -135,8 +133,7 @@ export default function CreateTeam() {
                 contentType: 'image/jpeg',
             });
 
-            const downloadUrl = await getDownloadURL(storageRef);
-            return downloadUrl;
+            return await getDownloadURL(storageRef);
         } catch (err) {
             console.error('🔥 업로드 실패:', err);
             throw err;
@@ -213,7 +210,7 @@ export default function CreateTeam() {
                 }, timeUntilDeletion);
 
                 // 🔹 푸시 알림: 모든 Expo 토큰 대상, 중복 방지
-                /*try {
+                try {
                     const snapshot = await getDocs(collection(db, 'users'));
                     const sentTokens = new Set<string>();
                     const pushPromises: Promise<void>[] = [];
@@ -244,7 +241,7 @@ export default function CreateTeam() {
 
                 } catch (err) {
                     console.error('❌ 푸시 알림 실패:', err);
-                }*/
+                }
             }
             setTimeout(() => {
                 Toast.show('✅ 모임이 성공적으로 생성되었습니다.', { duration: 1500 });

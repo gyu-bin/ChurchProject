@@ -1,4 +1,4 @@
-import DeviceManager from "@/app/my/DeviceManager";
+import DeviceManager from "@/app/myPage/DeviceManager";
 import { useDesign } from "@/context/DesignSystem";
 import { db } from "@/firebase/config";
 import { useAppDispatch } from "@/hooks/useRedux";
@@ -21,15 +21,15 @@ import {
 import LottieView from "lottie-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Alert,
-  Modal,
-  Platform,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  UIManager,
-  View,
+    Alert,
+    Modal,
+    Platform,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity, TouchableWithoutFeedback,
+    UIManager,
+    View,
 } from "react-native";
 import Toast from "react-native-root-toast";
 
@@ -312,7 +312,7 @@ export default function SettingPage() {
           </TouchableOpacity>
           {/* 비밀번호 찾기 */}
           <TouchableOpacity
-            onPress={() => router.push("/my/ForgotPassword")}
+            onPress={() => router.push("/myPage/ForgotPassword")}
             style={{
               backgroundColor: colors.surface,
               padding: 20,
@@ -431,6 +431,7 @@ export default function SettingPage() {
 
       {/* 비밀번호 변경 모달 */}
       <Modal visible={showPasswordFields} transparent animationType="fade">
+          <TouchableWithoutFeedback onPress={() => setShowPasswordFields(false)}>
         <View
           style={{
             flex: 1,
@@ -568,6 +569,7 @@ export default function SettingPage() {
             </TouchableOpacity>
           </View>
         </View>
+          </TouchableWithoutFeedback>
       </Modal>
 
       {/* 로딩 모달 */}

@@ -97,7 +97,7 @@ export default function VideoManager() {
     const handleSave = async () => {
         await updateOrder(videos); // 저장 완료 후
         Toast.show('✅ 순서가 저장되었습니다', { duration: 1500 });
-        router.replace('/my');
+        router.replace('/myPage');
     };
 
     useEffect(() => {
