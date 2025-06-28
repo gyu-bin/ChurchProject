@@ -1,0 +1,10 @@
+{
+  "campus": "문",
+  "createdAt": { "nanoseconds": 182000000, "seconds": 1750509214 },
+  "division": "청년",
+  "email": "hayeongpark@naver.com",
+  "expoPushTokens": [],
+  "name": "박하영",
+  "password": "$2b$10$uwUb/Hl25AjU/JGSO1puVuxS9xrgtdqPr2MEs35rGSuu0PzJWQ41u",
+  "role": "관리자"
+}
