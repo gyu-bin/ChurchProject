@@ -1,5 +1,5 @@
 // EventTab.tsx
-import { useDesign } from '@/app/context/DesignSystem';
+import { useDesign } from '@/context/DesignSystem';
 import { db, storage } from '@/firebase/config';
 import * as FileSystem from 'expo-file-system';
 import type { ImagePickerAsset } from 'expo-image-picker';
@@ -18,7 +18,7 @@ import Toast from 'react-native-root-toast';
 import {router} from "expo-router";
 import * as ImageManipulator from 'expo-image-manipulator';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import {useAppTheme} from "@/app/context/ThemeContext";
+import {useAppTheme} from "@/context/ThemeContext";
 
 export default function EventTab() {
     const { mode } = useAppTheme();
@@ -114,7 +114,6 @@ export default function EventTab() {
     };
     const handleSave = async () => {
         try {
-            console.log('⚙️ handleSave called');
 
             if (!form.title || !form.content || imageURLs.length === 0) {
                 Alert.alert('모든 필드를 입력해주세요');

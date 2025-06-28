@@ -18,7 +18,8 @@ type NotificationType =
     | 'prayer_private'
     | 'open_meditation_ranking'// ✅ 여기 추가
     | 'schedule_update'
-    | 'team_deleted'; // ✅ 여기 추가
+    | 'team_deleted' // ✅ 여기 추가
+    | 'counsel_request'; // ✅ 여기 추가
 
 export async function sendNotification({
                                            to,

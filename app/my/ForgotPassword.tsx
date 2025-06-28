@@ -1,4 +1,4 @@
-import { useDesign } from '@/app/context/DesignSystem';
+import { useDesign } from '@/context/DesignSystem';
 import { db } from '@/firebase/config';
 import { Ionicons } from '@expo/vector-icons';
 import bcrypt from 'bcryptjs';
@@ -158,4 +158,4 @@ const styles = StyleSheet.create({
         marginTop: 6,
         fontSize: 13,
     },
-}); 
+});

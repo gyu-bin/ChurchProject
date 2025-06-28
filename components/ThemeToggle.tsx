@@ -1,12 +1,12 @@
-import { useDesign } from '@/app/context/DesignSystem';
-import { useAppTheme } from '@/app/context/ThemeContext';
+import { useDesign } from '@/context/DesignSystem';
+import { useAppTheme } from '@/context/ThemeContext';
 import { Feather } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 export default function ThemeToggle() {
     const { mode, toggleTheme } = useAppTheme();
-    const isDark = mode === 'dark';
+    const isDark = mode === 'light';
     const { colors } = useDesign();
 
     return (

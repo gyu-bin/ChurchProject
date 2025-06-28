@@ -1,4 +1,4 @@
-import { useDesign } from '@/app/context/DesignSystem';
+import { useDesign } from '@/context/DesignSystem';
 import SkeletonBox from '@/components/Skeleton';
 import { db } from '@/firebase/config';
 import { getCurrentUser } from '@/services/authService';
@@ -10,20 +10,139 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Dimensions,
     FlatList,
+    // Image,
     Modal,
     Platform,
     RefreshControl,
-    SafeAreaView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    View,Image
+    View
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { EdgeInsets, useSafeAreaInsets } from 'react-native-safe-area-context';
+import styled from 'styled-components/native';
+import { Image } from 'expo-image';
+import dayjs from "dayjs";
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
+// Define the theme interface
+interface Theme {
+    colors: {
+        background: string;
+        primary: string;
+        surface: string;
+        text: string;
+        border: string;
+        subtext: string;
+    };
+    radius: {
+        lg: number;
+    };
+    spacing: {
+        md: number;
+        sm: number;
+    };
+    font: {
+        body: number;
+        heading: number;
+    };
+}
+
+// Styled components
+const SafeArea = styled.SafeAreaView<{ insets: EdgeInsets }>`
+    flex: 1;
+    background-color: ${({ theme }: { theme: Theme }) => theme.colors.background};
+    padding-top: ${({ insets }: { insets: EdgeInsets }) => Platform.OS === 'android' ? insets.top + 10 : 0}px;
+`;
+
+const Header = styled.View<{ theme: Theme }>`
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-top: ${Platform.OS === 'ios' ? 15 : 10}px;
+    padding-horizontal: 15px;
+`;
+
+const Title = styled.Text<{ theme: Theme }>`
+    font-size: 24px;
+    font-weight: bold;
+    color: ${({ theme }:any) => theme.colors.text};
+`;
+
+const Actions = styled.View<{ theme: Theme }>`
+    flex-direction: row;
+    gap: 16px;
+`;
+
+const SearchInputContainer = styled.View<{ theme: Theme }>`
+    padding-horizontal: 15px;
+    margin-bottom: 10px;
+`;
+
+const SearchInput = styled.TextInput<{ theme: Theme }>`
+    border-width: 1px;
+    border-color: ${({ theme }:any) => theme.colors.border};
+    border-radius: 8px;
+    padding-horizontal: 12px;
+    padding-vertical: 8px;
+    color: ${({ theme }:any) => theme.colors.text};
+    background-color: ${({ theme }:any) => theme.colors.surface};
+`;
+
+const FilterSortContainer = styled.View<{ theme: Theme }>`
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-color: ${({ theme }:any) => theme.colors.border};
+    margin-horizontal: ${({ theme }:any) => theme.spacing.md}px;
+    padding-vertical: ${({ theme }:any) => theme.spacing.sm}px;
+`;
+
+const FilterButton = styled(TouchableOpacity)<{ theme: Theme }>`
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    min-width: 100px;
+`;
+
+const CategoryButton = styled(TouchableOpacity)<{ theme: Theme }>`
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    flex: 1;
+    min-width: 150px;
+`;
+
+const SortButton = styled(TouchableOpacity)<{ theme: Theme }>`
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    min-width: 150px;
+`;
+
+const StyledText = styled.Text<{ theme: Theme }>`
+    color: ${({ theme }:any) => theme.colors.text};
+    font-size: ${({ theme }:any) => theme.font.body}px;
+`;
+
+const StyledIcon = styled(Ionicons)<{ theme: Theme }>`
+    color: ${({ theme }:any) => theme.colors.text};
+`;
+
+const NoTeamsView = styled.View<{ theme: Theme }>`
+    align-items: center;
+    margin-top: 40px;
+`;
+
+const NoTeamsText = styled.Text<{ theme: Theme }>`
+    color: ${({ theme }:any) => theme.colors.subtext};
+`;
 
 export default function TeamsScreen() {
     const [teams, setTeams] = useState<any[]>([]);
@@ -39,16 +158,21 @@ export default function TeamsScreen() {
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearchVisible, setIsSearchVisible] = useState(false);
     const searchInputRef = useRef<TextInput>(null);
-    const [filterOption, setFilterOption] = useState('모집중,가입된 모임만 보기');
     const [sortOption, setSortOption] = useState('최신개설순');
     const [isCategoryModalVisible, setCategoryModalVisible] = useState(false);
     const [isSortModalVisible, setSortModalVisible] = useState(false);
     const [userEmail, setUserEmail] = useState('');
     const [allTeams, setAllTeams] = useState<any[]>([]);
-    const [filterOptions, setFilterOptions] = useState<string[]>([]);
     const [currentUserUid, setCurrentUserUid] = useState('');
     const [isFilterModalVisible, setFilterModalVisible] = useState(false);
-    const [categoryOption, setCategoryOption] = useState(''); // '✨ 반짝소모임' 등
+    // 통합 필터 상태 관리
+    const [filters, setFilters] = useState({
+        category: '',
+        memberStatus: {
+            recruitingOnly: false,
+            joinedOnly: false
+        }
+    });
     const { filter } = useLocalSearchParams(); // filter param 받아오기
     const [firstLoad, setFirstLoad] = useState(true);
     const categories = [
@@ -84,12 +208,20 @@ export default function TeamsScreen() {
 
 
     useEffect(() => {
-        if (firstLoad && filter && typeof filter === 'string') {
-          setCategoryOption(filter);
-          setFilterOption('');
-          setTeams(allTeams.filter(team => team.category === filter));
+        if (typeof filter === 'string' && filter.length > 0) {
+            setFilters(prev => ({ ...prev, category: filter }));
+        } else {
+            // 🔁 filter 없으면 전체 목록
+            setFilters(prev => ({ ...prev, category: '' }));
         }
-      }, [filter, allTeams, firstLoad]);
+    }, [filter]);
+
+    // 필터링 적용 로직
+    useEffect(() => {
+        if (!allTeams.length) return;
+
+        applyFilters();
+    }, [filters, allTeams, searchQuery]);
 
     const fetchTeams = useCallback(async (isInitial = false) => {
         if (!hasMore && !isInitial) return;
@@ -133,15 +265,15 @@ export default function TeamsScreen() {
         fetchTeams(true);
     }, []);
 
-useFocusEffect(
-    useCallback(() => {
-        return () => {
-            setCategoryOption('');           // ✅ 카테고리 초기화
-            setFilterOption('전체');         // ✅ 기본 필터로 변경
-            fetchTeams(true);               // ✅ 전체 팀 다시 불러오기
-        };
-    }, [])
-);
+    useFocusEffect(
+        useCallback(() => {
+            // 화면에 포커스될 때마다 필터링 초기화 및 데이터 새로고침
+            if (!filter || filter === '') {
+                setFilters(prev => ({ ...prev, category: '' }));
+                fetchTeams(true);
+            }
+        }, [filter])
+    );
 
     useEffect(() => {
         const q = query(
@@ -184,47 +316,78 @@ useFocusEffect(
         router.push(`/teams/${id}`);
     };
 
-    const filteredTeams = teams.filter((team) => {
-        const keyword = searchQuery.toLowerCase();
-        return (
-            team.name?.toLowerCase().includes(keyword) ||
-            team.leader?.toLowerCase().includes(keyword)
-        );
-    });
+    // 필터 적용 함수
+    const applyFilters = () => {
+        let filtered = [...allTeams];
 
-    const handleFilterChange = (option: string) => {
-        if (option === '상세 필터') {
-            setFilterModalVisible(true); // ✅ 올바른 모달 오픈
-            return;
+        // 카테고리 필터 적용
+        if (filters.category) {
+            filtered = filtered.filter(team => team.category === filters.category);
         }
 
-        let updatedOptions = [...filterOptions];
-        if (updatedOptions.includes(option)) {
-            updatedOptions = updatedOptions.filter(opt => opt !== option);
-        } else {
-            updatedOptions.push(option);
-        }
-        setFilterOptions(updatedOptions);
-
-        let filtered = allTeams;
-
-        if (updatedOptions.includes('멤버 모집중인 모임만 보기')) {
+        // 모집 상태 필터 적용
+        if (filters.memberStatus.recruitingOnly) {
             filtered = filtered.filter(team => {
                 const members = team.membersList?.length ?? 0;
                 const max = team.maxMembers ?? null;
                 const isUnlimited = max === -1 || max === null || max === undefined;
                 const isFull = !isUnlimited && typeof max === 'number' && members >= max;
-                return !isFull;
+                return !isFull && !team.isClosed;
             });
         }
 
-        if (updatedOptions.includes('내가 가입된 모임만 보기')) {
+        // 가입된 모임 필터 적용
+        if (filters.memberStatus.joinedOnly) {
             filtered = filtered.filter(team =>
-                team.leaderEmail === userEmail
+                Array.isArray(team.membersList) && team.membersList.includes(userEmail)
             );
         }
 
+        // 검색어 적용
+        if (searchQuery) {
+            const keyword = searchQuery.toLowerCase();
+            filtered = filtered.filter(team =>
+                team.name?.toLowerCase().includes(keyword) ||
+                team.leader?.toLowerCase().includes(keyword)
+            );
+        }
+
+        // 정렬 적용
+        if (sortOption === '최신개설순') {
+            filtered.sort((a, b) => b.createdAt - a.createdAt);
+        } else if (sortOption === '멤버수 많은 순') {
+            filtered.sort((a, b) => (b.membersList?.length || 0) - (a.membersList?.length || 0));
+        } else if (sortOption === '멤버수 적은 순') {
+            filtered.sort((a, b) => (a.membersList?.length || 0) - (b.membersList?.length || 0));
+        }
+
         setTeams(filtered);
+    };
+
+    const handleFilterChange = (option: string) => {
+        if (option === '상세 필터') {
+            setFilterModalVisible(true);
+            return;
+        }
+
+        // 간소화된 필터 적용 - 상태 업데이트만 수행
+        if (option === '멤버 모집중인 모임만 보기') {
+            setFilters(prev => ({
+                ...prev,
+                memberStatus: {
+                    ...prev.memberStatus,
+                    recruitingOnly: !prev.memberStatus.recruitingOnly
+                }
+            }));
+        } else if (option === '내가 가입된 모임만 보기') {
+            setFilters(prev => ({
+                ...prev,
+                memberStatus: {
+                    ...prev.memberStatus,
+                    joinedOnly: !prev.memberStatus.joinedOnly
+                }
+            }));
+        }
     };
 
     const renderFilterModal = () => (
@@ -264,10 +427,10 @@ useFocusEffect(
                         }}
                     >
                         <Text style={{ fontSize: font.body, color: colors.text, marginRight: 10 }}>
-                            모집상태:멤버 모집중인 모임만 보기
+                            모집상태: 멤버 모집중인 모임만 보기
                         </Text>
                         <Ionicons
-                            name={filterOptions.includes('멤버 모집중인 모임만 보기') ? 'checkbox' : 'square-outline'}
+                            name={filters.memberStatus.recruitingOnly ? 'checkbox' : 'square-outline'}
                             size={20}
                             color={colors.primary}
                         />
@@ -286,7 +449,7 @@ useFocusEffect(
                             내 모임: 내가 가입된 모임만 보기
                         </Text>
                         <Ionicons
-                            name={filterOptions.includes('내가 가입된 모임만 보기') ? 'checkbox' : 'square-outline'}
+                            name={filters.memberStatus.joinedOnly ? 'checkbox' : 'square-outline'}
                             size={20}
                             color={colors.primary}
                         />
@@ -346,8 +509,8 @@ useFocusEffect(
                         <Text
                             style={{
                                 fontSize: font.body,
-                                color: filterOption === '전체' ? colors.primary : colors.text,
-                                fontWeight: filterOption === '전체' ? 'bold' : 'normal',
+                                color: filters.category === '' ? colors.primary : colors.text,
+                                fontWeight: filters.category === '' ? 'bold' : 'normal',
                             }}
                         >
                             전체
@@ -370,8 +533,8 @@ useFocusEffect(
                             <Text
                                 style={{
                                     fontSize: font.body,
-                                    color: filterOption === category ? colors.primary : colors.text,
-                                    fontWeight: filterOption === category ? 'bold' : 'normal',
+                                    color: filters.category === category ? colors.primary : colors.text,
+                                    fontWeight: filters.category === category ? 'bold' : 'normal',
                                 }}
                             >
                                 {category}
@@ -384,29 +547,22 @@ useFocusEffect(
     );
 
     const handleSortChange = (option: string) => {
+        // 정렬 옵션 설정만 수행 - applyFilters에서 실제 정렬 로직 실행
         setSortOption(option);
-        const sorted = [...teams];
-        if (option === '최신개설 모임 순') {
-            sorted.sort((a, b) => b.createdAt - a.createdAt);
-        } else if (option === '멤버수 많은 순') {
-            sorted.sort((a, b) => (b.membersList?.length || 0) - (a.membersList?.length || 0));
-        } else if (option === '멤버수 적은 순') {
-            sorted.sort((a, b) => (a.membersList?.length || 0) - (b.membersList?.length || 0));
-        }
-        setTeams(sorted);
+        setSortModalVisible(false);
+
+        // 정렬 즉시 적용
+        setTimeout(applyFilters, 0);
     };
 
     const handleCategorySelect = (category: string) => {
-        setCategoryOption(category);
+        // 상태 업데이트만 수행
+        setFilters(prev => ({
+            ...prev,
+            category: category === '전체' ? '' : category
+        }));
         setCategoryModalVisible(false);
-
-        if (category === '전체') {
-          setTeams(allTeams);
-        } else {
-          const filtered = allTeams.filter(team => team.category === category);
-          setTeams(filtered);
-        }
-      };
+          };
 
     const renderSortModal = () => (
         <Modal visible={isSortModalVisible} transparent animationType="slide">
@@ -467,20 +623,19 @@ useFocusEffect(
         const max = item.maxMembers ?? null;
         const isUnlimited = max === -1 || max === null || max === undefined;
         const isFull = !isUnlimited && typeof max === 'number' && members >= max;
-        const isClosed = item.isClosed;
         return (
             <TouchableOpacity
                 key={item.id}
                 style={{
-                    flexDirection: 'column',
+                    flexDirection: isGrid ? 'column' : 'row',
                     alignItems: 'center',
                     backgroundColor: colors.surface,
                     borderColor: colors.border,
                     borderWidth: 1,
                     borderRadius: 16,
-                    padding: 8, // 🔽 패딩 줄임
+                    padding: 12,
                     margin: 6,
-                    width: (SCREEN_WIDTH - 3 * 12) / 2, // 🔽 좌우 margin 고려한 2열 정렬
+                    width: isGrid ? (SCREEN_WIDTH - 3 * 12) / 2 : SCREEN_WIDTH - 32, // 리스트 모드일 때 더 넓게
                     shadowColor: '#000',
                     shadowOffset: { width: 0, height: 1 },
                     shadowOpacity: 0.05,
@@ -498,7 +653,10 @@ useFocusEffect(
                             borderRadius: 8,
                             backgroundColor: '#eee',
                             marginRight: 12,
+                            marginBottom: isGrid ? 8 : 0,
                         }}
+                        cachePolicy="disk"
+                        contentFit="cover"
                     />
                 ) : (
                     <View
@@ -508,14 +666,30 @@ useFocusEffect(
                             borderRadius: 8,
                             backgroundColor: '#eee',
                             marginRight: 12,
+                            marginBottom: isGrid ? 8 : 0,
                         }}
                     />
                 )}
 
                 <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text, marginBottom: 4 }}>
-                        {item.name}
-                    </Text>
+                    <View
+                        style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            marginBottom: 4,
+                        }}
+                    >
+                        <Text style={{ fontSize: isGrid ? 16 : 18, fontWeight: '600', color: colors.text }}>
+                            {item.name}
+                        </Text>
+
+                        {item.category === '✨ 반짝소모임' && (
+                            <Text style={{ fontSize: 12, color: colors.notification, fontWeight: 'bold' }}>
+                                D-{dayjs(item.expirationDate.seconds * 1000).diff(dayjs(), 'day')}
+                            </Text>
+                        )}
+                    </View>
                     <Text style={{ fontSize: 13, color: colors.primary, marginBottom: 8 }}>
                         {item.category ? `(${item.category})` : '(카테고리 없음)'}
                     </Text>
@@ -555,107 +729,65 @@ useFocusEffect(
     );
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background,paddingTop: Platform.OS === 'android' ? insets.top+10 : 0 }}>
-            <View style={styles.header}>
-                <Text style={[styles.title, { color: colors.text }]}>📋 소모임 목록</Text>
-                <View style={styles.actions}>
+        <SafeArea insets={insets}>
+            <Header>
+                <Title>📋 소모임 목록</Title>
+                <Actions>
                     <TouchableOpacity
                         onPress={() => {
                             setIsSearchVisible(prev => !prev);
                             setTimeout(() => searchInputRef.current?.focus(), 100);
                         }}
                     >
-                        <Ionicons name={isSearchVisible ? 'close' : 'search'} size={24} color={colors.subtext} />
+                        <StyledIcon name={isSearchVisible ? 'close' : 'search'} size={24} />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => router.push('/teams/create')}>
-                        <Ionicons name="add-circle-outline" size={26} color={colors.primary} />
+                        <StyledIcon name="add-circle-outline" size={26} />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setIsGrid(!isGrid)}>
-                        <Ionicons name={isGrid ? 'list-outline' : 'grid-outline'} size={24} color={colors.subtext} />
+                        <StyledIcon name={isGrid ? 'list-outline' : 'grid-outline'} size={24} />
                     </TouchableOpacity>
-                </View>
-            </View>
+                </Actions>
+            </Header>
 
             {isSearchVisible && (
-                <View style={{ paddingHorizontal: 15, marginBottom: 10 }}>
-                    <TextInput
+                <SearchInputContainer>
+                    <SearchInput
                         ref={searchInputRef}
                         placeholder="팀 이름 또는 모임장으로 검색"
                         placeholderTextColor={colors.subtext}
                         value={searchQuery}
-                        onChangeText={setSearchQuery}
-                        style={{
-                            borderWidth: 1,
-                            borderColor: colors.border,
-                            borderRadius: 8,
-                            paddingHorizontal: 12,
-                            paddingVertical: 8,
-                            color: colors.text,
-                            backgroundColor: colors.surface,
+                        onChangeText={(text:any) => {
+                            setSearchQuery(text);
+                            // 디바운스 효과를 위해 타이머 설정
+                            if (text.length === 0 || text.length > 2) {
+                                setTimeout(applyFilters, 300);
+                            }
                         }}
                     />
-                </View>
+                </SearchInputContainer>
             )}
 
-            <View
-                style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    borderTopWidth: 1,
-                    borderBottomWidth: 1,
-                    borderColor: colors.border,
-                    marginHorizontal: spacing.md,
-                    paddingVertical: spacing.sm,
-                }}
-            >
-                <TouchableOpacity
-                    onPress={() => handleFilterChange('상세 필터')}
-                    style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        minWidth: 120,
-                    }}
-                >
-                    <Text style={{ color: colors.text, fontSize: font.body }}>상세 필터</Text>
-                    <Ionicons name="filter" size={18} color={colors.text} />
-                </TouchableOpacity>
+            <FilterSortContainer>
+                <FilterButton onPress={() => handleFilterChange('상세 필터')}>
+                    <StyledText>상세 필터</StyledText>
+                    <StyledIcon name="filter" size={18} />
+                </FilterButton>
 
-                <View style={{ height: '60%', width: 1, backgroundColor: colors.border }} />
+                <View style={{ height: '100%', width: 1, backgroundColor: colors.border }} />
 
-                {/* 가운데: 카테고리 필터 */}
-                <TouchableOpacity
-  onPress={() => setCategoryModalVisible(true)}
-  style={{
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-  }}
->
-  <Text style={{ color: colors.text, fontSize: font.body }}>
-    {categoryOption && categoryOption !== '전체' ? categoryOption : '카테고리'}
-  </Text>
-  <Ionicons name="chevron-down" size={18} color={colors.text} style={{ marginLeft: 4 }} />
-</TouchableOpacity>
+                <CategoryButton onPress={() => setCategoryModalVisible(true)}>
+                    <StyledText>{filters.category ? filters.category : '카테고리'}</StyledText>
+                    <StyledIcon name="chevron-down" size={18} style={{ marginLeft: 4 }} />
+                </CategoryButton>
 
-                {/* 중간 구분선 */}
-                <View style={{ height: '60%', width: 1, backgroundColor: colors.border }} />
+                <View style={{ height: '100%', width: 1, backgroundColor: colors.border }} />
 
-                <TouchableOpacity
-                    onPress={() => setSortModalVisible(true)}
-                    style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        minWidth: 150,
-                    }}
-                >
-                    <Text style={{ color: colors.text, fontSize: font.body }}>{sortOption}</Text>
-                    <Ionicons name="swap-vertical" size={18} color={colors.text} />
-                </TouchableOpacity>
-            </View>
+                <SortButton onPress={() => setSortModalVisible(true)}>
+                    <StyledText>{sortOption}</StyledText>
+                    <StyledIcon name="swap-vertical" size={18} style={{marginRight: 20}}/>
+                </SortButton>
+            </FilterSortContainer>
 
             {renderFilterModal()}
             {renderCategoryModal()}
@@ -664,48 +796,31 @@ useFocusEffect(
             {loading && !refreshing ? (
                 renderSkeletons()
             ) : teams.length === 0 ? (
-                <View style={{ alignItems: 'center', marginTop: 40 }}>
-                    <Text style={{ color: colors.subtext }}>등록된 소모임이 없습니다.</Text>
-                </View>
+                <NoTeamsView>
+                    <NoTeamsText>등록된 소모임이 없습니다.</NoTeamsText>
+                </NoTeamsView>
             ) : (
-                <>
-                    <FlatList
+                <FlatList
                     ref={mainListRef}
-                    data={filteredTeams}
+                    data={teams}
                     key={isGrid ? 'grid' : 'list'}
                     numColumns={isGrid ? 2 : 1}
                     keyExtractor={(item) => item.id}
                     renderItem={renderItem}
-                    contentContainerStyle={styles.listContent}
-                    columnWrapperStyle={isGrid && {gap: 4}}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh}/>}
+                    contentContainerStyle={[styles.listContent, !isGrid && { paddingHorizontal: 10 }]}
+                    columnWrapperStyle={isGrid && { gap: 4 }}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                     onEndReachedThreshold={0.3}
-                    onEndReached={() => fetchTeams()}/></>
+                    onEndReached={() => fetchTeams()}
+                />
             )}
-        </SafeAreaView>
+        </SafeArea>
     );
 }
 
 const screenWidth = Dimensions.get('window').width;
 
 const styles = StyleSheet.create({
-    header: {
-        width: '100%',
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-        paddingTop: Platform.OS === 'ios' ? 15 : 10,
-        paddingHorizontal: 15,
-    },
-    title: {
-        fontSize: 24,
-        fontWeight: 'bold',
-    },
-    actions: {
-        flexDirection: 'row',
-        gap: 16,
-    },
     listContent: {
         alignItems: 'center',
         paddingBottom: 60,
@@ -722,7 +837,6 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.06,
         shadowRadius: 4,
         elevation: 3,
-        borderWidth: 1,
     },
     listItem: {
         width: screenWidth - 40,

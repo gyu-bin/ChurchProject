@@ -1,5 +1,5 @@
 // 📁 NoticeManager.tsx (루트 파일)
-import { useDesign } from '@/app/context/DesignSystem';
+import { useDesign } from '@/context/DesignSystem';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -17,7 +17,7 @@ export default function NoticeManager() {
   const [index, setIndex] = useState(0);
   const [routes] = useState([
     { key: 'notice', title: '공지' },
-    { key: 'schedule', title: '일정' }, 
+    { key: 'schedule', title: '일정' },
     { key: 'event', title: '배너' },
   ]);
 

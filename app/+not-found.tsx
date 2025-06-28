@@ -1,32 +1,25 @@
-import { Link, Stack } from 'expo-router';
-import { StyleSheet } from 'react-native';
-
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import { useAuth } from '@/hooks/useAuth';
+import { router } from 'expo-router';
+import { useEffect } from 'react';
+import { View, ActivityIndicator } from 'react-native';
 
 export default function NotFoundScreen() {
+  const { user } = useAuth();
+
+  useEffect(() => {
+    // 사용자가 로그인한 경우 홈으로 이동
+    if (user) {
+      router.replace('/(tabs)/home');
+    } else {
+      // 사용자가 로그인하지 않은 경우 인트로 화면으로 이동
+      router.replace('/intro');
+    }
+  }, [user]);
+
+  // 리다이렉트 되는 동안 로딩 표시
   return (
-    <>
-      <Stack.Screen options={{ title: 'Oops!' }} />
-      <ThemedView style={styles.container}>
-        <ThemedText type="title">페이지 경로가 잘못되었군 다시 확인해보도록</ThemedText>
-        <Link href="/" style={styles.link}>
-          <ThemedText type="link">Go to home screen!</ThemedText>
-        </Link>
-      </ThemedView>
-    </>
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <ActivityIndicator size="large" color="#2563eb" />
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  link: {
-    marginTop: 15,
-    paddingVertical: 15,
-  },
-});

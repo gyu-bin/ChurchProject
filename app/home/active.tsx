@@ -12,10 +12,11 @@ import {
     where,
 } from 'firebase/firestore';
 import React, { useCallback, useState } from 'react';
-import { Dimensions, Text, TouchableOpacity, View, Image } from 'react-native';
-import { useDesign } from '@/app/context/DesignSystem';
+import { Dimensions, Text, TouchableOpacity, View } from 'react-native';
+import { useDesign } from '@/context/DesignSystem';
 import { Ionicons } from '@expo/vector-icons';
 import FlexibleCarousel from '../../components/FlexibleCarousel';
+import { Image } from 'expo-image';
 
 interface Team {
     id: string;
@@ -40,11 +41,20 @@ interface PrayerRequest {
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
+
+
 export default function ActiveSection() {
     const { colors, spacing, font } = useDesign();
     const [teams, setTeams] = useState<Team[]>([]);
     const [prayers, setPrayers] = useState<PrayerRequest[]>([]);
     const sparkleTeams = teams.filter((team) => team.category === '✨ 반짝소모임');
+
+    const dummyImageUrls = [
+        'https://i.pinimg.com/736x/e3/08/ee/e308eedf0ca6ecacbaae866f2abf81d0.jpg',
+        'https://i.pinimg.com/736x/18/98/ba/1898bae9c43122c4ede54d1570fd9982.jpg',
+        'https://i.pinimg.com/736x/e5/6b/51/e56b51f0052bcb20364000c4f10b88e3.jpg',
+        'https://i.pinimg.com/736x/b6/50/48/b650489faca0b69e3f4681271a9adff2.jpg'
+    ];
 
     useFocusEffect(
         useCallback(() => {
@@ -123,7 +133,7 @@ export default function ActiveSection() {
                     backgroundColor: colors.surface,
                     borderRadius: 12,
                     padding: spacing.md,
-                    width: SCREEN_WIDTH * 0.85,
+                    width: SCREEN_WIDTH * 0.75,
                     shadowColor: '#000',
                     shadowOpacity: 0.05,
                     shadowOffset: { width: 0, height: 1 },
@@ -143,6 +153,8 @@ export default function ActiveSection() {
                             borderRadius: 8,
                             backgroundColor: '#eee',
                         }}
+                        contentFit="cover"
+                        cachePolicy="disk"
                     />
                 ) : (
                     <View
@@ -154,7 +166,6 @@ export default function ActiveSection() {
                         }}
                     />
                 )}
-
                 <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', gap: 6, marginBottom: 4 }}>
                         <Text
@@ -186,7 +197,10 @@ export default function ActiveSection() {
                         {team.name}
                     </Text>
                     <Text style={{ fontSize: font.caption, color: colors.subtext, marginBottom: 2 }}>
-                        📍 {team.location ?? '장소 미정'} · {dayjs(team.dueDate).format('M월 D일')} 마감
+                        📍 {team.location ?? '장소 미정'}
+                    </Text>
+                    <Text style={{ fontSize: font.caption, color: colors.subtext, marginBottom: 2 }}>
+                        {dayjs(team.dueDate).format('M월 D일')} 마감
                     </Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Ionicons name="person-circle-outline" size={14} color={colors.subtext} />
@@ -194,11 +208,31 @@ export default function ActiveSection() {
                             {team.leader} · {team.membersList?.length ?? 1}명 참여
                         </Text>
                     </View>
+                    {/* ✅ 하단 이미지 리스트 더미*/}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between',marginTop: 12,gap: 10}}>
+                        {dummyImageUrls.map((uri, index) => (
+                            <Image
+                                key={index}
+                                source={{ uri }}
+                                style={{
+                                    width: (SCREEN_WIDTH * 0.75 - spacing.md * 2 - spacing.sm * 2 - 8 * 2) / 4, // 좌우 여백 보정
+                                    height: 50,
+                                    right: 80,
+                                    borderRadius: 6,
+                                    backgroundColor: 'blakc',
+                                }}
+                                contentFit="cover"
+                            />
+                        ))}
+                    </View>
                 </View>
 
                 <View style={{ position: 'absolute', right: 50, top: 12 }}>
                     <Text style={{ fontWeight: 'bold', color: colors.primary }}>{dDay}</Text>
                 </View>
+
+                {/* ✅ 하단 피드 이미지 영역 */}
+
             </TouchableOpacity>
         );
     }
@@ -216,7 +250,7 @@ export default function ActiveSection() {
                 shadowOffset: { width: 0, height: 1 },
                 shadowRadius: 4,
                 elevation: 2,
-                width: SCREEN_WIDTH * 0.85, // 👉 FlexibleCarousel 대응 사이즈
+                width: SCREEN_WIDTH * 0.75,
             }}
         >
             <Text
@@ -237,7 +271,9 @@ export default function ActiveSection() {
                     marginBottom: 8,
                 }}
             >
-                {prayer.content}
+                {prayer.content.length > 20
+                    ? `${prayer.content.slice(0, 20)}...`
+                    : prayer.content}
             </Text>
 
             {/* 구분선 */}
@@ -282,7 +318,7 @@ export default function ActiveSection() {
             <View>
                 <TouchableOpacity onPress={() => router.push('/share/allPrayer')}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
-                        <Text style={{ fontSize: font.title, fontWeight: 'bold', color: colors.text }}>🙏 기도제목</Text>
+                        <Text style={{ fontSize: font.title, fontWeight: 'bold', color: colors.text }}>🙏 함께 기도해요</Text>
                         <Ionicons name="chevron-forward" size={20} color={colors.text} />
                     </View>
                 </TouchableOpacity>

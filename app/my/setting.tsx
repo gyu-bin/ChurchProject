@@ -1,5 +1,5 @@
 import DeviceManager from "@/app/my/DeviceManager";
-import { useDesign } from "@/app/context/DesignSystem";
+import { useDesign } from "@/context/DesignSystem";
 import { db } from "@/firebase/config";
 import { useAppDispatch } from "@/hooks/useRedux";
 import { clearPrayers } from "@/redux/slices/prayerSlice";

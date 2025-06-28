@@ -1,4 +1,4 @@
-import { useDesign } from '@/app/context/DesignSystem';
+import { useDesign } from '@/context/DesignSystem';
 import sgData from '@/assets/catechism/catechism.json';
 import largerData from '@/assets/catechism/largerCatechism.json';
 import shorterData from '@/assets/catechism/shorterCatechism.json';

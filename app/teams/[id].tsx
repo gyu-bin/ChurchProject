@@ -1,6 +1,6 @@
 //app/teams/[id].tsx
-import { useDesign } from '@/app/context/DesignSystem';
-import { useAppTheme } from '@/app/context/ThemeContext';
+import { useDesign } from '@/context/DesignSystem';
+import { useAppTheme } from '@/context/ThemeContext';
 import {db, storage} from '@/firebase/config';
 import { getCurrentUser } from '@/services/authService';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
@@ -23,7 +23,7 @@ import {
     updateDoc,
     where,
     writeBatch
-} from 'firebase/firestore';
+    , Timestamp } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -40,23 +40,26 @@ import {
     TextInput,
     TouchableOpacity,
     TouchableWithoutFeedback,
-    View, Image, Switch
+    View,
+    // Image,
+    Switch
 } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import Toast from "react-native-root-toast";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Timestamp } from 'firebase/firestore';
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import {getDownloadURL, ref, uploadBytes} from "firebase/storage"; // 필수
 import  {ImagePickerAsset} from "expo-image-picker";
 import {Calendar} from "react-native-calendars";
 import LottieView from 'lottie-react-native';
+import { Image } from 'expo-image';
 
 import loading4 from '@/assets/lottie/Animation - 1747201330128.json';
 import loading3 from '@/assets/lottie/Animation - 1747201413764.json';
 import loading2 from '@/assets/lottie/Animation - 1747201431992.json';
 import loading1 from '@/assets/lottie/Animation - 1747201461030.json';
+import CustomDateModal from "@/components/dataPicker";
 
 type Team = {
     id: string;
@@ -73,6 +76,7 @@ type Team = {
     meetingTime?: string;
     expirationDate?: any;
     thumbnail?: string;
+    openCantact: any
     [key: string]: any; // 기타 필드를 허용하는 경우
 };
 
@@ -125,10 +129,12 @@ export default function TeamDetail() {
     const [editCapacity, setEditCapacity] = useState('');
     const [isUnlimited, setIsUnlimited] = useState(false);
     const [announcement, setAnnouncement] = useState('');
+    const [openContact, setOpenContact] = useState('');
 
-    const [scheduleDate, setScheduleDate] = useState('');
+
+    const [scheduleDate, setScheduleDate] = useState<string | null>(null);
     const [isDatePickerVisible, setDatePickerVisible] = useState(false);
-    const [isClosed, setIsClosed] = useState(team?.isClosed ?? false);
+    const [isClosed, setIsClosed] = useState(false);
     const [alreadyRequested, setAlreadyRequested] = useState(false);
 
     const [chatBadgeCount, setChatBadgeCount] = useState(0);
@@ -141,7 +147,6 @@ export default function TeamDetail() {
     const [locationInput, setLocationInput] = useState('');
     const [category, setCategory] = useState('');
     const [expirationDate, setExpirationDate] = useState(new Date());
-    const [showDatePicker, setShowDatePicker] = useState(false); // 모달 표시 제어
     const [isCategoryModalVisible, setCategoryModalVisible] = useState(false);
     const [selectedThumbnail, setSelectedThumbnail] = useState<string | null>(null);
     const [isSparkleModalVisible, setSparkleModalVisible] = useState(false);
@@ -149,6 +154,9 @@ export default function TeamDetail() {
     const [showCalendar, setShowCalendar] = useState(false);
     const [loadingAnimation, setLoadingAnimation] = useState<any>(null);
     const loadingAnimations = [loading1, loading2, loading3, loading4];
+
+    const [loaded, setLoaded] = useState(false);
+
     useEffect(() => {
         const random = Math.floor(Math.random() * loadingAnimations.length);
         setLoadingAnimation(loadingAnimations[random]);
@@ -185,17 +193,20 @@ export default function TeamDetail() {
         if (team) {
             setEditCategory(team.category || '');
         }
-    }, [team]);
-
-    useEffect(() => {
         getCurrentUser().then(setCurrentUser);
-    }, []);
-
-
-    useEffect(() => {
         const unsubscribe = fetchTeam();
         return () => unsubscribe && unsubscribe();
-    }, []);
+    }, [team]);
+
+    /*    useEffect(() => {
+            getCurrentUser().then(setCurrentUser);
+        }, []);
+
+
+        useEffect(() => {
+            const unsubscribe = fetchTeam();
+            return () => unsubscribe && unsubscribe();
+        }, []);*/
 
     useEffect(() => {
         const checkJoinRequest = async () => {
@@ -240,6 +251,7 @@ export default function TeamDetail() {
 
 // 🔄 API 호출 로직 분리
     const fetchTeam = () => {
+        // console.log('팀 정보 가져오기 시작');
         const teamRef = doc(db, 'teams', id);
 
         const unsubscribe = onSnapshot(teamRef, async (docSnap) => {
@@ -247,6 +259,9 @@ export default function TeamDetail() {
 
             const teamData = { id: docSnap.id, ...docSnap.data() } as Team;
             setTeam(teamData);
+
+            // isClosed 상태 업데이트
+            setIsClosed(teamData.isClosed === true);
 
             try {
                 const currentUser = await getCurrentUser();
@@ -383,6 +398,7 @@ export default function TeamDetail() {
         setEditName(team.name);
         setEditDescription(team.description || '');
         setAnnouncement(team.announcement || '');
+        setOpenContact(team.openContact || '');
         if (team.maxMembers === null || team.maxMembers === undefined || team.maxMembers === -1) {
             setIsUnlimited(true);
             setEditCapacity('');
@@ -462,7 +478,7 @@ export default function TeamDetail() {
     const handleUpdateTeam = async () => {
         if (!team) return;
 
-        setUpdateLoading(true); // ✅ 여기서 모달 표시
+        // 이미 버튼 클릭 시 모달 표시했으므로 여기서는 제거
 
         const currentCount = team.membersList?.length ?? 0;
         let newMax: number | null = null;
@@ -483,41 +499,58 @@ export default function TeamDetail() {
         const downloadUrls: string[] = [];
 
         try {
+            // 로그 추가
+            console.log('모임 수정 시작. isClosed 상태:', isClosed);
 
             for (const image of imageURLs) {
                 const downloadUrl = await uploadImageToFirebase(image.uri);
                 downloadUrls.push(downloadUrl);
             }
 
-            const teamRef = doc(db, 'teams', team.id);
-            await updateDoc(teamRef, {
+            const updateData: any = {
                 name: editName,
                 description: editDescription,
                 maxMembers: newMax,
                 announcement,
                 scheduleDate,
+                openContact,
                 category: category,
-                ...(category === '✨ 반짝소모임' && {
-                    expirationDate: new Date(expirationDate),
-                }),
-                thumbnail: downloadUrls[0],
-                isClosed, // ✅ 추가됨
-            });
+                isClosed: isClosed // 명시적으로 값 지정
+            };
+
+            // 조건부 필드 추가
+            if (category === '✨ 반짝소모임') {
+                updateData.expirationDate = new Date(expirationDate);
+            }
+
+            if (downloadUrls.length > 0) {
+                updateData.thumbnail = downloadUrls[0];
+            }
+
+            console.log('업데이트할 데이터:', updateData);
+
+            const teamRef = doc(db, 'teams', team.id);
+            await updateDoc(teamRef, updateData);
 
             setTeam(prev => prev && {
                 ...prev,
                 name: editName,
                 description: editDescription,
                 maxMembers: newMax,
+                openContact: openContact,
                 announcement,
-                scheduleDate,
+                scheduleDate: scheduleDate ?? undefined,
                 category: category,
+                isClosed: isClosed, // 중요: 상태 직접 추가
             });
 
+            // 로딩 애니메이션을 충분히 보여준 후 완료 메시지 표시
             setTimeout(() => {
                 Toast.show('✅ 수정 완료', { duration: 1500 });
-                fetchTeam();
-                setEditModalVisible(false);
+                fetchTeam(); // 팀 정보 다시 로드
+                setTimeout(() => {
+                    setUpdateLoading(false); // 데이터 로드 후 로딩 상태 종료
+                }, 500);
             }, 1500);
 
             // ✅ 반짝소모임이면 푸시 알림 발송
@@ -555,8 +588,14 @@ export default function TeamDetail() {
         } catch (e) {
             console.error('❌ 모임 정보 수정 실패:', e);
             Alert.alert('에러', '모임 수정 중 문제가 발생했습니다.');
+            setUpdateLoading(false); // 에러 발생 시 즉시 모달 닫기
         } finally {
-            setUpdateLoading(false); // ✅ 수정 끝났을 때 모달 닫기
+            // 성공 시에는 일정 시간 후 닫기 (성공 메시지와 함께)
+            if (updateLoading) {
+                setTimeout(() => {
+                    setUpdateLoading(false);
+                }, 1000);
+            }
         }
     };
 
@@ -589,6 +628,7 @@ export default function TeamDetail() {
                                 members: updatedData.members,
                                 capacity: updatedData.capacity,
                                 membersList: updatedData.membersList,
+                                openCantact: updatedData.openContact,
                                 ...updatedData, // 기타 필드
                             });
                         }
@@ -679,25 +719,25 @@ export default function TeamDetail() {
 
             const emails = team.membersList.filter(email => email !== team.leaderEmail);
             if (emails.length > 0) {
-            const tokenQueryBatches = [];
-            const emailClone = [...emails];
+                const tokenQueryBatches = [];
+                const emailClone = [...emails];
 
-            while (emailClone.length) {
-                const batch = emailClone.splice(0, 10);
-                tokenQueryBatches.push(
-                    query(collection(db, 'expoTokens'), where('email', 'in', batch))
+                while (emailClone.length) {
+                    const batch = emailClone.splice(0, 10);
+                    tokenQueryBatches.push(
+                        query(collection(db, 'expoTokens'), where('email', 'in', batch))
+                    );
+                }
+
+                const tokenSnapshots = await Promise.all(tokenQueryBatches.map(q => getDocs(q)));
+                const tokens = tokenSnapshots.flatMap(snap =>
+                    snap.docs.map(doc => doc.data().token).filter(Boolean)
                 );
-            }
 
-            const tokenSnapshots = await Promise.all(tokenQueryBatches.map(q => getDocs(q)));
-            const tokens = tokenSnapshots.flatMap(snap =>
-                snap.docs.map(doc => doc.data().token).filter(Boolean)
-            );
-
-            if (tokens.length > 0) {
-                await sendPushNotification({
-                    to: tokens,
-                    title: `📅 ${team.name} 모임 일정 안내`,
+                if (tokens.length > 0) {
+                    await sendPushNotification({
+                        to: tokens,
+                        title: `📅 ${team.name} 모임 일정 안내`,
                         body: `모임 일정이 ${newDate}로 정해졌어요! 참석 여부를 투표해주세요.`,
                     });
                 }
@@ -876,7 +916,7 @@ export default function TeamDetail() {
     }
 
 
-    const handleEnterChat = async () => {
+    /*const handleEnterChat = async () => {
         const user = await getCurrentUser();
         if (!user?.email) return;
 
@@ -902,9 +942,10 @@ export default function TeamDetail() {
             console.error('채팅방 입장 오류:', error);
             showToast('⚠️ 채팅방 입장 중 오류가 발생했습니다.');
         }
-    };
+    };*/
 
-    const isFull = (team?.members ?? 0) >= (team?.capacity ?? 99);
+    // 모임이 마감된 경우나 인원이 가득 찬 경우 isFull은 true
+    const isFull = isClosed || ((team?.members ?? 0) >= (team?.capacity ?? 99));
 
     const handleCategorySelect = (cat: { label: string; value: string }) => {
         setCategory(cat.label);
@@ -913,11 +954,43 @@ export default function TeamDetail() {
             setSparkleModalVisible(true);
         }
     };
+    const AlertAsync = (message: string): Promise<boolean> => {
+        return new Promise((resolve) => {
+            Alert.alert(
+                '확인',
+                message,
+                [
+                    { text: '취소', onPress: () => resolve(false), style: 'cancel' },
+                    { text: '확인', onPress: () => resolve(true) },
+                ],
+                { cancelable: true }
+            );
+        });
+    };
+    const handleCancelSchedule = async () => {
+        try {
+            if (!team?.id) return;
+            const confirm = await AlertAsync('정말로 일정을 취소하시겠습니까?');
 
-      const handleDateChange = (event: any, selectedDate?: Date) => {
-        if (selectedDate) setExpirationDate(selectedDate);
-        setShowDatePicker(false);
-      };
+            if (confirm) {
+                await updateDoc(doc(db, 'teams', team.id), {
+                    scheduleDate: null,
+                });
+                setScheduleDate(null);
+                Toast.show('일정이 취소되었습니다.');
+            }
+        } catch (err) {
+            console.error('일정 취소 오류:', err);
+            Toast.show('일정 취소에 실패했습니다.');
+        }
+    };
+
+    /*
+        const handleDateChange = (event: any, selectedDate?: Date) => {
+            if (selectedDate) setExpirationDate(selectedDate);
+            setShowDatePicker(false);
+        };
+    */
 
     return (
         <SafeAreaView style={{
@@ -949,13 +1022,13 @@ export default function TeamDetail() {
 
                 {/* 모임 이름 */}
                 <View style={{
-                        position: 'absolute',
+                    position: 'absolute',
                     left: 0,
                     right: 0,
                     top: 0,
                     bottom: 0,
                     justifyContent: 'center',
-                        alignItems: 'center',
+                    alignItems: 'center',
                 }}>
                     <Text style={{
                         fontSize: 25,
@@ -987,42 +1060,42 @@ export default function TeamDetail() {
                             공유하기
                         </Text>
                     </View>
-                        <View style={{ alignItems: 'center' }}>
-                            <TouchableOpacity
-                                onPress={handleEnterChat}
-                                style={{ padding: 8, position: 'relative' }}
-                            >
-                                <Ionicons name="chatbubble-outline" size={24} color={colors.text} />
+                    {/*<View style={{ alignItems: 'center' }}>
+                        <TouchableOpacity
+                            onPress={handleEnterChat}
+                            style={{ padding: 8, position: 'relative' }}
+                        >
+                            <Ionicons name="chatbubble-outline" size={24} color={colors.text} />
                             {chatBadgeCount > 0 && (
-                                    <View style={{
+                                <View style={{
                                     position: 'absolute',
-                                        top: 6,
-                                        right: 6,
-                                        backgroundColor: colors.error,
-                                        borderRadius: 8,
+                                    top: 6,
+                                    right: 6,
+                                    backgroundColor: colors.error,
+                                    borderRadius: 8,
                                     minWidth: 16,
                                     height: 16,
                                     justifyContent: 'center',
                                     alignItems: 'center',
+                                }}>
+                                    <Text style={{
+                                        color: '#fff',
+                                        fontSize: 10,
+                                        fontWeight: 'bold',
                                     }}>
-                                        <Text style={{
-                                            color: '#fff',
-                                            fontSize: 10,
-                                            fontWeight: 'bold',
-                                        }}>
-                                    {chatBadgeCount}
-                                </Text>
-                            </View>
-                        )}
+                                        {chatBadgeCount}
+                                    </Text>
+                                </View>
+                            )}
                         </TouchableOpacity>
-                            <Text style={{
-                                fontSize: 10,
-                                color: colors.subtext,
-                                marginTop: -4,
-                            }}>
-                                채팅방
-                            </Text>
-                        </View>
+                        <Text style={{
+                            fontSize: 10,
+                            color: colors.subtext,
+                            marginTop: -4,
+                        }}>
+                            채팅방
+                        </Text>
+                    </View>*/}
                 </View>
             </View>
 
@@ -1032,12 +1105,12 @@ export default function TeamDetail() {
                     paddingBottom: spacing.xl * 4,
                     gap: spacing.lg
                 }}
-                        refreshControl={
-                            <RefreshControl
-                                refreshing={refreshing}
-                                onRefresh={fetchTeam}
-                                tintColor={colors.primary}
-                            />
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={fetchTeam}
+                        tintColor={colors.primary}
+                    />
                 }
             >
                 {/* 팀 정보 카드 */}
@@ -1049,12 +1122,30 @@ export default function TeamDetail() {
                 }}>
                     {/* 썸네일 이미지 */}
                     {team.thumbnail && (
-                        <View style={{
-                            marginBottom: spacing.md,
-                            borderRadius: radius.lg,
-                            overflow: 'hidden',
-                            alignItems: 'center'
-                        }}>
+                        <View
+                            style={{
+                                marginBottom: spacing.md,
+                                borderRadius: radius.lg,
+                                overflow: 'hidden',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '100%',
+                            }}
+                        >
+                            <View style={{
+                                position: 'absolute',
+                                width: '50%',
+                                height: 120,
+                                borderRadius: radius.lg,
+                                backgroundColor: '#eee',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 1,
+                                display: loaded ? 'none' : 'flex'
+                            }}>
+                                <ActivityIndicator size="small" color="#888" />
+                            </View>
+
                             <Image
                                 source={{ uri: team.thumbnail }}
                                 style={{
@@ -1062,7 +1153,10 @@ export default function TeamDetail() {
                                     height: 120,
                                     borderRadius: radius.lg,
                                 }}
-                                resizeMode="cover"
+                                contentFit="cover"
+                                cachePolicy="disk"
+                                onLoad={() => setLoaded(true)}
+                                onError={() => setLoaded(true)}
                             />
                         </View>
                     )}
@@ -1248,6 +1342,48 @@ export default function TeamDetail() {
                         </View>
                     )}
 
+                    {team.openContact && team.membersList?.includes(user?.email) && (
+                        <View style={{
+                            backgroundColor: colors.background,
+                            padding: spacing.sm,
+                            borderRadius: radius.md,
+                            marginBottom: spacing.md,
+                        }}>
+                            <Text style={{
+                                fontSize: font.caption,
+                                color: colors.subtext,
+                                marginBottom: 2,
+                            }}>
+                                🔗 연락처 / 오픈카톡
+                            </Text>
+
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <Text
+                                    style={{
+                                        fontSize: font.body,
+                                        color: colors.text,
+                                        lineHeight: 20,
+                                        flex: 1,
+                                        marginRight: 8,
+                                    }}
+                                    numberOfLines={1}
+                                >
+                                    {team.openContact}
+                                </Text>
+
+                                <TouchableOpacity
+                                    onPress={async () => {
+                                        await Clipboard.setStringAsync(team.openContact);
+                                        showToast('📋 복사되었습니다');
+                                    }}
+                                    hitSlop={10}
+                                >
+                                    <Ionicons name="copy-outline" size={20} color={colors.primary} />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
+
                     {/* 가입 신청 버튼 */}
                     {!isFull && !isCreator && !team.membersList?.includes(user.email) && (
                         <TouchableOpacity
@@ -1303,7 +1439,7 @@ export default function TeamDetail() {
                                     const target = new Date(scheduleDate);
                                     const diff = Math.ceil((target.getTime() - today.setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24));
                                     return diff >= 0 ? `-${diff}` : `+${Math.abs(diff)}`;
-                                    })()})
+                                })()})
                                 </Text>
                             ) : (
                                 <Text style={{
@@ -1315,7 +1451,24 @@ export default function TeamDetail() {
                                 </Text>
                             )}
                         </View>
-                        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                        <View style={{ flexDirection: 'column', gap: spacing.sm }}>
+                            {(isCreator || isSubLeader) && scheduleDate && (
+                                <TouchableOpacity
+                                    onPress={handleCancelSchedule}
+                                    style={{
+                                        backgroundColor: '#ffdddd',
+                                        paddingHorizontal: spacing.md,
+                                        paddingVertical: spacing.sm,
+                                        borderRadius: radius.md,
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        gap: 4,
+                                    }}
+                                >
+                                    <Ionicons name="close-circle-outline" size={14} color="#c00" />
+                                    <Text style={{ color: '#c00', fontWeight: '600' }}>일정 취소</Text>
+                                </TouchableOpacity>
+                            )}
                             {(isCreator || isSubLeader) && (
                                 <TouchableOpacity
                                     onPress={() => setDatePickerVisible(true)}
@@ -1430,307 +1583,389 @@ export default function TeamDetail() {
                         }}>
                             {team.announcement}
                         </Text>
-                </View>
+                    </View>
                 )}
 
-                {/* 모임 수정 모달 */}
-                <Modal visible={editModalVisible} animationType="slide" transparent>
-                    <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                        <KeyboardAvoidingView
-                            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                            style={{ flex: 1 }}
-                        >
-                            <ScrollView
-                                contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 20 }}
-                                keyboardShouldPersistTaps="handled"
+                <>
+                    {/* 모임 수정 모달 */}
+                    <Modal visible={editModalVisible} animationType="slide" transparent>
+                        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                            <KeyboardAvoidingView
+                                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                                style={{ flex: 1 }}
                             >
-                                <View style={{ backgroundColor: colors.surface, padding: spacing.lg, borderRadius: radius.lg }}>
-                                    {/* 썸네일 선택 */}
-                                    <TouchableOpacity onPress={pickImage} style={{ alignItems: 'center', marginBottom: spacing.md }}>
-                                        {imageURLs.length ? (
-                                            <Image
-                                                source={{ uri: imageURLs[0].uri }}
-                                                style={{ width: 100, height: 100, borderRadius: 12, marginBottom: 8 }}
-                                            />
-                                        ) : (
-                                            <View
-                                                style={{
-                                                    width: 100,
-                                                    height: 100,
-                                                    borderRadius: 12,
-                                                    backgroundColor: '#eee',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    marginBottom: 8,
-                                                }}
-                                            >
-                                                <Ionicons name="image-outline" size={40} color={colors.subtext} />
-                                            </View>
-                                        )}
-                                        <Text style={{ color: colors.primary, fontSize: font.caption }}>썸네일 선택</Text>
-                                    </TouchableOpacity>
+                                <ScrollView
+                                    contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 20 }}
+                                    keyboardShouldPersistTaps="handled"
+                                >
+                                    <View style={{ backgroundColor: colors.surface, padding: spacing.lg, borderRadius: radius.lg }}>
+                                        {/* 썸네일 선택 */}
+                                        <TouchableOpacity onPress={pickImage} style={{ alignItems: 'center', marginBottom: spacing.md }}>
+                                            {imageURLs.length ? (
+                                                <Image
+                                                    source={{ uri: imageURLs[0].uri }}
+                                                    style={{ width: 100, height: 100, borderRadius: 12, marginBottom: 8 }}
+                                                />
+                                            ) : (
+                                                <View
+                                                    style={{
+                                                        width: 100,
+                                                        height: 100,
+                                                        borderRadius: 12,
+                                                        backgroundColor: '#eee',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        marginBottom: 8,
+                                                    }}
+                                                >
+                                                    <Ionicons name="image-outline" size={40} color={colors.subtext} />
+                                                </View>
+                                            )}
+                                            <Text style={{ color: colors.primary, fontSize: font.caption }}>썸네일 선택</Text>
+                                        </TouchableOpacity>
 
-                                    <Text style={{ fontSize: font.body, color: colors.text, marginBottom: spacing.sm }}>모임명</Text>
-                                    <TextInput
-                                        value={editName}
-                                        onChangeText={setEditName}
-                                        style={{
-                                            borderColor: colors.border,
-                                            borderWidth: 1,
-                                            borderRadius: radius.sm,
-                                            padding: spacing.sm,
-                                            marginBottom: spacing.md,
-                                            color: colors.text,
-                                        }}
-                                    />
-
-                                    <Text style={{ fontSize: font.body, color: colors.text, marginBottom: spacing.sm }}>모임 소개</Text>
-                                    <TextInput
-                                        value={editDescription}
-                                        onChangeText={setEditDescription}
-                                        multiline
-                                        style={{
-                                            borderColor: colors.border,
-                                            borderWidth: 1,
-                                            borderRadius: radius.sm,
-                                            padding: spacing.sm,
-                                            height: 100,
-                                            marginBottom: spacing.md,
-                                            color: colors.text,
-                                        }}
-                                    />
-
-                                    <Text style={{ fontSize: font.body, color: colors.text, marginBottom: spacing.sm }}>공지사항</Text>
-                                    <TextInput
-                                        value={announcement}
-                                        onChangeText={setAnnouncement}
-                                        multiline
-                                        style={{
-                                            borderColor: colors.border,
-                                            borderWidth: 1,
-                                            borderRadius: radius.sm,
-                                            padding: spacing.sm,
-                                            height: 100,
-                                            marginBottom: spacing.md,
-                                            color: colors.text,
-                                        }}
-                                    />
-
-                                    <Text style={{ fontSize: font.body, color: colors.text, marginBottom: spacing.sm }}>최대 인원수</Text>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
+                                        <Text style={{ fontSize: font.body, color: colors.text, marginBottom: spacing.sm }}>모임명</Text>
                                         <TextInput
-                                            value={isUnlimited ? '무제한' : editCapacity}
-                                            onChangeText={setEditCapacity}
-                                            keyboardType="number-pad"
-                                            editable={!isUnlimited}
+                                            value={editName}
+                                            onChangeText={setEditName}
                                             style={{
-                                                flex: 1,
-                                                backgroundColor: colors.surface,
-                                                padding: spacing.md,
-                                                borderRadius: radius.md,
-                                                borderWidth: 1,
                                                 borderColor: colors.border,
+                                                borderWidth: 1,
+                                                borderRadius: radius.sm,
+                                                padding: spacing.sm,
+                                                marginBottom: spacing.md,
                                                 color: colors.text,
-                                                fontSize: font.body,
-                                                opacity: isUnlimited ? 0.5 : 1,
-                                                marginRight: 12,
                                             }}
                                         />
-                                        <TouchableOpacity
-                                            onPress={() => setIsUnlimited(prev => !prev)}
+
+                                        <Text style={{ fontSize: font.body, color: colors.text, marginBottom: spacing.sm }}>모임 소개</Text>
+                                        <TextInput
+                                            value={editDescription}
+                                            onChangeText={setEditDescription}
+                                            multiline
                                             style={{
-                                                flexDirection: 'row',
-                                                alignItems: 'center',
-                                                paddingVertical: 6,
-                                                paddingHorizontal: 10,
-                                                borderRadius: 8,
-                                                backgroundColor: isUnlimited ? colors.primary + '15' : 'transparent',
+                                                borderColor: colors.border,
+                                                borderWidth: 1,
+                                                borderRadius: radius.sm,
+                                                padding: spacing.sm,
+                                                height: 100,
+                                                marginBottom: spacing.md,
+                                                color: colors.text,
                                             }}
-                                        >
-                                            <Ionicons
-                                                name={isUnlimited ? 'checkbox' : 'square-outline'}
-                                                size={20}
-                                                color={isUnlimited ? colors.primary : colors.subtext}
+                                        />
+
+                                        <Text style={{ fontSize: font.body, color: colors.text, marginBottom: spacing.sm }}>오픈카톡/연락처</Text>
+                                        <TextInput
+                                            value={openContact}
+                                            onChangeText={setOpenContact}
+                                            multiline
+                                            style={{
+                                                borderColor: colors.border,
+                                                borderWidth: 1,
+                                                borderRadius: radius.sm,
+                                                padding: spacing.sm,
+                                                height: 100,
+                                                marginBottom: spacing.md,
+                                                color: colors.text,
+                                            }}
+                                        />
+
+                                        <Text style={{ fontSize: font.body, color: colors.text, marginBottom: spacing.sm }}>공지사항</Text>
+                                        <TextInput
+                                            value={announcement}
+                                            onChangeText={setAnnouncement}
+                                            multiline
+                                            style={{
+                                                borderColor: colors.border,
+                                                borderWidth: 1,
+                                                borderRadius: radius.sm,
+                                                padding: spacing.sm,
+                                                height: 100,
+                                                marginBottom: spacing.md,
+                                                color: colors.text,
+                                            }}
+                                        />
+
+                                        <Text style={{ fontSize: font.body, color: colors.text, marginBottom: spacing.sm }}>최대 인원수</Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md }}>
+                                            <TextInput
+                                                value={isUnlimited ? '무제한' : editCapacity}
+                                                onChangeText={setEditCapacity}
+                                                keyboardType="number-pad"
+                                                editable={!isUnlimited}
+                                                style={{
+                                                    flex: 1,
+                                                    backgroundColor: colors.surface,
+                                                    padding: spacing.md,
+                                                    borderRadius: radius.md,
+                                                    borderWidth: 1,
+                                                    borderColor: colors.border,
+                                                    color: colors.text,
+                                                    fontSize: font.body,
+                                                    opacity: isUnlimited ? 0.5 : 1,
+                                                    marginRight: 12,
+                                                }}
                                             />
-                                            <Text style={{ color: colors.text, marginLeft: 6, fontSize: font.body }}>무제한</Text>
-                                        </TouchableOpacity>
+                                            <TouchableOpacity
+                                                onPress={() => setIsUnlimited(prev => !prev)}
+                                                style={{
+                                                    flexDirection: 'row',
+                                                    alignItems: 'center',
+                                                    paddingVertical: 6,
+                                                    paddingHorizontal: 10,
+                                                    borderRadius: 8,
+                                                    backgroundColor: isUnlimited ? colors.primary + '15' : 'transparent',
+                                                }}
+                                            >
+                                                <Ionicons
+                                                    name={isUnlimited ? 'checkbox' : 'square-outline'}
+                                                    size={20}
+                                                    color={isUnlimited ? colors.primary : colors.subtext}
+                                                />
+                                                <Text style={{ color: colors.text, marginLeft: 6, fontSize: font.body }}>무제한</Text>
+                                            </TouchableOpacity>
+                                        </View>
+
+                                        <View>
+                                            {/* 카테고리 선택 */}
+                                            <TouchableOpacity
+                                                onPress={() => setCategoryModalVisible(true)}
+                                                style={{
+                                                    backgroundColor: colors.surface,
+                                                    padding: spacing.md,
+                                                    borderRadius: radius.md,
+                                                    borderWidth: 1,
+                                                    borderColor: colors.border,
+                                                    marginBottom: spacing.md,
+                                                }}
+                                            >
+                                                <Text style={{ color: colors.text, fontSize: font.body }}>
+                                                    {category
+                                                        ? `카테고리: ${categories.find(c => c.value === category)?.label || category}`
+                                                        : '카테고리를 선택하세요'}
+                                                </Text>
+                                            </TouchableOpacity>
+
+                                            <Modal visible={isCategoryModalVisible} transparent animationType="slide">
+                                                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                                                    <View style={{ width: '80%', backgroundColor: colors.background, borderRadius: radius.md, padding: spacing.md }}>
+                                                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }}>
+                                                            {categories.map(cat => (
+                                                                <TouchableOpacity
+                                                                    key={cat.value}
+                                                                    onPress={() => handleCategorySelect(cat)}
+                                                                    style={{ width: '30%', margin: 5, alignItems: 'center' }}
+                                                                >
+                                                                    <Text style={{ fontSize: 30, marginBottom: 5 }}>{cat.label.split(' ')[0]}</Text>
+                                                                    <Text style={{ color: colors.text, fontSize: font.body }}>{cat.label.split(' ')[1]}</Text>
+                                                                </TouchableOpacity>
+                                                            ))}
+                                                        </View>
+                                                        <TouchableOpacity onPress={() => setCategoryModalVisible(false)} style={{ marginTop: spacing.md }}>
+                                                            <Text style={{ color: colors.primary, textAlign: 'center', fontSize: font.body }}>닫기</Text>
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                </View>
+                                            </Modal>
+
+                                            {/* 날짜 선택 (반짝소모임일 때만) */}
+                                            {category === '✨ 반짝소모임' && (
+                                                <TouchableOpacity
+                                                    onPress={() => setDatePickerVisible(true)}
+                                                    style={{
+                                                        backgroundColor: colors.surface,
+                                                        padding: spacing.md,
+                                                        borderRadius: radius.md,
+                                                        borderWidth: 1,
+                                                        borderColor: colors.border,
+                                                        marginBottom: spacing.md,
+                                                    }}
+                                                >
+                                                    <Text style={{ color: colors.text, fontSize: font.body }}>
+                                                        {`날짜 선택: ${expirationDate.toLocaleDateString()}`}
+                                                    </Text>
+                                                    <Text style={{ color: colors.text, fontSize: font.caption }}>
+                                                        {'선택한 날짜 다음날 모임이 삭제됩니다.'}
+                                                    </Text>
+
+                                                    {category === '✨ 반짝소모임' && (
+                                                        <Modal visible={showCalendar} transparent animationType="fade">
+                                                            <View style={{
+                                                                flex: 1,
+                                                                backgroundColor: 'rgba(0,0,0,0.4)',
+                                                                justifyContent: 'center',
+                                                                alignItems: 'center',
+                                                            }}>
+                                                                <View style={{
+                                                                    width: '90%',
+                                                                    backgroundColor: colors.background,
+                                                                    borderRadius: radius.md,
+                                                                    padding: spacing.md,
+                                                                }}>
+                                                                    <Calendar
+                                                                        onDayPress={(day:any) => {
+                                                                            setExpirationDate(new Date(day.dateString));
+                                                                            setShowCalendar(false);
+                                                                        }}
+                                                                        markedDates={{
+                                                                            [formatDate(expirationDate)]: {
+                                                                                selected: true,
+                                                                                marked: true,
+                                                                                selectedColor: colors.primary,
+                                                                            },
+                                                                        }}
+                                                                        theme={{
+                                                                            backgroundColor: colors.background,
+                                                                            calendarBackground: colors.background,
+                                                                            textSectionTitleColor: colors.text,
+                                                                            dayTextColor: colors.text,
+                                                                            selectedDayTextColor: '#fff',
+                                                                            selectedDayBackgroundColor: colors.primary,
+                                                                            monthTextColor: colors.text,
+                                                                            arrowColor: colors.primary,
+                                                                        }}
+                                                                    />
+
+                                                                    <TouchableOpacity
+                                                                        onPress={() => setShowCalendar(false)}
+                                                                        style={{ marginTop: spacing.md, alignItems: 'center' }}
+                                                                    >
+                                                                        <Text style={{ color: colors.primary, fontSize: font.body }}>닫기</Text>
+                                                                    </TouchableOpacity>
+                                                                </View>
+                                                            </View>
+                                                        </Modal>
+                                                    )}
+                                                </TouchableOpacity>
+                                            )}
+                                            <Modal visible={isSparkleModalVisible} transparent animationType="slide">
+                                                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                                                    <View style={{ width: '80%', backgroundColor: colors.background, borderRadius: radius.md, padding: spacing.md }}>
+                                                        <Text style={{ color: colors.text, fontSize: font.body, marginBottom: spacing.md }}>
+                                                            반짝 소모임은 선택한 날짜 다음날 모임이 삭제되는 번개모임입니다. 반짝 소모임 생성 시 모든 회원에게 알림이 갑니다.
+                                                        </Text>
+                                                        <TouchableOpacity onPress={() => setSparkleModalVisible(false)}>
+                                                            <Text style={{ color: colors.primary, textAlign: 'center', fontSize: font.body }}>확인</Text>
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                </View>
+                                            </Modal>
+                                        </View>
+
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16, marginBottom: 8, justifyContent: 'space-between' }}>
+                                            <Text style={{ fontSize: 16, color: colors.text }}>🙅‍♂️ 모임마감</Text>
+                                            <Switch
+                                                value={isClosed}
+                                                onValueChange={(value) => {
+                                                    if (value === true) {
+                                                        // 마감으로 전환 시 확인 메시지
+                                                        Alert.alert(
+                                                            '모임 마감 확인',
+                                                            '모임을 마감하면 더 이상 새로운 멤버가 가입할 수 없습니다. 마감하시겠습니까?',
+                                                            [
+                                                                { text: '취소', style: 'cancel' },
+                                                                { text: '마감', onPress: async () => {
+                                                                        console.log('마감 설정');
+                                                                        setIsClosed(true);
+                                                                        try {
+                                                                            if (!team) return;
+                                                                            const teamRef = doc(db, 'teams', team.id);
+                                                                            await updateDoc(teamRef, { isClosed: true });
+                                                                            showToast('✅ 모임이 마감되었습니다');
+                                                                        } catch (error) {
+                                                                            console.error('모임 마감 설정 실패:', error);
+                                                                            showToast('⚠️ 모임 마감 설정에 실패했습니다');
+                                                                            setIsClosed(false); // 실패 시 상태 복원
+                                                                        }
+                                                                    }}
+                                                            ]
+                                                        );
+                                                    } else {
+                                                        console.log('마감 해제');
+                                                        (async () => {
+                                                            try {
+                                                                if (!team) return;
+                                                                const teamRef = doc(db, 'teams', team.id);
+                                                                await updateDoc(teamRef, { isClosed: false });
+                                                                setIsClosed(false);
+                                                                showToast('✅ 모임 마감이 해제되었습니다');
+                                                            } catch (error) {
+                                                                console.error('모임 마감 해제 실패:', error);
+                                                                showToast('⚠️ 모임 마감 해제에 실패했습니다');
+                                                                setIsClosed(true); // 실패 시 상태 복원
+                                                            }
+                                                        })();
+                                                    }
+                                                }}
+                                                trackColor={{ false: colors.border, true: colors.primary + '80' }}
+                                                thumbColor={isClosed ? colors.primary : '#f4f3f4'}
+                                            />
+                                        </View>
+                                        {isClosed && (
+                                            <Text style={{ fontSize: 12, color: colors.subtext, marginBottom: 16 }}>
+                                                모임이 마감되어 신규 가입 신청이 불가능합니다.
+                                            </Text>
+                                        )}
+
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.md }}>
+                                            <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                                                <Text style={{ color: colors.subtext }}>취소</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                onPress={() => {
+                                                    // 수정 모달 닫기
+                                                    setEditModalVisible(false);
+                                                    // 랜덤 로티 애니메이션 선택
+                                                    const random = Math.floor(Math.random() * loadingAnimations.length);
+                                                    setLoadingAnimation(loadingAnimations[random]);
+                                                    // 로딩 표시
+                                                    setUpdateLoading(true);
+                                                    // 업데이트 함수 실행
+                                                    handleUpdateTeam();
+                                                }}
+                                            >
+                                                <Text style={{ color: colors.primary, fontWeight: 'bold' }}>저장</Text>
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
-
-                            <View>
-      {/* 카테고리 선택 */}
-      <TouchableOpacity
-        onPress={() => setCategoryModalVisible(true)}
-        style={{
-          backgroundColor: colors.surface,
-          padding: spacing.md,
-          borderRadius: radius.md,
-          borderWidth: 1,
-          borderColor: colors.border,
-          marginBottom: spacing.md,
-        }}
-      >
-        <Text style={{ color: colors.text, fontSize: font.body }}>
-  {category
-    ? `카테고리: ${categories.find(c => c.value === category)?.label || category}`
-    : '카테고리를 선택하세요'}
-</Text>
-      </TouchableOpacity>
-
-      <Modal visible={isCategoryModalVisible} transparent animationType="slide">
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <View style={{ width: '80%', backgroundColor: colors.background, borderRadius: radius.md, padding: spacing.md }}>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }}>
-              {categories.map(cat => (
-                <TouchableOpacity
-                  key={cat.value}
-                  onPress={() => handleCategorySelect(cat)}
-                  style={{ width: '30%', margin: 5, alignItems: 'center' }}
-                >
-                  <Text style={{ fontSize: 30, marginBottom: 5 }}>{cat.label.split(' ')[0]}</Text>
-                  <Text style={{ color: colors.text, fontSize: font.body }}>{cat.label.split(' ')[1]}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TouchableOpacity onPress={() => setCategoryModalVisible(false)} style={{ marginTop: spacing.md }}>
-              <Text style={{ color: colors.primary, textAlign: 'center', fontSize: font.body }}>닫기</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* 날짜 선택 (반짝소모임일 때만) */}
-      {category === '✨ 반짝소모임' && (
-        <TouchableOpacity
-            onPress={() => setShowCalendar(true)}
-          style={{
-            backgroundColor: colors.surface,
-            padding: spacing.md,
-            borderRadius: radius.md,
-            borderWidth: 1,
-            borderColor: colors.border,
-            marginBottom: spacing.md,
-          }}
-        >
-          <Text style={{ color: colors.text, fontSize: font.body }}>
-            {`날짜 선택: ${expirationDate.toLocaleDateString()}`}
-          </Text>
-          <Text style={{ color: colors.text, fontSize: font.caption }}>
-            {'선택한 날짜 다음날 모임이 삭제됩니다.'}
-          </Text>
-
-            {category === '✨ 반짝소모임' && (
-                <Modal visible={showCalendar} transparent animationType="fade">
-                    <View style={{
-                        flex: 1,
-                        backgroundColor: 'rgba(0,0,0,0.4)',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                    }}>
-                        <View style={{
-                            width: '90%',
-                            backgroundColor: colors.background,
-                            borderRadius: radius.md,
-                            padding: spacing.md,
-                        }}>
-                            <Calendar
-                                onDayPress={(day:any) => {
-                                    setExpirationDate(new Date(day.dateString));
-                                    setShowCalendar(false);
-                                }}
-                                markedDates={{
-                                    [formatDate(expirationDate)]: {
-                                        selected: true,
-                                        marked: true,
-                                        selectedColor: colors.primary,
-                                    },
-                                }}
-                                theme={{
-                                    backgroundColor: colors.background,
-                                    calendarBackground: colors.background,
-                                    textSectionTitleColor: colors.text,
-                                    dayTextColor: colors.text,
-                                    selectedDayTextColor: '#fff',
-                                    selectedDayBackgroundColor: colors.primary,
-                                    monthTextColor: colors.text,
-                                    arrowColor: colors.primary,
-                                }}
-                            />
-
-                            <TouchableOpacity
-                                onPress={() => setShowCalendar(false)}
-                                style={{ marginTop: spacing.md, alignItems: 'center' }}
-                            >
-                                <Text style={{ color: colors.primary, fontSize: font.body }}>닫기</Text>
-                            </TouchableOpacity>
+                                </ScrollView>
+                            </KeyboardAvoidingView>
                         </View>
-                    </View>
-                </Modal>
-            )}
-        </TouchableOpacity>
-      )}
-      <Modal visible={isSparkleModalVisible} transparent animationType="slide">
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <View style={{ width: '80%', backgroundColor: colors.background, borderRadius: radius.md, padding: spacing.md }}>
-            <Text style={{ color: colors.text, fontSize: font.body, marginBottom: spacing.md }}>
-              반짝 소모임은 선택한 날짜 다음날 모임이 삭제되는 번개모임입니다. 반짝 소모임 생성 시 모든 회원에게 알림이 갑니다.
-            </Text>
-            <TouchableOpacity onPress={() => setSparkleModalVisible(false)}>
-              <Text style={{ color: colors.primary, textAlign: 'center', fontSize: font.body }}>확인</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-    </View>
+                    </Modal>
 
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
-                                        <Text style={{ fontSize: 16, color: colors.text, marginRight: 8 }}>🙅‍♂️ 모임마감</Text>
-                                        <Switch value={isClosed} onValueChange={setIsClosed} />
-                                    </View>
-
-                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.md }}>
-                                        <TouchableOpacity onPress={() => setEditModalVisible(false)}>
-                                            <Text style={{ color: colors.subtext }}>취소</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity onPress={handleUpdateTeam}>
-                                            <Text style={{ color: colors.primary, fontWeight: 'bold' }}>저장</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            </ScrollView>
-                        </KeyboardAvoidingView>
-                    </View>
-                </Modal>
-
-                <Modal
-                    visible={updateLoading}
-                    transparent
-                    animationType="fade"
-                    statusBarTranslucent
-                >
-                    <View
-                        style={{
-                            flex: 1,
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            backgroundColor: 'rgba(0,0,0,0.4)',
-                            zIndex: 9999,
-                            elevation: 9999,
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                        }}
+                    <Modal
+                        visible={updateLoading}
+                        transparent={true}
+                        animationType="fade"
+                        statusBarTranslucent={true}
                     >
-                        <LottieView
-                            source={require('@/assets/lottie/Animation - 1747201330128.json')}
-                            autoPlay
-                            loop
-                            style={{ width: 300, height: 300 }}
-                        />
-                        <Text style={{ color: '#fff', marginTop: 20, fontSize: 16 }}>수정중...</Text>
-                    </View>
-                </Modal>
+                        <View
+                            style={{
+                                flex: 1,
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                backgroundColor: 'rgba(0,0,0,0.7)',
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                            }}
+                        >
+                            <LottieView
+                                source={loadingAnimation}
+                                autoPlay={true}
+                                loop={true}
+                                speed={0.8}
+                                style={{ width: 400, height: 400 }}
+                            />
+                            <View style={{ alignItems: 'center' }}>
+                                <Text style={{ color: '#fff', fontSize: 22, fontWeight: '600', marginTop: 16 }}>저장 중...</Text>
+                                <Text style={{ color: '#fff', fontSize: 14, marginTop: 8, opacity: 0.8 }}>잠시만 기다려주세요</Text>
+                            </View>
+                        </View>
+                    </Modal>
+                </>
 
                 <Modal
                     visible={isVoteModalVisible}
@@ -1825,7 +2060,7 @@ export default function TeamDetail() {
                             ))}
 
                             {/* 투표 현황 보기 버튼 */}
-                           {/* <TouchableOpacity
+                            {/* <TouchableOpacity
                                 onPress={() => {
                                     setShowVoteStatus(true);
                                 }}
@@ -1899,7 +2134,7 @@ export default function TeamDetail() {
                                                     <Text style={{ color: colors.text }}>{vote.userName}</Text>
                                                     <Text style={{ color: colors.text }}>
                                                         {vote.status === 'yes' ? '✅ 참석' :
-                                                         vote.status === 'maybe' ? '🤔 미정' : '❌ 불참'}
+                                                            vote.status === 'maybe' ? '🤔 미정' : '❌ 불참'}
                                                     </Text>
                                                 </View>
                                             ))}
@@ -1927,13 +2162,15 @@ export default function TeamDetail() {
                 </Modal>
 
                 {/* 일정 선택 모달 */}
-                <DateTimePickerModal
+                <CustomDateModal
                     isVisible={isDatePickerVisible}
-                    mode="date"
-                    display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
-                    onConfirm={handleDateConfirm}
-                    onCancel={() => setDatePickerVisible(false)}
-                    minimumDate={new Date()}
+                    mode="single"
+                    onClose={() => setDatePickerVisible(false)}
+                    onSave={(date) => {
+                        setScheduleDate(date.toISOString().split('T')[0]);
+                    }}
+                    colors={colors}
+                    spacing={spacing}
                 />
 
                 {/* 장소 선택 모달 */}
@@ -2123,7 +2360,7 @@ export default function TeamDetail() {
                                     <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                                         <Text style={{
                                             color: member.email === team.leaderEmail ? colors.primary :
-                                                  member.email === team.subLeaderEmail ? colors.primary : colors.text,
+                                                member.email === team.subLeaderEmail ? colors.primary : colors.text,
                                             fontWeight: (member.email === team.leaderEmail || member.email === team.subLeaderEmail) ? 'bold' : 'normal',
                                             fontSize: font.body,
                                         }}>
@@ -2137,7 +2374,7 @@ export default function TeamDetail() {
                                             marginLeft: spacing.sm,
                                         }}>
                                             {member.email === team.leaderEmail ? '(모임장)' :
-                                             member.email === team.subLeaderEmail ? '(부모임장)' : ''}
+                                                member.email === team.subLeaderEmail ? '(부모임장)' : ''}
                                         </Text>
                                     </View>
 
@@ -2329,35 +2566,35 @@ export default function TeamDetail() {
                     {/* 관리자 버튼 */}
                     {isManager && (
                         <>
-                        <TouchableOpacity
-                            onPress={openEditModal}
-                            style={{
-                                backgroundColor: colors.primary,
-                                paddingVertical: spacing.md,
-                                borderRadius: radius.md,
-                                alignItems: 'center',
-                            }}
-                        >
-                            <Text style={{ color: '#fff', fontSize: font.body, fontWeight: 'bold' }}>
-                                ✏️ 모임 정보 수정
-                            </Text>
-                        </TouchableOpacity>
-
-                        {isCreator && (
                             <TouchableOpacity
-                                onPress={() => deleteTeam(team.id)}
+                                onPress={openEditModal}
                                 style={{
-                                    backgroundColor: colors.error,
+                                    backgroundColor: colors.primary,
                                     paddingVertical: spacing.md,
                                     borderRadius: radius.md,
                                     alignItems: 'center',
                                 }}
                             >
                                 <Text style={{ color: '#fff', fontSize: font.body, fontWeight: 'bold' }}>
-                                    🗑️ 모임 삭제하기
+                                    ✏️ 모임 정보 수정
                                 </Text>
                             </TouchableOpacity>
-                        )}
+
+                            {isCreator && (
+                                <TouchableOpacity
+                                    onPress={() => deleteTeam(team.id)}
+                                    style={{
+                                        backgroundColor: colors.error,
+                                        paddingVertical: spacing.md,
+                                        borderRadius: radius.md,
+                                        alignItems: 'center',
+                                    }}
+                                >
+                                    <Text style={{ color: '#fff', fontSize: font.body, fontWeight: 'bold' }}>
+                                        🗑️ 모임 삭제하기
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
                         </>
                     )}
 
@@ -2374,7 +2611,7 @@ export default function TeamDetail() {
                             }}
                         >
                             <Text style={{ color: '#fff', fontSize: font.body, fontWeight: '600' }}>
-                                {isFull ? '모집마감' : alreadyRequested ? '가입 신청 완료' : '가입 신청하기'}
+                                {isClosed ? '모임 마감됨' : isFull ? '모집마감' : alreadyRequested ? '가입 신청 완료' : '가입 신청하기'}
                             </Text>
                         </TouchableOpacity>
                     )}

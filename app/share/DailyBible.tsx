@@ -1,5 +1,5 @@
-import { useDesign } from '@/app/context/DesignSystem';
-import { useAppTheme } from '@/app/context/ThemeContext';
+import { useDesign } from '@/context/DesignSystem';
+import { useAppTheme } from '@/context/ThemeContext';
 import { db } from '@/firebase/config';
 import { getCurrentUser } from '@/services/authService';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,7 +41,7 @@ export default function DevotionPage() {
     const [filterUserName, setFilterUserName] = useState<string | null>(null);
     const theme = useDesign();
     const { colors, spacing, font, radius } = useDesign();
-    const { mode } = useAppTheme();
+    const { mode, setThemeMode } = useAppTheme();
     const isDark = mode === 'dark';
     const insets = useSafeAreaInsets();
     const [rankingRangeText, setRankingRangeText] = useState<string>(''); // 📅 날짜 표시용 추가
@@ -308,7 +308,7 @@ export default function DevotionPage() {
             <View {...panResponder.panHandlers} style={{ flex: 1 }}>
             <ScrollView contentContainerStyle={{ paddingLeft: spacing.lg,paddingRight: spacing.lg,paddingBottom: spacing.lg }}>
                 <View style={{ alignItems: 'center', marginVertical: 16, flexDirection: 'row', justifyContent: 'center' }}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={() => {
                             setFilterDate(prev => {
                                 const newDate = new Date(prev ?? new Date());
@@ -323,11 +323,11 @@ export default function DevotionPage() {
                     >
                         <Ionicons name="chevron-back" size={24} color={colors.primary} />
                     </TouchableOpacity>
-                    
-                    <TouchableOpacity 
+
+                    <TouchableOpacity
                         onPress={() => setShowDatePicker(true)}
-                        style={{ 
-                            flexDirection: 'row', 
+                        style={{
+                            flexDirection: 'row',
                             alignItems: 'center',
                             backgroundColor: colors.surface,
                             paddingVertical: 8,
@@ -339,16 +339,16 @@ export default function DevotionPage() {
                             shadowRadius: 4,
                             elevation: 3,
                         }}>
-                        <Text style={{ 
-                            fontSize: 18, 
-                            fontWeight: '600', 
+                        <Text style={{
+                            fontSize: 18,
+                            fontWeight: '600',
                             color: colors.text,
                         }}>
                             {filterDate ? format(filterDate, 'yyyy-MM-dd') : ''}
                         </Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={() => {
                             setFilterDate(prev => {
                                 const newDate = new Date(prev ?? new Date());
@@ -487,17 +487,17 @@ export default function DevotionPage() {
 
 
             <Modal visible={rankingVisible} animationType="slide" transparent>
-                <View style={{ 
-                    flex: 1, 
-                    justifyContent: 'center', 
-                    alignItems: 'center', 
-                    backgroundColor: 'rgba(0, 0, 0, 0.7)' 
+                <View style={{
+                    flex: 1,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)'
                 }}>
-                    <View style={{ 
-                        width: '85%', 
-                        maxHeight: height * 0.85, 
-                        backgroundColor: colors.background, 
-                        padding: spacing.lg, 
+                    <View style={{
+                        width: '85%',
+                        maxHeight: height * 0.85,
+                        backgroundColor: colors.background,
+                        padding: spacing.lg,
                         borderRadius: radius.lg,
                         shadowColor: '#000',
                         shadowOffset: { width: 0, height: 2 },
@@ -505,24 +505,24 @@ export default function DevotionPage() {
                         shadowRadius: 3.84,
                         elevation: 5
                     }}>
-                        <Text style={{ 
-                            color: colors.subtext, 
-                            fontSize: 14, 
-                            marginBottom: spacing.sm 
+                        <Text style={{
+                            color: colors.subtext,
+                            fontSize: 14,
+                            marginBottom: spacing.sm
                         }}>
                             📅 집계 기간: {rankingRangeText}
                         </Text>
-                        
-                        <View style={{ 
-                            flexDirection: 'row', 
-                            justifyContent: 'space-between', 
-                            alignItems: 'center', 
-                            marginBottom: spacing.lg 
+
+                        <View style={{
+                            flexDirection: 'row',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: spacing.lg
                         }}>
-                            <Text style={{ 
-                                fontSize: font.heading, 
-                                fontWeight: 'bold', 
-                                color: colors.text 
+                            <Text style={{
+                                fontSize: font.heading,
+                                fontWeight: 'bold',
+                                color: colors.text
                             }}>
                                 🏆 이번 주 묵상 랭킹
                             </Text>
@@ -558,23 +558,23 @@ export default function DevotionPage() {
                                         elevation: 2
                                     }}
                                 >
-                                    <Text style={{ 
-                                        fontSize: 24, 
-                                        marginRight: spacing.md 
+                                    <Text style={{
+                                        fontSize: 24,
+                                        marginRight: spacing.md
                                     }}>
                                         {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}`}
                                     </Text>
                                     <View>
-                                        <Text style={{ 
-                                            fontSize: font.body, 
+                                        <Text style={{
+                                            fontSize: font.body,
                                             fontWeight: 'bold',
-                                            color: colors.text 
+                                            color: colors.text
                                         }}>
                                             {item.name}
                                         </Text>
-                                        <Text style={{ 
-                                            fontSize: font.caption, 
-                                            color: colors.subtext 
+                                        <Text style={{
+                                            fontSize: font.caption,
+                                            color: colors.subtext
                                         }}>
                                             이번 주 {item.count}회 작성
                                         </Text>

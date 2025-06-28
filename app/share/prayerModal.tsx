@@ -1,5 +1,5 @@
-import { useDesign } from '@/app/context/DesignSystem';
-import { useAppTheme } from '@/app/context/ThemeContext';
+import { useDesign } from '@/context/DesignSystem';
+import { useAppTheme } from '@/context/ThemeContext';
 import { db } from '@/firebase/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
@@ -28,7 +28,7 @@ export default function PrayerSubmitPage() {
   const [content, setContent] = useState('');
   const [user, setUser] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [isAnonymous, setIsAnonymous] = useState(false); 
+  const [isAnonymous, setIsAnonymous] = useState(false);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -40,7 +40,7 @@ export default function PrayerSubmitPage() {
         }
     };
     loadUser();
-}, []); 
+}, []);
 
   const handleSubmit = async () => {
     if (!title.trim() || !content.trim()) return;
@@ -52,7 +52,7 @@ export default function PrayerSubmitPage() {
         name: currentUser?.name,
         email: user?.email ?? '',
         createdAt: serverTimestamp(),
-        anonymous: isAnonymous ? 'Y' : 'N', 
+        anonymous: isAnonymous ? 'Y' : 'N',
       });
 
       router.back();

@@ -1,6 +1,6 @@
 // app/_layout.tsx
-import { DesignSystemProvider } from '@/app/context/DesignSystem';
-import { ThemeProvider } from '@/app/context/ThemeContext';
+import { DesignSystemProvider } from '@/context/DesignSystem';
+import { ThemeProvider } from '@/context/ThemeContext';
 import { db } from "@/firebase/config";
 import { clearPrayers } from "@/redux/slices/prayerSlice";
 import { clearTeams } from "@/redux/slices/teamSlice";
@@ -24,7 +24,7 @@ import RootLayoutInner from './_layout-inner';
 
 export default function RootLayout() {
     const colorScheme = useColorScheme();
-    const isDark = colorScheme === 'dark';
+    const isDark = colorScheme === 'light';
     const router = useRouter();
     const [isAppReady, setIsAppReady] = useState(false);
 

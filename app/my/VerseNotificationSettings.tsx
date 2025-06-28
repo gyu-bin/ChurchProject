@@ -1,4 +1,4 @@
-import { useAppTheme } from '@/app/context/ThemeContext';
+import { useAppTheme } from '@/context/ThemeContext';
 import { verses } from '@/assets/verses';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
