@@ -1,7 +1,7 @@
 // styled.d.ts
-import 'styled-components';
-import { UseDesignReturnType } from '@/context/DesignSystem';
+import 'styled-components/native';
+import { Colors } from '../context/types';
 
-declare module 'styled-components' {
-    export interface DefaultTheme extends UseDesignReturnType {}
+declare module 'styled-components/native' {
+    export interface DefaultTheme extends Colors {}
 }
