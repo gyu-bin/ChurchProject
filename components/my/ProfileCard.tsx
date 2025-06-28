@@ -1,15 +1,8 @@
-import { useDesign } from "@/app/context/DesignSystem";
 import { EditProfileModal } from "@/components/my/EditProfileModal";
 import { User } from "@/constants/_types/user";
+import { useDesign } from "@/context/DesignSystem";
 import { useState } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Modal,
-  Platform,
-  TextInput,
-} from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 
 type ProfileCardProps = {
   user: User;
@@ -150,7 +143,6 @@ export const ProfileCard = ({ user }: ProfileCardProps) => {
           </View>
         )}
       </View>
-
       <EditProfileModal
         show={showEditProfile}
         onClose={() => setShowEditProfile(false)}

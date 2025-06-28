@@ -1,9 +1,10 @@
-import { useDesign } from "@/app/context/DesignSystem";
+import { useDesign } from "@/context/DesignSystem";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { PropsWithChildren } from "react";
 import { TouchableOpacity } from "react-native";
 import styled from "styled-components/native";
+;
 
 type HeaderProps = PropsWithChildren & {
   title: string;

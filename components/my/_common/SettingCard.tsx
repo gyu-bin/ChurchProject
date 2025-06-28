@@ -1,4 +1,4 @@
-import { useDesign } from "@/app/context/DesignSystem";
+import { useDesign } from "@/context/DesignSystem";
 import { Ionicons } from "@expo/vector-icons";
 import { PropsWithChildren } from "react";
 import styled from "styled-components/native";

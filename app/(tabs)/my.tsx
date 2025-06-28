@@ -1,5 +1,3 @@
-import { useDesign } from "@/app/context/DesignSystem";
-import { useAppTheme } from "@/app/context/ThemeContext";
 import PushSettings from "@/app/my/VerseNotificationSettings";
 import ThemeToggle from "@/components/ThemeToggle";
 import { db } from "@/firebase/config";
@@ -27,6 +25,8 @@ import { ProfileCard } from "@/components/my/ProfileCard";
 import { User } from "@/constants/_types/user";
 import { useAuth } from "@/hooks/useAuth";
 import styled from "styled-components/native";
+import { useAppTheme } from "@/context/ThemeContext";
+import { useDesign } from "@/context/DesignSystem";
 
 if (
   Platform.OS === "android" &&

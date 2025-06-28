@@ -1,5 +1,5 @@
-import { useDesign } from "@/app/context/DesignSystem";
 import { User } from "@/constants/_types/user";
+import { useDesign } from "@/context/DesignSystem";
 import { db } from "@/firebase/config";
 import { useAuth } from "@/hooks/useAuth";
 import AsyncStorage from "@react-native-async-storage/async-storage";

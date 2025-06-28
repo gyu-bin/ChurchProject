@@ -1,4 +1,4 @@
-import { useDesign } from "@/app/context/DesignSystem";
+import { useDesign } from "@/context/DesignSystem";
 import { PropsWithChildren } from "react";
 import { Platform, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
