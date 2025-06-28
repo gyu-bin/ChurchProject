@@ -6,9 +6,10 @@ import { View, Text, TouchableOpacity } from "react-native";
 
 type ProfileCardProps = {
   user: User;
+  handleUserUpdate: (updatedUser: User) => void;
 };
 
-export const ProfileCard = ({ user }: ProfileCardProps) => {
+export const ProfileCard = ({ user, handleUserUpdate }: ProfileCardProps) => {
   const { colors } = useDesign();
 
   const [showEditProfile, setShowEditProfile] = useState(false);
@@ -147,6 +148,7 @@ export const ProfileCard = ({ user }: ProfileCardProps) => {
         show={showEditProfile}
         onClose={() => setShowEditProfile(false)}
         user={user}
+        handleUserUpdate={handleUserUpdate}
       />
     </View>
   );

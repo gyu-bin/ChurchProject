@@ -20,16 +20,17 @@ type EditProfileModalProps = {
   show: boolean;
   onClose: () => void;
   user: User;
+  handleUserUpdate: (updatedUser: User) => void;
 };
 
 export const EditProfileModal = ({
   show,
   onClose,
   user,
+  handleUserUpdate,
 }: EditProfileModalProps) => {
   const { colors } = useDesign();
   const { reload } = useAuth();
-  console.log(user);
 
   const [editValues, setEditValues] = useState<Record<string, string>>({
     name: user.name,
@@ -49,8 +50,6 @@ export const EditProfileModal = ({
       }
     });
 
-    console.log("UPDATED FIELDS", updatedFields);
-
     if (Object.keys(updatedFields).length === 0) {
       Toast.show("변경된 내용이 없습니다.", {
         duration: Toast.durations.SHORT,
@@ -68,6 +67,8 @@ export const EditProfileModal = ({
       // Update AsyncStorage
       await AsyncStorage.setItem("currentUser", JSON.stringify(updatedUser));
       await reload();
+
+      handleUserUpdate(updatedUser);
 
       Toast.show("✅ 정보가 수정되었습니다.", {
         duration: Toast.durations.SHORT,

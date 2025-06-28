@@ -23,10 +23,10 @@ import ScreenHeader from "@/components/my/_common/ScreenHeader";
 import SettingCard from "@/components/my/_common/SettingCard";
 import { ProfileCard } from "@/components/my/ProfileCard";
 import { User } from "@/constants/_types/user";
+import { useDesign } from "@/context/DesignSystem";
+import { useAppTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/hooks/useAuth";
 import styled from "styled-components/native";
-import { useAppTheme } from "@/context/ThemeContext";
-import { useDesign } from "@/context/DesignSystem";
 
 if (
   Platform.OS === "android" &&
@@ -36,7 +36,16 @@ if (
 }
 
 export default function MyScreen() {
-  const { user } = useAuth();
+  const { user: authUser } = useAuth();
+  const [user, setUser] = useState<User | null>(authUser);
+
+  useEffect(() => {
+    setUser(authUser);
+  }, [authUser]);
+
+  const handleUserUpdate = (updatedUser: User) => {
+    setUser(updatedUser);
+  };
 
   const router = useRouter();
   const { mode } = useAppTheme();
@@ -58,8 +67,6 @@ export default function MyScreen() {
     const updatedUser = { ...user, role: "정회원" } as User;
     await updateDoc(doc(db, "users", user.email), { role: "정회원" });
     await AsyncStorage.setItem("currentUser", JSON.stringify(updatedUser));
-    // TODO: 정회원 업데이트 확인
-    // setUser(updatedUser);
     setShowUpgradeModal(false);
     Toast.show("✅ 정회원으로 전환되었습니다.", {
       duration: Toast.durations.SHORT,
@@ -75,7 +82,7 @@ export default function MyScreen() {
         </TouchableOpacity>
       </ScreenHeader>
 
-      {user && <ProfileCard user={user} />}
+      {user && <ProfileCard user={user} handleUserUpdate={handleUserUpdate} />}
 
       {/* 일반 설정 섹션 */}
       <View style={{ marginBottom: 32 }}>
@@ -123,7 +130,7 @@ export default function MyScreen() {
       </View>
 
       {/* 관리자 설정 */}
-      {(user?.role === "교역자" || user?.role === "관리자") && (
+      {user?.role === "관리자" && (
         <View style={{ marginBottom: 32 }}>
           <SettingSectionHeader color={colors.text}>
             관리자

@@ -81,4 +81,5 @@ const SettingIconWrapper = styled.View<SettingIconWrapperProps>`
 
 const SettingTitle = styled.Text`
   font-size: 16px;
+  color: ${({ theme }: { theme: any }) => theme.text};
 `;
