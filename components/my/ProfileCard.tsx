@@ -1,4 +1,4 @@
-import { EditProfileModal } from "@/components/my/EditProfileModal";
+import { EditProfileModal } from "@/components/my/editProfileModal/EditProfileModal";
 import { User } from "@/constants/_types/user";
 import { useDesign } from "@/context/DesignSystem";
 import { useState } from "react";
