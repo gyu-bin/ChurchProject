@@ -56,7 +56,7 @@ export default function MyScreen() {
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
-    setScrollCallback("settings", () => {
+    setScrollCallback("my", () => {
       scrollRef.current?.scrollTo({ y: 0, animated: true });
     });
   }, []);

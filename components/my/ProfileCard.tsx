@@ -1,8 +1,7 @@
-import { EditProfileModal } from "@/components/my/EditProfileModal";
+import { EditProfileModal } from "@/components/my/editProfileModal/EditProfileModal";
 import { User } from "@/constants/_types/user";
-import { useDesign } from "@/context/DesignSystem";
-import { useState } from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import React, { useState } from "react";
+import styled from "styled-components/native";
 
 type ProfileCardProps = {
   user: User;
@@ -10,8 +9,6 @@ type ProfileCardProps = {
 };
 
 export const ProfileCard = ({ user, handleUserUpdate }: ProfileCardProps) => {
-  const { colors } = useDesign();
-
   const [showEditProfile, setShowEditProfile] = useState(false);
 
   const handleEditToggle = () => {
@@ -19,137 +16,102 @@ export const ProfileCard = ({ user, handleUserUpdate }: ProfileCardProps) => {
   };
 
   return (
-    <View
-      style={{
-        backgroundColor: colors.surface,
-        borderRadius: 24,
-        padding: 20,
-        marginBottom: 32,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-        elevation: 3,
-      }}
-    >
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          marginBottom: 16,
-        }}
-      >
-        <View>
-          <Text
-            style={{
-              fontSize: 24,
-              fontWeight: "700",
-              color: colors.text,
-              marginBottom: 4,
-            }}
-          >
-            {user?.name ?? "이름"}
-          </Text>
-          <Text
-            style={{
-              fontSize: 15,
-              color: colors.subtext,
-            }}
-          >
-            {user?.email ?? "이메일"}
-          </Text>
-        </View>
-        <TouchableOpacity
-          onPress={handleEditToggle}
-          style={{
-            backgroundColor: colors.primary + "15",
-            paddingVertical: 8,
-            paddingHorizontal: 12,
-            borderRadius: 12,
-          }}
-        >
-          <Text
-            style={{
-              color: colors.primary,
-              fontSize: 14,
-              fontWeight: "600",
-            }}
-          >
-            프로필 수정
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* 뱃지 영역 */}
-      <View style={{ flexDirection: "row", gap: 8 }}>
+    <CardContainer>
+      <TopRow>
+        <UserInfo>
+          <UserName>{user?.name ?? "이름"}</UserName>
+          <UserEmail>{user?.email ?? "이메일"}</UserEmail>
+        </UserInfo>
+        <EditButton onPress={handleEditToggle}>
+          <EditButtonText>프로필 수정</EditButtonText>
+        </EditButton>
+      </TopRow>
+      <BadgeRow>
         {user?.division && (
-          <View
-            style={{
-              backgroundColor: "#E3F2FD",
-              paddingHorizontal: 10,
-              paddingVertical: 6,
-              borderRadius: 12,
-            }}
-          >
-            <Text
-              style={{
-                color: "#1976D2",
-                fontSize: 13,
-                fontWeight: "600",
-              }}
-            >
-              {user.division}
-            </Text>
-          </View>
+          <Badge background="#E3F2FD">
+            <BadgeText color="#1976D2">{user.division}</BadgeText>
+          </Badge>
         )}
         {user?.role && (
-          <View
-            style={{
-              backgroundColor: "#E8F5E9",
-              paddingHorizontal: 10,
-              paddingVertical: 6,
-              borderRadius: 12,
-            }}
-          >
-            <Text
-              style={{
-                color: "#2E7D32",
-                fontSize: 13,
-                fontWeight: "600",
-              }}
-            >
-              {user.role}
-            </Text>
-          </View>
+          <Badge background="#E8F5E9">
+            <BadgeText color="#2E7D32">{user.role}</BadgeText>
+          </Badge>
         )}
         {user?.campus && (
-          <View
-            style={{
-              backgroundColor: "#FDECEC",
-              paddingHorizontal: 10,
-              paddingVertical: 6,
-              borderRadius: 12,
-            }}
-          >
-            <Text
-              style={{
-                color: "#ff9191",
-                fontSize: 13,
-                fontWeight: "600",
-              }}
-            >
-              {user.campus}
-            </Text>
-          </View>
+          <Badge background="#FDECEC">
+            <BadgeText color="#ff9191">{user.campus}</BadgeText>
+          </Badge>
         )}
-      </View>
+      </BadgeRow>
       <EditProfileModal
         show={showEditProfile}
         onClose={() => setShowEditProfile(false)}
         user={user}
         handleUserUpdate={handleUserUpdate}
       />
-    </View>
+    </CardContainer>
   );
 };
+
+// --- Styled Components ---
+const CardContainer = styled.View`
+  background-color: ${({ theme }) => theme.surface};
+  border-radius: 24px;
+  padding: 20px;
+  margin-bottom: 32px;
+  elevation: 3;
+  shadow-color: #000;
+  shadow-offset: 0px 2px;
+  shadow-opacity: 0.08;
+  shadow-radius: 8px;
+`;
+
+const TopRow = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+`;
+
+const UserInfo = styled.View``;
+
+const UserName = styled.Text`
+  font-size: 24px;
+  font-weight: 700;
+  color: ${({ theme }) => theme.text};
+  margin-bottom: 4px;
+`;
+
+const UserEmail = styled.Text`
+  font-size: 15px;
+  color: ${({ theme }) => theme.subtext};
+`;
+
+const EditButton = styled.TouchableOpacity`
+  background-color: ${({ theme }) => theme.primary + "15"};
+  padding: 8px 12px;
+  border-radius: 12px;
+`;
+
+const EditButtonText = styled.Text`
+  color: ${({ theme }) => theme.primary};
+  font-size: 14px;
+  font-weight: 600;
+`;
+
+const BadgeRow = styled.View`
+  flex-direction: row;
+  gap: 8px;
+`;
+
+const Badge = styled.View<{ background: string }>`
+  background-color: ${({ background }) => background};
+  padding: 6px 10px;
+  border-radius: 12px;
+`;
+
+const BadgeText = styled.Text<{ color: string }>`
+  color: ${({ color }) => color};
+  font-size: 13px;
+  font-weight: 600;
+`;
