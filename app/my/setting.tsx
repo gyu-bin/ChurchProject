@@ -24,7 +24,6 @@ import {
   Alert,
   Modal,
   Platform,
-  SafeAreaView,
   ScrollView,
   Text,
   TextInput,
@@ -33,12 +32,13 @@ import {
   View,
 } from "react-native";
 import Toast from "react-native-root-toast";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import loading4 from "@/assets/lottie/Animation - 1747201330128.json";
 import loading3 from "@/assets/lottie/Animation - 1747201413764.json";
 import loading2 from "@/assets/lottie/Animation - 1747201431992.json";
 import loading1 from "@/assets/lottie/Animation - 1747201461030.json";
+import MyScreenContainer from "@/components/my/_common/ScreenContainer";
+import ScreenHeader from "@/components/my/_common/ScreenHeader";
 
 if (
   Platform.OS === "android" &&
@@ -51,7 +51,6 @@ export default function SettingPage() {
   const [user, setUser] = useState<any>(null);
   const router = useRouter();
   const { colors } = useDesign();
-  const insets = useSafeAreaInsets();
 
   const scrollRef = useRef<ScrollView>(null);
   const dispatch = useAppDispatch();
@@ -209,403 +208,563 @@ export default function SettingPage() {
   };
 
   return (
-    <SafeAreaView
-      style={{
-        flex: 1,
-        backgroundColor: colors.background,
-        paddingTop: Platform.OS === "android" ? insets.top + 10 : 0,
-      }}
-    >
-      <ScrollView
-        ref={scrollRef}
-        contentContainerStyle={{
-          paddingHorizontal: 20,
-          paddingBottom: 40,
+    <MyScreenContainer scrollRef={scrollRef}>
+      {/* 헤더 */}
+      <ScreenHeader title="설정" hasBackButton />
+
+      {/* 로그인된 기기 */}
+      <TouchableOpacity
+        onPress={() => setModalVisible(true)}
+        style={{
+          backgroundColor: colors.surface,
+          padding: 20,
+          borderRadius: 16,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 6,
+          elevation: 2,
         }}
-        showsVerticalScrollIndicator={false}
       >
-        {/* 헤더 */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            marginBottom: 32,
-            marginTop: 12,
-            gap: 12,
-          }}
-        >
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text
-            style={{
-              flex: 1,
-              fontSize: 24,
-              fontWeight: "700",
-              color: colors.text,
-            }}
-          >
-            설정
-          </Text>
-        </View>
-
-        {/* 로그인된 기기 */}
-        <TouchableOpacity
-          onPress={() => setModalVisible(true)}
-          style={{
-            backgroundColor: colors.surface,
-            padding: 20,
-            borderRadius: 16,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.06,
-            shadowRadius: 6,
-            elevation: 2,
-          }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <View
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: "#e0f2fe",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Ionicons
-                name="phone-portrait-outline"
-                size={20}
-                color="#0284c7"
-              />
-            </View>
-            <Text style={{ fontSize: 16, color: colors.text }}>
-              로그인된 기기
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.subtext} />
-        </TouchableOpacity>
-        <DeviceManager
-          visible={modalVisible}
-          onClose={() => setModalVisible(false)}
-        />
-
-        {/* 계정 설정 */}
-        <View style={{ marginBottom: 32 }}>
-          <Text
-            style={{
-              fontSize: 18,
-              fontWeight: "600",
-              color: colors.text,
-              marginBottom: 16,
-              paddingLeft: 4,
-            }}
-          >
-            계정
-          </Text>
-
-          <View style={{ gap: 12 }}>
-            {/* 비밀번호 찾기 */}
-            <TouchableOpacity
-              onPress={() => router.push("/my/ForgotPassword")}
-              style={{
-                backgroundColor: colors.surface,
-                padding: 20,
-                borderRadius: 16,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.06,
-                shadowRadius: 6,
-                elevation: 2,
-              }}
-            >
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
-              >
-                <View
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    backgroundColor: "#fef3c7",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Ionicons name="key-outline" size={20} color="#d97706" />
-                </View>
-                <Text style={{ fontSize: 16, color: colors.text }}>
-                  비밀번호 찾기
-                </Text>
-              </View>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={colors.subtext}
-              />
-            </TouchableOpacity>
-
-            {/* 회원 탈퇴 */}
-            <TouchableOpacity
-              onPress={handleDeleteAccount}
-              style={{
-                backgroundColor: colors.surface,
-                padding: 20,
-                borderRadius: 16,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.06,
-                shadowRadius: 6,
-                elevation: 2,
-              }}
-            >
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
-              >
-                <View
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    backgroundColor: "#fee2e2",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Ionicons name="trash-outline" size={20} color="#ef4444" />
-                </View>
-                <Text style={{ fontSize: 16, color: colors.error }}>
-                  회원 탈퇴
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.error} />
-            </TouchableOpacity>
-
-            {/* 로그아웃 */}
-            <TouchableOpacity
-              onPress={handleLogout}
-              style={{
-                backgroundColor: colors.surface,
-                padding: 20,
-                borderRadius: 16,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.06,
-                shadowRadius: 6,
-                elevation: 2,
-              }}
-            >
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
-              >
-                <View
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    backgroundColor: "#fee2e2",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Ionicons name="log-out-outline" size={20} color="#ef4444" />
-                </View>
-                <Text style={{ fontSize: 16, color: colors.error }}>
-                  로그아웃
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.error} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* 비밀번호 변경 모달 */}
-        <Modal visible={showPasswordFields} transparent animationType="fade">
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
           <View
             style={{
-              flex: 1,
-              backgroundColor: "rgba(0,0,0,0.5)",
-              justifyContent: "center",
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: "#e0f2fe",
               alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Ionicons name="phone-portrait-outline" size={20} color="#0284c7" />
+          </View>
+          <Text style={{ fontSize: 16, color: colors.text }}>
+            로그인된 기기
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={colors.subtext} />
+      </TouchableOpacity>
+      <DeviceManager
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+      />
+
+      {/* 계정 설정 */}
+      <View style={{ marginBottom: 32, marginTop: 32 }}>
+        <Text
+          style={{
+            fontSize: 18,
+            fontWeight: "600",
+            color: colors.text,
+            marginBottom: 16,
+            paddingLeft: 4,
+          }}
+        >
+          계정
+        </Text>
+
+        <View style={{ gap: 12 }}>
+          {/* 비밀번호 변경 */}
+          <TouchableOpacity
+            onPress={() => setShowPasswordFields(true)}
+            style={{
+              backgroundColor: colors.surface,
+              padding: 20,
+              borderRadius: 16,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.06,
+              shadowRadius: 6,
+              elevation: 2,
             }}
           >
             <View
-              style={{
-                width: "90%",
-                backgroundColor: colors.surface,
-                borderRadius: 24,
-                padding: 24,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 12,
-                elevation: 5,
-              }}
+              style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
             >
-              <Text
+              <View
                 style={{
-                  fontSize: 24,
-                  fontWeight: "700",
-                  color: colors.text,
-                  marginBottom: 24,
-                }}
-              >
-                비밀번호 변경
-              </Text>
-
-              <View style={{ marginBottom: 16 }}>
-                <Text
-                  style={{
-                    fontSize: 15,
-                    color: colors.subtext,
-                    fontWeight: "600",
-                    marginBottom: 8,
-                  }}
-                >
-                  기존 비밀번호
-                </Text>
-                <TextInput
-                  placeholder="기존 비밀번호 입력"
-                  value={oldPassword}
-                  onChangeText={setOldPassword}
-                  secureTextEntry={!showPassword}
-                  style={{
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    borderRadius: 16,
-                    paddingHorizontal: 16,
-                    paddingVertical: Platform.OS === "ios" ? 16 : 12,
-                    color: colors.text,
-                    backgroundColor: colors.card,
-                    fontSize: 16,
-                  }}
-                  placeholderTextColor={colors.subtext}
-                />
-              </View>
-
-              <View style={{ marginBottom: 16 }}>
-                <Text
-                  style={{
-                    fontSize: 15,
-                    color: colors.subtext,
-                    fontWeight: "600",
-                    marginBottom: 8,
-                  }}
-                >
-                  새 비밀번호
-                </Text>
-                <TextInput
-                  placeholder="새 비밀번호 입력"
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  secureTextEntry={!showPassword}
-                  style={{
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    borderRadius: 16,
-                    paddingHorizontal: 16,
-                    paddingVertical: Platform.OS === "ios" ? 16 : 12,
-                    color: colors.text,
-                    backgroundColor: colors.card,
-                    fontSize: 16,
-                  }}
-                  placeholderTextColor={colors.subtext}
-                />
-              </View>
-
-              {/* 비밀번호 보기/숨기기 토글 */}
-              <TouchableOpacity
-                onPress={() => setShowPassword((prev) => !prev)}
-                style={{
-                  marginBottom: 24,
-                  flexDirection: "row",
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: "#fef3c7",
                   alignItems: "center",
-                  gap: 8,
+                  justifyContent: "center",
                 }}
               >
                 <Ionicons
-                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  name="lock-closed-outline"
                   size={20}
-                  color={colors.primary}
+                  color="#d97706"
                 />
-                <Text style={{ color: colors.primary }}>
-                  {showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
-                </Text>
-              </TouchableOpacity>
-
-              {/* 변경 버튼 */}
-              <TouchableOpacity
-                onPress={handlePasswordChange}
-                style={{
-                  backgroundColor: loading ? colors.subtext : colors.primary,
-                  padding: 16,
-                  borderRadius: 16,
-                  alignItems: "center",
-                  marginBottom: 12,
-                  opacity: loading ? 0.7 : 1,
-                }}
-                disabled={loading}
-              >
-                <Text
-                  style={{
-                    color: "#fff",
-                    fontSize: 16,
-                    fontWeight: "600",
-                  }}
-                >
-                  {loading ? "변경 중..." : "비밀번호 변경하기"}
-                </Text>
-              </TouchableOpacity>
+              </View>
+              <Text style={{ fontSize: 16, color: colors.text }}>
+                비밀번호 변경
+              </Text>
             </View>
-          </View>
-        </Modal>
-
-        {/* 로딩 모달 */}
-        {loading && (
-          <Modal visible={true} transparent animationType="fade">
+            <Ionicons name="chevron-forward" size={20} color={colors.subtext} />
+          </TouchableOpacity>
+          {/* 비밀번호 찾기 */}
+          <TouchableOpacity
+            onPress={() => router.push("/my/ForgotPassword")}
+            style={{
+              backgroundColor: colors.surface,
+              padding: 20,
+              borderRadius: 16,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.06,
+              shadowRadius: 6,
+              elevation: 2,
+            }}
+          >
             <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
+            >
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: "#fef3c7",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Ionicons name="key-outline" size={20} color="#d97706" />
+              </View>
+              <Text style={{ fontSize: 16, color: colors.text }}>
+                비밀번호 찾기
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.subtext} />
+          </TouchableOpacity>
+
+          {/* 회원 탈퇴 */}
+          <TouchableOpacity
+            onPress={handleDeleteAccount}
+            style={{
+              backgroundColor: colors.surface,
+              padding: 20,
+              borderRadius: 16,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.06,
+              shadowRadius: 6,
+              elevation: 2,
+            }}
+          >
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
+            >
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: "#fee2e2",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Ionicons name="trash-outline" size={20} color="#ef4444" />
+              </View>
+              <Text style={{ fontSize: 16, color: colors.error }}>
+                회원 탈퇴
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.error} />
+          </TouchableOpacity>
+
+          {/* 로그아웃 */}
+          <TouchableOpacity
+            onPress={handleLogout}
+            style={{
+              backgroundColor: colors.surface,
+              padding: 20,
+              borderRadius: 16,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.06,
+              shadowRadius: 6,
+              elevation: 2,
+            }}
+          >
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
+            >
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: "#fee2e2",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Ionicons name="log-out-outline" size={20} color="#ef4444" />
+              </View>
+              <Text style={{ fontSize: 16, color: colors.error }}>
+                로그아웃
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.error} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* 비밀번호 변경 모달 */}
+      <Modal visible={showPasswordFields} transparent animationType="fade">
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <View
+            style={{
+              width: "90%",
+              backgroundColor: colors.surface,
+              borderRadius: 24,
+              padding: 24,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.1,
+              shadowRadius: 12,
+              elevation: 5,
+            }}
+          >
+            <Text
               style={{
-                flex: 1,
-                justifyContent: "center",
-                alignItems: "center",
-                backgroundColor: "rgba(0,0,0,0.5)",
-                zIndex: 9999,
+                fontSize: 24,
+                fontWeight: "700",
+                color: colors.text,
+                marginBottom: 24,
               }}
             >
-              {loadingAnimation && (
-                <LottieView
-                  source={loadingAnimation}
-                  autoPlay
-                  loop
-                  style={{ width: 200, height: 200 }}
-                />
-              )}
+              비밀번호 변경
+            </Text>
+
+            <View style={{ marginBottom: 16 }}>
+              <Text
+                style={{
+                  fontSize: 15,
+                  color: colors.subtext,
+                  fontWeight: "600",
+                  marginBottom: 8,
+                }}
+              >
+                기존 비밀번호
+              </Text>
+              <TextInput
+                placeholder="기존 비밀번호 입력"
+                value={oldPassword}
+                onChangeText={setOldPassword}
+                secureTextEntry={!showPassword}
+                style={{
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: 16,
+                  paddingHorizontal: 16,
+                  paddingVertical: Platform.OS === "ios" ? 16 : 12,
+                  color: colors.text,
+                  backgroundColor: colors.card,
+                  fontSize: 16,
+                }}
+                placeholderTextColor={colors.subtext}
+              />
+            </View>
+
+            <View style={{ marginBottom: 16 }}>
+              <Text
+                style={{
+                  fontSize: 15,
+                  color: colors.subtext,
+                  fontWeight: "600",
+                  marginBottom: 8,
+                }}
+              >
+                새 비밀번호
+              </Text>
+              <TextInput
+                placeholder="새 비밀번호 입력"
+                value={newPassword}
+                onChangeText={setNewPassword}
+                secureTextEntry={!showPassword}
+                style={{
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: 16,
+                  paddingHorizontal: 16,
+                  paddingVertical: Platform.OS === "ios" ? 16 : 12,
+                  color: colors.text,
+                  backgroundColor: colors.card,
+                  fontSize: 16,
+                }}
+                placeholderTextColor={colors.subtext}
+              />
+            </View>
+
+            {/* 비밀번호 보기/숨기기 토글 */}
+            <TouchableOpacity
+              onPress={() => setShowPassword((prev) => !prev)}
+              style={{
+                marginBottom: 24,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <Ionicons
+                name={showPassword ? "eye-off-outline" : "eye-outline"}
+                size={20}
+                color={colors.primary}
+              />
+              <Text style={{ color: colors.primary }}>
+                {showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
+              </Text>
+            </TouchableOpacity>
+
+            {/* 변경 버튼 */}
+            <TouchableOpacity
+              onPress={handlePasswordChange}
+              style={{
+                backgroundColor: loading ? colors.subtext : colors.primary,
+                padding: 16,
+                borderRadius: 16,
+                alignItems: "center",
+                marginBottom: 12,
+                opacity: loading ? 0.7 : 1,
+              }}
+              disabled={loading}
+            >
               <Text
                 style={{
                   color: "#fff",
-                  marginTop: 16,
+                  fontSize: 16,
+                  fontWeight: "600",
+                }}
+              >
+                {loading ? "변경 중..." : "비밀번호 변경하기"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 로딩 모달 */}
+      {loading && (
+        <Modal visible={true} transparent animationType="fade">
+          <View
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
+              backgroundColor: "rgba(0,0,0,0.5)",
+              zIndex: 9999,
+            }}
+          >
+            {loadingAnimation && (
+              <LottieView
+                source={loadingAnimation}
+                autoPlay
+                loop
+                style={{ width: 200, height: 200 }}
+              />
+            )}
+            <Text
+              style={{
+                color: "#fff",
+                marginTop: 16,
+                fontSize: 16,
+              }}
+            >
+              비밀번호 변경 중...
+            </Text>
+          </View>
+        </Modal>
+      )}
+
+      {/* 비밀번호 변경 모달  - 프로필 수정에서 사용*/}
+      <Modal visible={showPasswordFields} transparent animationType="fade">
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <View
+            style={{
+              width: "90%",
+              backgroundColor: colors.surface,
+              borderRadius: 24,
+              padding: 24,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.1,
+              shadowRadius: 12,
+              elevation: 5,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 24,
+                fontWeight: "700",
+                color: colors.text,
+                marginBottom: 24,
+              }}
+            >
+              비밀번호 변경
+            </Text>
+
+            <View style={{ marginBottom: 16 }}>
+              <Text
+                style={{
+                  fontSize: 15,
+                  color: colors.subtext,
+                  fontWeight: "600",
+                  marginBottom: 8,
+                }}
+              >
+                기존 비밀번호
+              </Text>
+              <TextInput
+                placeholder="기존 비밀번호 입력"
+                value={oldPassword}
+                onChangeText={setOldPassword}
+                secureTextEntry={!showPassword}
+                style={{
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: 16,
+                  paddingHorizontal: 16,
+                  paddingVertical: Platform.OS === "ios" ? 16 : 12,
+                  color: colors.text,
+                  backgroundColor: colors.card,
+                  fontSize: 16,
+                }}
+                placeholderTextColor={colors.subtext}
+              />
+            </View>
+
+            <View style={{ marginBottom: 16 }}>
+              <Text
+                style={{
+                  fontSize: 15,
+                  color: colors.subtext,
+                  fontWeight: "600",
+                  marginBottom: 8,
+                }}
+              >
+                새 비밀번호
+              </Text>
+              <TextInput
+                placeholder="새 비밀번호 입력"
+                value={newPassword}
+                onChangeText={setNewPassword}
+                secureTextEntry={!showPassword}
+                style={{
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: 16,
+                  paddingHorizontal: 16,
+                  paddingVertical: Platform.OS === "ios" ? 16 : 12,
+                  color: colors.text,
+                  backgroundColor: colors.card,
+                  fontSize: 16,
+                }}
+                placeholderTextColor={colors.subtext}
+              />
+            </View>
+
+            {/* 비밀번호 보기/숨기기 토글 */}
+            <TouchableOpacity
+              onPress={() => setShowPassword((prev) => !prev)}
+              style={{
+                marginBottom: 24,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <Ionicons
+                name={showPassword ? "eye-off-outline" : "eye-outline"}
+                size={20}
+                color={colors.primary}
+              />
+              <Text style={{ color: colors.primary }}>
+                {showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
+              </Text>
+            </TouchableOpacity>
+
+            {/* 변경 버튼 */}
+            <TouchableOpacity
+              onPress={handlePasswordChange}
+              style={{
+                backgroundColor: loading ? colors.subtext : colors.primary,
+                padding: 16,
+                borderRadius: 16,
+                alignItems: "center",
+                marginBottom: 12,
+                opacity: loading ? 0.7 : 1,
+              }}
+              disabled={loading}
+            >
+              <Text
+                style={{
+                  color: "#fff",
+                  fontSize: 16,
+                  fontWeight: "600",
+                }}
+              >
+                {loading ? "변경 중..." : "비밀번호 변경하기"}
+              </Text>
+            </TouchableOpacity>
+
+            {/* 닫기 버튼 */}
+            <TouchableOpacity
+              onPress={() => {
+                setShowPasswordFields(false);
+                setOldPassword("");
+                setNewPassword("");
+              }}
+              style={{
+                padding: 16,
+                alignItems: "center",
+              }}
+            >
+              <Text
+                style={{
+                  color: colors.subtext,
                   fontSize: 16,
                 }}
               >
-                비밀번호 변경 중...
+                프로필 수정으로 돌아가기
               </Text>
-            </View>
-          </Modal>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </MyScreenContainer>
   );
 }
