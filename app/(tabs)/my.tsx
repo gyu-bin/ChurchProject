@@ -1,35 +1,32 @@
-import ThemeToggle from "@/components/ThemeToggle";
-import PushSettings from "@/app/my/VerseNotificationSettings";
 import { useDesign } from "@/app/context/DesignSystem";
 import { useAppTheme } from "@/app/context/ThemeContext";
+import PushSettings from "@/app/my/VerseNotificationSettings";
+import ThemeToggle from "@/components/ThemeToggle";
 import { db } from "@/firebase/config";
 import { setScrollCallback } from "@/utils/scrollRefManager";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import bcrypt from "bcryptjs";
 import { useRouter } from "expo-router";
-import { doc, getDoc, onSnapshot, updateDoc } from "firebase/firestore";
-import LottieView from "lottie-react-native";
+import { doc, updateDoc } from "firebase/firestore";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Alert,
   Modal,
   Platform,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
   UIManager,
   View,
 } from "react-native";
 import Toast from "react-native-root-toast";
 
-import loading4 from "@/assets/lottie/Animation - 1747201330128.json";
-import loading3 from "@/assets/lottie/Animation - 1747201413764.json";
-import loading2 from "@/assets/lottie/Animation - 1747201431992.json";
-import loading1 from "@/assets/lottie/Animation - 1747201461030.json";
 import MyScreenContainer from "@/components/my/_common/ScreenContainer";
 import ScreenHeader from "@/components/my/_common/ScreenHeader";
+import SettingCard from "@/components/my/_common/SettingCard";
+import { ProfileCard } from "@/components/my/ProfileCard";
+import { User } from "@/constants/_types/user";
+import { useAuth } from "@/hooks/useAuth";
+import styled from "styled-components/native";
 
 if (
   Platform.OS === "android" &&
@@ -39,7 +36,8 @@ if (
 }
 
 export default function MyScreen() {
-  const [user, setUser] = useState<any>(null);
+  const { user } = useAuth();
+
   const router = useRouter();
   const { mode } = useAppTheme();
   const isDark = mode === "dark";
@@ -48,177 +46,25 @@ export default function MyScreen() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
-  const [showEditProfile, setShowEditProfile] = useState(false);
-  const [editValues, setEditValues] = useState<Record<string, string>>({});
-
-  const [oldPassword, setOldPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [showPasswordFields, setShowPasswordFields] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [loadingAnimation, setLoadingAnimation] = useState<any>(null);
-  const loadingAnimations = [loading1, loading2, loading3, loading4];
-
-  // const [notificationModalVisible, setNotificationModalVisible] = useState(false); // ✅ 알림 모달 상태
-
-  if (!bcrypt.setRandomFallback) {
-    console.warn("⚠️ bcryptjs 버전이 올바르지 않습니다.");
-  }
-
-  // ✅ RN 환경에서는 setRandomFallback을 등록해줘야 합니다
-  bcrypt.setRandomFallback((len: number) => {
-    const result = [];
-    for (let i = 0; i < len; i++) {
-      result.push(Math.floor(Math.random() * 256));
-    }
-    return result;
-  });
-
   useEffect(() => {
     setScrollCallback("settings", () => {
       scrollRef.current?.scrollTo({ y: 0, animated: true });
     });
   }, []);
 
-  useEffect(() => {
-    let unsubscribe: () => void;
-
-    const listenUser = async () => {
-      const raw = await AsyncStorage.getItem("currentUser");
-      if (!raw) return;
-      const cachedUser = JSON.parse(raw);
-      const userRef = doc(db, "users", cachedUser.email);
-
-      unsubscribe = onSnapshot(userRef, async (docSnap) => {
-        if (docSnap.exists()) {
-          const fresh = { ...docSnap.data(), email: cachedUser.email };
-          setUser(fresh); // ✅ 실시간 업데이트
-          await AsyncStorage.setItem("currentUser", JSON.stringify(fresh));
-        }
-      });
-    };
-
-    listenUser();
-
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, []);
-
-  const handleEditToggle = () => {
-    if (!showEditProfile && user) {
-      setEditValues({
-        name: user.name ?? "",
-        email: user.email ?? "",
-        division: user.division ?? "",
-        campus: user.campus ?? "",
-        role: user.role ?? "",
-      });
-    }
-    setShowEditProfile((prev) => !prev);
-  };
-
   const handleUpgrade = async () => {
     if (!user?.email) return;
 
-    const updatedUser = { ...user, role: "정회원" };
+    const updatedUser = { ...user, role: "정회원" } as User;
     await updateDoc(doc(db, "users", user.email), { role: "정회원" });
     await AsyncStorage.setItem("currentUser", JSON.stringify(updatedUser));
-    setUser(updatedUser);
+    // TODO: 정회원 업데이트 확인
+    // setUser(updatedUser);
     setShowUpgradeModal(false);
     Toast.show("✅ 정회원으로 전환되었습니다.", {
       duration: Toast.durations.SHORT,
       position: Toast.positions.BOTTOM,
     });
-  };
-
-  const handleSaveProfile = async () => {
-    if (!user?.name) return; // 문서 ID로 name을 사용 중
-
-    const updatedFields: Record<string, string> = {};
-    Object.entries(editValues).forEach(([key, value]) => {
-      if (value !== user[key]) {
-        updatedFields[key] = value;
-      }
-    });
-
-    if (Object.keys(updatedFields).length === 0) {
-      Toast.show("변경된 내용이 없습니다.", {
-        duration: Toast.durations.SHORT,
-        position: Toast.positions.BOTTOM,
-      });
-      return;
-    }
-
-    try {
-      // 🔧 문서 ID로 name 사용
-      await updateDoc(doc(db, "users", user.email), updatedFields);
-
-      const updatedUser = { ...user, ...updatedFields };
-      setUser(updatedUser);
-      await AsyncStorage.setItem("currentUser", JSON.stringify(updatedUser));
-
-      Toast.show("✅ 정보가 수정되었습니다.", {
-        duration: Toast.durations.SHORT,
-        position: Toast.positions.BOTTOM,
-      });
-
-      setShowEditProfile(false);
-    } catch (err) {
-      console.error(err);
-      Alert.alert("수정 실패", "다시 시도해주세요.");
-    }
-  };
-
-  // 재인증 함수 추가
-  const reauthenticate = async (email: string, password: string) => {
-    const userRef = doc(db, "users", email);
-    const userSnap = await getDoc(userRef);
-    if (!userSnap.exists()) throw new Error("사용자를 찾을 수 없습니다.");
-
-    const userData = userSnap.data();
-    const isValid = await bcrypt.compare(password, userData.password);
-    if (!isValid) throw { code: "auth/wrong-password" };
-
-    return true;
-  };
-
-  // 비밀번호 변경 핸들러
-  const handlePasswordChange = async () => {
-    if (loading) return;
-    if (!user?.email || !oldPassword || !newPassword) {
-      Alert.alert("입력 누락", "기존/새 비밀번호를 모두 입력해주세요.");
-      return;
-    }
-
-    const randomIndex = Math.floor(Math.random() * loadingAnimations.length);
-    setLoadingAnimation(loadingAnimations[randomIndex]);
-    setLoading(true);
-
-    try {
-      await reauthenticate(user.email, oldPassword);
-      const hashed = await bcrypt.hash(newPassword, 10);
-      await updateDoc(doc(db, "users", user.email), { password: hashed });
-      const updatedUser = { ...user, password: hashed };
-      await AsyncStorage.setItem("currentUser", JSON.stringify(updatedUser));
-
-      setOldPassword("");
-      setNewPassword("");
-      setShowPasswordFields(false);
-      setLoading(false);
-      Toast.show("✅ 비밀번호가 변경되었습니다.", {
-        duration: Toast.durations.SHORT,
-        position: Toast.positions.BOTTOM,
-      });
-    } catch (err: any) {
-      const message =
-        err.code === "auth/wrong-password"
-          ? "기존 비밀번호가 일치하지 않습니다."
-          : err.message || "비밀번호 변경 중 오류가 발생했습니다.";
-      Alert.alert("변경 실패", message);
-    } finally {
-      setLoading(false);
-    }
   };
 
   return (
@@ -229,234 +75,13 @@ export default function MyScreen() {
         </TouchableOpacity>
       </ScreenHeader>
 
-      {/* 프로필 카드 */}
-      {user && (
-        <View
-          style={{
-            backgroundColor: colors.surface,
-            borderRadius: 24,
-            padding: 20,
-            marginBottom: 32,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.08,
-            shadowRadius: 8,
-            elevation: 3,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              marginBottom: 16,
-            }}
-          >
-            <View>
-              <Text
-                style={{
-                  fontSize: 24,
-                  fontWeight: "700",
-                  color: colors.text,
-                  marginBottom: 4,
-                }}
-              >
-                {user?.name ?? "이름"}
-              </Text>
-              <Text
-                style={{
-                  fontSize: 15,
-                  color: colors.subtext,
-                }}
-              >
-                {user?.email ?? "이메일"}
-              </Text>
-            </View>
-            <TouchableOpacity
-              onPress={handleEditToggle}
-              style={{
-                backgroundColor: colors.primary + "15",
-                paddingVertical: 8,
-                paddingHorizontal: 12,
-                borderRadius: 12,
-              }}
-            >
-              <Text
-                style={{
-                  color: colors.primary,
-                  fontSize: 14,
-                  fontWeight: "600",
-                }}
-              >
-                프로필 수정
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* 뱃지 영역 */}
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            {user?.division && (
-              <View
-                style={{
-                  backgroundColor: "#E3F2FD",
-                  paddingHorizontal: 10,
-                  paddingVertical: 6,
-                  borderRadius: 12,
-                }}
-              >
-                <Text
-                  style={{
-                    color: "#1976D2",
-                    fontSize: 13,
-                    fontWeight: "600",
-                  }}
-                >
-                  {user.division}
-                </Text>
-              </View>
-            )}
-            {user?.role && (
-              <View
-                style={{
-                  backgroundColor: "#E8F5E9",
-                  paddingHorizontal: 10,
-                  paddingVertical: 6,
-                  borderRadius: 12,
-                }}
-              >
-                <Text
-                  style={{
-                    color: "#2E7D32",
-                    fontSize: 13,
-                    fontWeight: "600",
-                  }}
-                >
-                  {user.role}
-                </Text>
-              </View>
-            )}
-            {user?.campus && (
-              <View
-                style={{
-                  backgroundColor: "#FDECEC",
-                  paddingHorizontal: 10,
-                  paddingVertical: 6,
-                  borderRadius: 12,
-                }}
-              >
-                <Text
-                  style={{
-                    color: "#ff9191",
-                    fontSize: 13,
-                    fontWeight: "600",
-                  }}
-                >
-                  {user.campus}
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-      )}
+      {user && <ProfileCard user={user} />}
 
       {/* 일반 설정 섹션 */}
       <View style={{ marginBottom: 32 }}>
-        <Text
-          style={{
-            fontSize: 18,
-            fontWeight: "600",
-            color: colors.text,
-            marginBottom: 16,
-            paddingLeft: 4,
-          }}
-        >
-          일반
-        </Text>
+        <SettingSectionHeader color={colors.text}>일반</SettingSectionHeader>
 
         <View style={{ gap: 12 }}>
-          {/* 내 모임 관리 */}
-          <TouchableOpacity
-            onPress={() => router.push("/my/joinTeams")}
-            style={{
-              backgroundColor: colors.surface,
-              padding: 20,
-              borderRadius: 16,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.06,
-              shadowRadius: 6,
-              elevation: 2,
-            }}
-          >
-            <View
-              style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
-            >
-              <View
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 20,
-                  backgroundColor: "#d1fae5",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Ionicons
-                  name="accessibility-outline"
-                  size={20}
-                  color="#10b981"
-                />
-              </View>
-              <Text style={{ fontSize: 16, color: colors.text }}>
-                내 모임 관리
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.subtext} />
-          </TouchableOpacity>
-
-          {/* 다크모드 */}
-          <View
-            style={{
-              backgroundColor: colors.surface,
-              padding: 20,
-              borderRadius: 16,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.06,
-              shadowRadius: 6,
-              elevation: 2,
-            }}
-          >
-            <View
-              style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
-            >
-              <View
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 20,
-                  backgroundColor: isDark ? "#374151" : "#f3f4f6",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Ionicons
-                  name={isDark ? "moon" : "sunny"}
-                  size={20}
-                  color={isDark ? "#9ca3af" : "#6b7280"}
-                />
-              </View>
-              <Text style={{ fontSize: 16, color: colors.text }}>다크모드</Text>
-            </View>
-            <ThemeToggle />
-          </View>
-
           {/* 알림 설정 */}
           <View
             style={{
@@ -472,163 +97,71 @@ export default function MyScreen() {
           >
             <PushSettings />
           </View>
+          {/* 내 모임 관리 */}
+          <SettingCard
+            title="내 모임 관리"
+            icon={{
+              name: "accessibility-outline",
+              color: "#10b981",
+              backgroundColor: "#d1fae5",
+            }}
+            onPress={() => router.push("/my/joinTeams")}
+          />
+
+          {/* 다크모드 */}
+          <SettingCard
+            title="다크모드"
+            icon={{
+              name: isDark ? "moon" : "sunny",
+              color: isDark ? "#9ca3af" : "#6b7280",
+              backgroundColor: isDark ? "#374151" : "#f3f4f6",
+            }}
+          >
+            <ThemeToggle />
+          </SettingCard>
         </View>
       </View>
 
       {/* 관리자 설정 */}
       {(user?.role === "교역자" || user?.role === "관리자") && (
         <View style={{ marginBottom: 32 }}>
-          <Text
-            style={{
-              fontSize: 18,
-              fontWeight: "600",
-              color: colors.text,
-              marginBottom: 16,
-              paddingLeft: 4,
-            }}
-          >
+          <SettingSectionHeader color={colors.text}>
             관리자
-          </Text>
-
+          </SettingSectionHeader>
           <View style={{ gap: 12 }}>
             {/* 공지사항 관리 */}
-            <TouchableOpacity
+            <SettingCard
+              title="공지사항 관리"
+              icon={{
+                name: "megaphone-outline",
+                color: "#10b981",
+                backgroundColor: "#d1fae5",
+              }}
               onPress={() => router.push("/my/noticeManager")}
-              style={{
-                backgroundColor: colors.surface,
-                padding: 20,
-                borderRadius: 16,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.06,
-                shadowRadius: 6,
-                elevation: 2,
+            />
+            <SettingCard
+              title="유튜브 영상 관리"
+              icon={{
+                name: "videocam-outline",
+                color: "#ef4444",
+                backgroundColor: "#fee2e2",
               }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 12,
-                }}
-              >
-                <View
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    backgroundColor: "#d1fae5",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Ionicons
-                    name="megaphone-outline"
-                    size={20}
-                    color="#10b981"
-                  />
-                </View>
-                <Text style={{ fontSize: 16, color: colors.text }}>
-                  공지사항 관리
-                </Text>
-              </View>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={colors.subtext}
-              />
-            </TouchableOpacity>
-
-            {/* 유튜브 영상 관리 */}
-            <TouchableOpacity
               onPress={() => router.push("/my/videoManager")}
-              style={{
-                backgroundColor: colors.surface,
-                padding: 20,
-                borderRadius: 16,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.06,
-                shadowRadius: 6,
-                elevation: 2,
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 12,
-                }}
-              >
-                <View
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    backgroundColor: "#fee2e2",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Ionicons name="videocam-outline" size={20} color="#ef4444" />
-                </View>
-                <Text style={{ fontSize: 16, color: colors.text }}>
-                  유튜브 영상 관리
-                </Text>
-              </View>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={colors.subtext}
-              />
-            </TouchableOpacity>
+            />
           </View>
         </View>
       )}
 
       <View style={{ gap: 12 }}>
-        {/* 피드백 */}
-        <TouchableOpacity
-          onPress={() => router.push("/my/feedback")}
-          style={{
-            backgroundColor: colors.surface,
-            padding: 20,
-            borderRadius: 16,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.06,
-            shadowRadius: 6,
-            elevation: 2,
+        <SettingCard
+          title="피드백 보내기"
+          icon={{
+            name: "chatbox-outline",
+            color: "#7c3aed",
+            backgroundColor: "#ddd6fe",
           }}
-        >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <View
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: "#ddd6fe",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Ionicons name="chatbox-outline" size={20} color="#7c3aed" />
-            </View>
-            <Text style={{ fontSize: 16, color: colors.text }}>
-              피드백 보내기
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.subtext} />
-        </TouchableOpacity>
+          onPress={() => router.push("/my/feedback")}
+        />
       </View>
 
       {/* 정회원 전환 모달 */}
@@ -717,345 +250,18 @@ export default function MyScreen() {
           </View>
         </Modal>
       )}
-
-      {/* 프로필 수정 모달 */}
-      <Modal visible={showEditProfile} transparent animationType="fade">
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.5)",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <View
-            style={{
-              width: "90%",
-              backgroundColor: colors.surface,
-              borderRadius: 24,
-              padding: 24,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.1,
-              shadowRadius: 12,
-              elevation: 5,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 24,
-                fontWeight: "700",
-                color: colors.text,
-                marginBottom: 24,
-                textAlign: "center",
-              }}
-            >
-              프로필 수정
-            </Text>
-
-            {/* 입력 필드들 */}
-            {[
-              { label: "이름", key: "name" },
-              { label: "이메일", key: "email" },
-              { label: "부서", key: "division" },
-              { label: "캠퍼스", key: "campus" },
-            ].map(({ label, key }) => (
-              <View key={key} style={{ marginBottom: 16 }}>
-                <Text
-                  style={{
-                    fontSize: 15,
-                    color: colors.subtext,
-                    fontWeight: "600",
-                    marginBottom: 8,
-                  }}
-                >
-                  {label}
-                </Text>
-                <TextInput
-                  placeholder={`${label} 입력`}
-                  value={editValues[key]}
-                  onChangeText={(text) =>
-                    setEditValues((prev) => ({ ...prev, [key]: text }))
-                  }
-                  style={{
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    borderRadius: 16,
-                    paddingHorizontal: 16,
-                    paddingVertical: Platform.OS === "ios" ? 16 : 12,
-                    color: colors.text,
-                    backgroundColor: colors.card,
-                    fontSize: 16,
-                  }}
-                  placeholderTextColor={colors.subtext}
-                />
-              </View>
-            ))}
-
-            {/* 비밀번호 변경 버튼 */}
-            <TouchableOpacity
-              onPress={() => {
-                setShowPasswordFields(true);
-                setShowEditProfile(false); // 프로필 수정 모달 닫기
-              }}
-              style={{
-                backgroundColor: colors.primary + "15",
-                padding: 16,
-                borderRadius: 16,
-                alignItems: "center",
-                marginBottom: 24,
-              }}
-            >
-              <Text
-                style={{
-                  color: colors.primary,
-                  fontSize: 16,
-                  fontWeight: "600",
-                }}
-              >
-                비밀번호 변경
-              </Text>
-            </TouchableOpacity>
-
-            {/* 저장 버튼 */}
-            <TouchableOpacity
-              onPress={handleSaveProfile}
-              style={{
-                backgroundColor: colors.primary,
-                padding: 16,
-                borderRadius: 16,
-                alignItems: "center",
-                marginBottom: 12,
-              }}
-            >
-              <Text
-                style={{
-                  color: "#fff",
-                  fontSize: 16,
-                  fontWeight: "600",
-                }}
-              >
-                저장하기
-              </Text>
-            </TouchableOpacity>
-
-            {/* 닫기 버튼 */}
-            <TouchableOpacity
-              onPress={() => setShowEditProfile(false)}
-              style={{
-                padding: 16,
-                alignItems: "center",
-              }}
-            >
-              <Text
-                style={{
-                  color: colors.subtext,
-                  fontSize: 16,
-                }}
-              >
-                닫기
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* 비밀번호 변경 모달  - 프로필 수정에서 사용*/}
-      <Modal visible={showPasswordFields} transparent animationType="fade">
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.5)",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <View
-            style={{
-              width: "90%",
-              backgroundColor: colors.surface,
-              borderRadius: 24,
-              padding: 24,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.1,
-              shadowRadius: 12,
-              elevation: 5,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 24,
-                fontWeight: "700",
-                color: colors.text,
-                marginBottom: 24,
-              }}
-            >
-              비밀번호 변경
-            </Text>
-
-            <View style={{ marginBottom: 16 }}>
-              <Text
-                style={{
-                  fontSize: 15,
-                  color: colors.subtext,
-                  fontWeight: "600",
-                  marginBottom: 8,
-                }}
-              >
-                기존 비밀번호
-              </Text>
-              <TextInput
-                placeholder="기존 비밀번호 입력"
-                value={oldPassword}
-                onChangeText={setOldPassword}
-                secureTextEntry={!showPassword}
-                style={{
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  borderRadius: 16,
-                  paddingHorizontal: 16,
-                  paddingVertical: Platform.OS === "ios" ? 16 : 12,
-                  color: colors.text,
-                  backgroundColor: colors.card,
-                  fontSize: 16,
-                }}
-                placeholderTextColor={colors.subtext}
-              />
-            </View>
-
-            <View style={{ marginBottom: 16 }}>
-              <Text
-                style={{
-                  fontSize: 15,
-                  color: colors.subtext,
-                  fontWeight: "600",
-                  marginBottom: 8,
-                }}
-              >
-                새 비밀번호
-              </Text>
-              <TextInput
-                placeholder="새 비밀번호 입력"
-                value={newPassword}
-                onChangeText={setNewPassword}
-                secureTextEntry={!showPassword}
-                style={{
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  borderRadius: 16,
-                  paddingHorizontal: 16,
-                  paddingVertical: Platform.OS === "ios" ? 16 : 12,
-                  color: colors.text,
-                  backgroundColor: colors.card,
-                  fontSize: 16,
-                }}
-                placeholderTextColor={colors.subtext}
-              />
-            </View>
-
-            {/* 비밀번호 보기/숨기기 토글 */}
-            <TouchableOpacity
-              onPress={() => setShowPassword((prev) => !prev)}
-              style={{
-                marginBottom: 24,
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              <Ionicons
-                name={showPassword ? "eye-off-outline" : "eye-outline"}
-                size={20}
-                color={colors.primary}
-              />
-              <Text style={{ color: colors.primary }}>
-                {showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
-              </Text>
-            </TouchableOpacity>
-
-            {/* 변경 버튼 */}
-            <TouchableOpacity
-              onPress={handlePasswordChange}
-              style={{
-                backgroundColor: loading ? colors.subtext : colors.primary,
-                padding: 16,
-                borderRadius: 16,
-                alignItems: "center",
-                marginBottom: 12,
-                opacity: loading ? 0.7 : 1,
-              }}
-              disabled={loading}
-            >
-              <Text
-                style={{
-                  color: "#fff",
-                  fontSize: 16,
-                  fontWeight: "600",
-                }}
-              >
-                {loading ? "변경 중..." : "비밀번호 변경하기"}
-              </Text>
-            </TouchableOpacity>
-
-            {/* 닫기 버튼 */}
-            <TouchableOpacity
-              onPress={() => {
-                setShowPasswordFields(false);
-                setOldPassword("");
-                setNewPassword("");
-                setShowEditProfile(true); // 프로필 수정 모달로 돌아가기
-              }}
-              style={{
-                padding: 16,
-                alignItems: "center",
-              }}
-            >
-              <Text
-                style={{
-                  color: colors.subtext,
-                  fontSize: 16,
-                }}
-              >
-                프로필 수정으로 돌아가기
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* 로딩 모달 */}
-      {loading && (
-        <Modal visible={true} transparent animationType="fade">
-          <View
-            style={{
-              flex: 1,
-              justifyContent: "center",
-              alignItems: "center",
-              backgroundColor: "rgba(0,0,0,0.5)",
-              zIndex: 9999,
-            }}
-          >
-            {loadingAnimation && (
-              <LottieView
-                source={loadingAnimation}
-                autoPlay
-                loop
-                style={{ width: 200, height: 200 }}
-              />
-            )}
-            <Text
-              style={{
-                color: "#fff",
-                marginTop: 16,
-                fontSize: 16,
-              }}
-            >
-              비밀번호 변경 중...
-            </Text>
-          </View>
-        </Modal>
-      )}
     </MyScreenContainer>
   );
 }
+
+type SettingSectionHeaderProps = {
+  color: string;
+};
+
+const SettingSectionHeader = styled.Text<SettingSectionHeaderProps>`
+  font-size: 18px;
+  font-weight: 600;
+  color: ${({ color }: SettingSectionHeaderProps) => color};
+  margin-bottom: 16px;
+  padding-left: 4px;
+`;
