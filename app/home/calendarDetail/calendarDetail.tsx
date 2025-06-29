@@ -1,5 +1,4 @@
-// components/EventDetailModal.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import {
     Modal,
     View,
@@ -8,6 +7,7 @@ import {
     TouchableOpacity,
     TouchableWithoutFeedback,
 } from 'react-native';
+import AlarmModal from '../calendarDetail/calendarAlarm';
 
 export default function EventDetailModal({
                                              visible,
@@ -22,6 +22,14 @@ export default function EventDetailModal({
     events: any[];
     colors: any;
 }) {
+    const [showAlarmModal, setShowAlarmModal] = useState(false);
+    const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+
+    const handleOpenAlarm = (event: any) => {
+        setSelectedEvent(event);
+        setShowAlarmModal(true);
+    };
+
     return (
         <Modal visible={visible} transparent animationType="fade">
             <TouchableWithoutFeedback onPress={onClose}>
@@ -69,9 +77,12 @@ export default function EventDetailModal({
                                 {events.length > 0 ? (
                                     events.map(ev => (
                                         <View key={ev.id} style={{ marginBottom: 12 }}>
-                                            <Text style={{ fontWeight: 'bold', color: colors.text }}>
-                                                {ev.title}
-                                            </Text>
+                                            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                                <Text style={{ fontWeight: 'bold', color: colors.text }}>{ev.title}</Text>
+                                                <TouchableOpacity onPress={() => handleOpenAlarm(ev)}>
+                                                    <Text style={{ color: colors.primary, fontSize: 13 }}>🔔 알림받기</Text>
+                                                </TouchableOpacity>
+                                            </View>
                                             {ev.place && (
                                                 <Text style={{ color: colors.subtext, fontSize: 13 }}>
                                                     장소: {ev.place}
@@ -95,6 +106,16 @@ export default function EventDetailModal({
                     </TouchableWithoutFeedback>
                 </View>
             </TouchableWithoutFeedback>
+
+            {/* 알림 설정 모달 */}
+            {selectedEvent && (
+                <AlarmModal
+                    visible={showAlarmModal}
+                    onClose={() => setShowAlarmModal(false)}
+                    eventTitle={selectedEvent.title}
+                    eventDate={new Date(selectedEvent.startDate?.seconds * 1000)}
+                />
+            )}
         </Modal>
     );
 }

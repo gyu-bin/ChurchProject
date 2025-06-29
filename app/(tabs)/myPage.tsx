@@ -130,7 +130,7 @@ export default function MyScreen() {
       </View>
 
       {/* 관리자 설정 */}
-      {user?.role === "관리자" && (
+        {(user?.role === "관리자" || user?.role === "교역자") && (
         <View style={{ marginBottom: 32 }}>
           <SettingSectionHeader color={colors.text}>
             관리자

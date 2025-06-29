@@ -1,0 +1,68 @@
+// components/CustomDropdown.tsx
+import React from "react";
+import { ViewStyle, TextStyle } from "react-native";
+import { Dropdown } from "react-native-element-dropdown";
+
+type DropdownOption = {
+    label: string;
+    value: string;
+};
+
+interface CustomDropdownProps {
+    data: DropdownOption[];
+    value: string;
+    onChange: (item: DropdownOption) => void;
+    placeholder?: string;
+    containerStyle?: ViewStyle;
+    dropdownStyle?: ViewStyle;
+    textStyle?: TextStyle;
+    disabled?: boolean;
+}
+
+const CustomDropdown: React.FC<CustomDropdownProps> = ({
+                                                           data,
+                                                           value,
+                                                           onChange,
+                                                           placeholder = "선택",
+                                                           containerStyle = {},
+                                                           dropdownStyle = {},
+                                                           textStyle = {},
+                                                           disabled = false,
+                                                       }) => {
+    return (
+        <Dropdown
+            style={{
+                height: 40,
+                borderColor: "#FFA726",
+                borderWidth: 1,
+                borderRadius: 12,
+                paddingHorizontal: 16,
+                backgroundColor: "#fff",
+                ...containerStyle,
+            }}
+            placeholderStyle={{
+                fontSize: 15,
+                color: "#999",
+            }}
+            selectedTextStyle={{
+                fontSize: 15,
+                color: "#333",
+                ...textStyle,
+            }}
+            itemTextStyle={{
+                fontSize: 14,
+                paddingVertical: 10,
+            }}
+            data={data}
+            maxHeight={200}
+            labelField="label"
+            valueField="value"
+            placeholder={placeholder}
+            value={value}
+            onChange={onChange}
+            disable={disabled}
+        />
+    );
+};
+
+export default CustomDropdown;

@@ -29,6 +29,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { Dropdown } from "react-native-element-dropdown";
 import RNPickerSelect from "react-native-picker-select";
 import EventDetailModal from "@/app/home/calendarDetail/calendarDetail";
+import CustomDropdown from "@/components/dropDown";
+import {router} from "expo-router";
 
 const daysOfWeek = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -98,6 +100,16 @@ export default function CalendarModal({
   const handleToday = () => {
     setCurrentMonth(today);
     setSelectedDate(today.format("YYYY-MM-DD"));
+  };
+
+  const getDDayLabel = (startDate: any) => {
+    const today = dayjs().startOf('day');
+    const start = dayjs(startDate?.seconds * 1000).startOf('day');
+    const diff = start.diff(today, 'day');
+
+    if (diff === 0) return 'D-Day';
+    if (diff > 0) return `D-${diff}`;
+    return `D+${Math.abs(diff)}`;
   };
 
   const getCalendarMatrix = () => {
@@ -249,6 +261,11 @@ export default function CalendarModal({
                 </Text>
               </TouchableOpacity>
             </View>
+
+            <TouchableOpacity onPress={() => router.push('/home/calendarDetail/alarmList')}>
+              <Text>알림내역</Text>
+            </TouchableOpacity>
+
             <View style={{ flex: 1, alignItems: "flex-end" }}>
               <TouchableOpacity onPress={onClose}>
                 <Ionicons name="close" size={24} color={colors.text} />
@@ -299,72 +316,19 @@ export default function CalendarModal({
               </View>
 
               <View style={{ paddingBottom: 10, flexDirection: "row" }}>
-                <Dropdown
-                  style={{
-                    width: "48%",
-                    height: 40,
-                    borderColor: "#FFA726",
-                    borderWidth: 1,
-                    borderRadius: 12,
-                    paddingHorizontal: 16,
-                    backgroundColor: "#fff",
-                    marginRight: 16,
-                  }}
-                  placeholderStyle={{
-                    fontSize: 15,
-                    color: "#999",
-                  }}
-                  selectedTextStyle={{
-                    fontSize: 15,
-                    color: "#333",
-                  }}
-                  itemTextStyle={{
-                    fontSize: 14,
-                    paddingVertical: 10,
-                  }}
-                  data={campusData}
-                  maxHeight={200}
-                  labelField="label"
-                  valueField="value"
-                  placeholder="캠퍼스 선택"
-                  value={campusFilter}
-                  onChange={(item) => {
-                    setCampusFilter(item.value);
-                  }}
+                <CustomDropdown
+                    data={campusData}
+                    value={campusFilter}
+                    onChange={(item) => setCampusFilter(item.value)}
+                    placeholder="캠퍼스 선택"
+                    containerStyle={{ width: "48%", marginRight: 16 }}
                 />
-
-                <Dropdown
-                  style={{
-                    width: "48%",
-                    height: 40,
-                    borderColor: "#FFA726",
-                    borderWidth: 1,
-                    borderRadius: 12,
-                    paddingHorizontal: 16,
-                    backgroundColor: "#fff",
-                    marginRight: 16,
-                  }}
-                  placeholderStyle={{
-                    fontSize: 15,
-                    color: "#999",
-                  }}
-                  selectedTextStyle={{
-                    fontSize: 15,
-                    color: "#333",
-                  }}
-                  itemTextStyle={{
-                    fontSize: 14,
-                    paddingVertical: 10,
-                  }}
-                  data={divisionData}
-                  maxHeight={200}
-                  labelField="label"
-                  valueField="value"
-                  placeholder="부서 선택"
-                  value={divisionFilter}
-                  onChange={(item) => {
-                    setDivisionFilter(item.value);
-                  }}
+                <CustomDropdown
+                    data={divisionData}
+                    value={divisionFilter}
+                    onChange={(item) => setDivisionFilter(item.value)}
+                    placeholder="부서 선택"
+                    containerStyle={{ width: "48%" }}
                 />
               </View>
 
@@ -378,7 +342,7 @@ export default function CalendarModal({
                       textAlign: "center",
                       fontWeight: "600",
                       color:
-                        idx === 0 ? "red" : idx === 6 ? "blue" : colors.subtext,
+                        idx === 0 ? "red" : idx === 6 ? colors.primary : colors.subtext,
                     }}
                   >
                     {day}
@@ -387,8 +351,6 @@ export default function CalendarModal({
               </View>
 
               {/* 달력 */}
-              {/*<View style={{ flex: 1 }}>*/}
-              {/* 달력 고정 영역 */}
               <View
                 {...panResponder.panHandlers}
                 style={{ flexShrink: 0, maxHeight: "60%" }}
@@ -421,8 +383,10 @@ export default function CalendarModal({
                               : "none",
                           }}
                           onPress={() => {
-                            setSelectedDate(dateStr);
-                            setShowEventModal(true);
+                            if (dayEvents.length > 0) {
+                              setSelectedDate(dateStr);
+                              setShowEventModal(true);
+                            }
                           }}
                         >
                           <Text
@@ -433,7 +397,7 @@ export default function CalendarModal({
                                 : date.day() === 0
                                 ? "red"
                                 : date.day() === 6
-                                ? "blue"
+                                ? colors.primary
                                 : colors.text,
                               fontWeight: isToday ? "bold" : "normal",
                             }}
@@ -441,7 +405,7 @@ export default function CalendarModal({
                             {date.date()}
                           </Text>
 
-                          {dayEvents.slice(0, 4).map((ev) => (
+                          {dayEvents.slice(0, 3).map((ev) => (
                             <View
                               key={ev.id}
                               style={{
@@ -449,7 +413,7 @@ export default function CalendarModal({
                                   ? "#ffffff33"
                                   : colors.background === "dark"
                                   ? "black" // 다크모드용 배경
-                                  : "white", // 라이트모드 배경
+                                  : colors.primary, // 라이트모드 배경
                                 paddingHorizontal: 6,
                                 paddingVertical: 2,
                                 borderRadius: 6,
@@ -463,8 +427,8 @@ export default function CalendarModal({
                                   color: isSelected
                                     ? "#fff"
                                     : colors.background === "dark"
-                                    ? "white" // 다크모드 텍스트 색상
-                                    : "black",
+                                    ? colors.primary // 다크모드 텍스트 색상
+                                    : "white",
                                   fontWeight: "500",
                                 }}
                                 numberOfLines={1}
@@ -473,6 +437,19 @@ export default function CalendarModal({
                               </Text>
                             </View>
                           ))}
+                          {/* ✅ 4개 이상이면 "더보기" 표시 */}
+                          {dayEvents.length > 3 && (
+                              <Text
+                                  style={{
+                                    fontSize: 10,
+                                    color: isSelected ? "#fff" : colors.primary,
+                                    textAlign: "center",
+                                    marginTop: 2,
+                                  }}
+                              >
+                                +{dayEvents.length - 3}개 더보기
+                              </Text>
+                          )}
                         </TouchableOpacity>
                       );
                     })}
@@ -677,6 +654,9 @@ export default function CalendarModal({
                           "YYYY.MM.DD"
                         )}{" "}
                         ~ {dayjs(item.endDate?.seconds * 1000).format("MM.DD")}
+                        <Text style={{ fontSize: 13, color: colors.primary }}>
+                          ({getDDayLabel(item.startDate)})
+                        </Text>
                       </Text>
 
                       {item.place && (

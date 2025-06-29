@@ -12,12 +12,11 @@ import {
     Modal,
     Platform,
     SafeAreaView,
-    Text,
-    TouchableOpacity,
+    Text, TouchableOpacity,
     View
 } from 'react-native';
+import PagerView from 'react-native-pager-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import ReanimatedCarousel from 'react-native-reanimated-carousel';
 
 const categories = [
     { label: '대요리 문답', key: 'larger', data: largerData },
@@ -26,6 +25,7 @@ const categories = [
 ];
 
 export default function CatechismPage() {
+    const pagerRef = useRef<PagerView>(null);
     const flatListRef = useRef<FlatList>(null);
     const itemHeightRef = useRef(60);
 
@@ -37,9 +37,8 @@ export default function CatechismPage() {
     const router = useRouter();
     const { colors, font, spacing, radius } = useDesign();
     const insets = useSafeAreaInsets();
-    const [fontScale, setFontScale] = useState(1);
 
-    const width = Dimensions.get('window').width;
+    const [fontScale, setFontScale] = useState(1); // 기본값: 1배
 
     useEffect(() => {
         const loadState = async () => {
@@ -52,6 +51,7 @@ export default function CatechismPage() {
             setCurrentIndex(indexToSet);
             setInitialized(true);
         };
+
         loadState();
     }, []);
 
@@ -60,9 +60,16 @@ export default function CatechismPage() {
         await AsyncStorage.setItem(`last_seen_${cateKey}`, (index + 1).toString());
     };
 
+    const handlePageSelected = async (e: any) => {
+        const newIndex = e.nativeEvent.position;
+        setCurrentIndex(newIndex);
+        await saveState(selectedCategory.key, newIndex);
+    };
+
     const handleSelect = (num: number) => {
         const index = Math.max(num - 1, 0);
         setCurrentIndex(index);
+        pagerRef.current?.setPage(index);
         saveState(selectedCategory.key, index);
         setModalVisible(false);
     };
@@ -70,72 +77,100 @@ export default function CatechismPage() {
     const handleCategoryChange = async (category: typeof selectedCategory) => {
         const storedNum = await AsyncStorage.getItem(`last_seen_${category.key}`);
         const restoredIndex = storedNum ? Math.max(parseInt(storedNum) - 1, 0) : 0;
+
         setSelectedCategory(category);
         setCurrentIndex(restoredIndex);
         saveState(category.key, restoredIndex);
+
+        setTimeout(() => {
+            pagerRef.current?.setPage(restoredIndex);
+        }, 0);
+
         setCategoryModal(false);
     };
 
     const openQuestionModal = () => {
         setModalVisible(true);
+
         setTimeout(() => {
             const ITEM_HEIGHT = 60;
             const screenHeight = Dimensions.get('window').height;
-            const headerHeight = insets.top + 40 + spacing.lg * 2;
+            const headerHeight = insets.top + 40 + spacing.lg * 2; // 여유 padding 포함
+
+// 플랫폼별 가중치 적용
             const offsetMultiplier = Platform.OS === 'ios' ? 0.5 : 0.1;
-            const targetOffset = currentIndex * ITEM_HEIGHT - (screenHeight - headerHeight) * offsetMultiplier + ITEM_HEIGHT / 2;
 
-            flatListRef.current?.scrollToOffset({ offset: Math.max(targetOffset, 0), animated: false });
-        }, 350);
+            const targetOffset =
+                currentIndex * ITEM_HEIGHT - (screenHeight - headerHeight) * offsetMultiplier + ITEM_HEIGHT / 2;
+
+            flatListRef.current?.scrollToOffset({
+                offset: Math.max(targetOffset, 0),
+                animated: false,
+            });
+        }, 350); // Modal 완전히 열리고 실행
     };
-
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? insets.top + 10 : 0 }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background,paddingTop: Platform.OS === 'android' ? insets.top + 10 : 0 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm, position: 'relative' }}>
-                <TouchableOpacity onPress={() => router.back()} style={{ position: 'absolute', left: 0, padding: 8, zIndex: 1 }}>
+                <TouchableOpacity
+                    onPress={() => router.back()}
+                    style={{ position: 'absolute', left: 0, padding: 8, zIndex: 1 }}
+                >
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => setCategoryModal(true)}>
-                    <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.primary }}>{selectedCategory.label} ▾</Text>
-                </TouchableOpacity>
+                <View style={{ flex: 1, alignItems: 'center' }}>
+                    <TouchableOpacity
+                        onPress={() => setCategoryModal(true)}
+                    >
+                        <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.primary }}>
+                            {selectedCategory.label} ▾
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <TouchableOpacity
                 onPress={openQuestionModal}
-                style={{ backgroundColor: colors.surface, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: colors.border }}>
-                <Text style={{ fontSize: font.body + 5, fontWeight: '600', color: colors.primary }}>문항 {currentIndex + 1} ▾</Text>
+                style={{ backgroundColor: colors.surface, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: colors.border }}
+            >
+                <Text style={{ fontSize: font.body+5, fontWeight: '600', color: colors.primary }}>
+                    문항 {currentIndex + 1} ▾
+                </Text>
             </TouchableOpacity>
 
             {initialized && (
-                <ReanimatedCarousel
-                    width={width}
-                    height={500}
-                    data={selectedCategory.data}
-                    scrollAnimationDuration={300}
-                    // panGestureHandlerProps={{ activeOffsetX: [-10, 10] }}
-                    onSnapToItem={(index) => {
-                        setCurrentIndex(index);
-                        saveState(selectedCategory.key, index);
-                    }}
-                    renderItem={({ item }) => (
-                        <View style={{ padding: spacing.lg }}>
+                <PagerView
+                    key={selectedCategory.key}
+                    ref={pagerRef}
+                    style={{ flex: 1 }}
+                    initialPage={currentIndex}
+                    onPageSelected={handlePageSelected}
+                >
+                    {selectedCategory.data.map((item, index) => (
+                        <View key={index} style={{ padding: spacing.lg }}>
                             <View style={{ backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.lg, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 3 }}>
                                 <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.primary, marginBottom: spacing.md }}>
                                     Q{item.question_number}. {item.question}
                                 </Text>
-                                <Text style={{ fontSize: font.body * fontScale, color: colors.text, lineHeight: 26 * fontScale }}>{item.answer}</Text>
+                                <Text style={{ fontSize: font.body * fontScale, color: colors.text, lineHeight: 26 * fontScale }}>
+                                    {item.answer}
+                                </Text>
                                 {Array.isArray(item.references) && item.references.length > 0 && (
                                     <View style={{ marginTop: spacing.lg }}>
-                                        <Text style={{ fontSize: font.caption, fontWeight: 'bold', color: colors.subtext, marginBottom: spacing.sm }}>📖 성경 참고 구절:</Text>
+                                        <Text style={{ fontSize: font.caption, fontWeight: 'bold', color: colors.subtext, marginBottom: spacing.sm }}>
+                                            📖 성경 참고 구절:
+                                        </Text>
                                         {item.references.map((ref, idx) => (
-                                            <Text key={idx} style={{ fontSize: font.caption, color: colors.subtext, marginLeft: spacing.sm }}>• {ref}</Text>
+                                            <Text key={idx} style={{ fontSize: font.caption, color: colors.subtext, marginLeft: spacing.sm }}>
+                                                • {ref}
+                                            </Text>
                                         ))}
                                     </View>
                                 )}
                             </View>
                         </View>
-                    )}
-                />
+                    ))}
+                </PagerView>
             )}
 
             <Modal visible={modalVisible} animationType="slide">
@@ -251,7 +286,6 @@ export default function CatechismPage() {
                     </Text>
                 </TouchableOpacity>
             </View>
-
         </SafeAreaView>
     );
 }

@@ -24,7 +24,6 @@ export default function TabLayout({children}:any) {
     const lastPressTimestamps = useRef<Record<string, number>>({}); // ✅ 이 부분도
     const theme = useDesign();
 
-
     return (
         // @ts-ignore
         <ThemeProvider theme={theme}>

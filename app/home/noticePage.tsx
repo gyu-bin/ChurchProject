@@ -211,8 +211,8 @@ export default function HomeNotices() {
             </View>
 
             {/* 📅 다가오는 일정 */}
-            <View>
-                {/*<TouchableOpacity onPress={() => setShowCalendarModal(true)}>*/}
+            {/*<View>
+                <TouchableOpacity onPress={() => setShowCalendarModal(true)}>
                 <TouchableOpacity onPress={() => router.push('/home/allCalendar')}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
                         <Text style={{ fontSize: font.title, fontWeight: 'bold', color: colors.text }}>📅 다가오는 일정</Text>
@@ -228,7 +228,7 @@ export default function HomeNotices() {
                     <FlexibleCarousel data={events} renderItem={renderEventCard} />
                 )}
 
-                {/*{events.map((item, idx) => {
+                {events.map((item, idx) => {
                     const eventDate = new Date(item.startDate.seconds * 1000);
 
                     const today = new Date();
@@ -268,8 +268,8 @@ export default function HomeNotices() {
                             </View>
                         </View>
                     );
-                })}*/}
-            </View>
+                })}
+            </View>*/}
         </View>
     );
 }

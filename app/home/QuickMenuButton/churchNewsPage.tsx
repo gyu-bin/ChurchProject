@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-    View, Text, TouchableOpacity, FlatList, Modal, ScrollView, TextInput, Platform, Alert,
+    View, Text, TouchableOpacity, FlatList, Modal, ScrollView, TextInput, Platform, Alert, Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -18,10 +18,12 @@ import { db } from '@/firebase/config';
 import { useDesign } from '@/context/DesignSystem';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from "react-native-root-toast";
-
+import axios from "axios";
+import { Image } from 'expo-image';
+import { getLinkPreview } from 'link-preview-js';
 const types = ['공지', '부고', '축하'];
 
-export default function ChurchNewsPage() {
+export default function ChurchNewsPage({ url }: { url: string }) {
     const router = useRouter();
     const { colors, spacing, font } = useDesign();
     const [selectedType, setSelectedType] = useState('공지');
@@ -36,6 +38,66 @@ export default function ChurchNewsPage() {
     const [newType, setNewType] = useState('공지');
     const [link, setLink] = useState('');
     const isAuthor = (post: any) => user && post.author === user?.name;
+
+    const [previewMeta, setPreviewMeta] = useState<{ title?: string; description?: string; image?: string } | null>(null);
+    const [previewMap, setPreviewMap] = useState<Record<string, { title?: string; image?: string; description?: string }>>({});
+
+    useEffect(() => {
+        const fetchMeta = async () => {
+            if (!selectedPost?.link) {
+                setPreviewMeta(null);
+                return;
+            }
+
+            try {
+                const data = await getLinkPreview(selectedPost.link);
+                // title이나 image가 있는지 체크 후 저장
+                if ('title' in data || 'images' in data) {
+                    const title = 'title' in data ? data.title : undefined;
+                    const image = 'images' in data && Array.isArray(data.images) ? data.images[0] : undefined;
+                    const description = 'description' in data ? data.description : undefined;
+                    setPreviewMeta({ title, image, description });
+                } else {
+                    setPreviewMeta(null);
+                }
+            } catch (e) {
+                console.log('링크 미리보기 오류', e);
+                setPreviewMeta(null);
+            }
+        };
+
+        fetchMeta();
+    }, [selectedPost?.link]);
+
+    useEffect(() => {
+        const fetchAllPreviews = async () => {
+            const previews: Record<string, { title?: string; image?: string; description?: string }> = {};
+
+            for (const post of posts) {
+                if (!post.link) continue;
+
+                try {
+                    const data = await getLinkPreview(post.link);
+
+                    if ('title' in data || 'images' in data) {
+                        const title = 'title' in data ? data.title : undefined;
+                        const image = 'images' in data && Array.isArray(data.images) ? data.images[0] : undefined;
+                        const description = 'description' in data ? data.description : undefined;
+
+                        previews[post.id] = { title, image, description };
+                    }
+                } catch (e) {
+                    console.log('링크 미리보기 오류:', post.link, e);
+                }
+            }
+
+            setPreviewMap(previews);
+        };
+
+        if (posts.length > 0) {
+            fetchAllPreviews();
+        }
+    }, [posts]);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -164,9 +226,31 @@ export default function ChurchNewsPage() {
                         <Text style={{ fontSize: 12, color: colors.subtext, marginTop: 4 }}>
                             작성자: {item.author} / 작성일: {new Date(item.date?.seconds * 1000).toLocaleDateString()}
                         </Text>
-                        <Text style={{ fontSize: 12, color: colors.subtext, marginTop: 4 }}>
-                            {item.link}
-                        </Text>
+                        {item.link && previewMap[item.id] && (
+                            <TouchableOpacity onPress={() => Linking.openURL(item.link)}>
+                                <View style={{
+                                    borderWidth: 1,
+                                    borderColor: '#ccc',
+                                    borderRadius: 8,
+                                    padding: 10,
+                                    marginTop: 10,
+                                    backgroundColor: '#fff'
+                                }}>
+                                    {previewMap[item.id].image && (
+                                        <Image
+                                            source={{ uri: previewMap[item.id].image }}
+                                            style={{ width: '100%', height: 300, borderRadius: 6 }}
+                                            cachePolicy="disk"
+                                            contentFit="cover"
+                                        />
+                                    )}
+                                    <Text style={{ fontWeight: 'bold', marginTop: 10 }}>{previewMap[item.id].title || item.link}</Text>
+                                    {previewMap[item.id].description && (
+                                        <Text style={{ color: '#666', marginTop: 4 }} numberOfLines={2}>{previewMap[item.id].description}</Text>
+                                    )}
+                                </View>
+                            </TouchableOpacity>
+                        )}
 
                         {(canDelete(item) || isAuthor(item)) && (
                             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8 }}>
@@ -218,9 +302,34 @@ export default function ChurchNewsPage() {
                             <Text style={{ fontSize: 14, color: colors.subtext, marginVertical: 10 }}>
                                 {selectedPost?.content}
                             </Text>
-                            <Text style={{ fontSize: 14, color: colors.subtext, marginVertical: 10 }}>
-                                {selectedPost?.link}
-                            </Text>
+
+                            {selectedPost?.link && previewMeta && (
+                                <TouchableOpacity onPress={() => Linking.openURL(selectedPost.link)}>
+                                    <View style={{
+                                        borderWidth: 1,
+                                        borderColor: '#ccc',
+                                        borderRadius: 8,
+                                        padding: 10,
+                                        marginTop: 10,
+                                        backgroundColor: '#fff'
+                                    }}>
+                                        {previewMeta.image && (
+                                            <Image
+                                                source={{ uri: previewMeta.image }}
+                                                style={{ width: '100%', height: 120, borderRadius: 6 }}
+                                                cachePolicy="disk"
+                                                contentFit="cover"
+                                            />
+                                        )}
+                                        <Text style={{ fontWeight: 'bold', marginTop: 10 }}>{previewMeta.title || selectedPost.link}</Text>
+                                        {previewMeta.description && (
+                                            <Text style={{ color: '#666', marginTop: 4 }} numberOfLines={2}>{previewMeta.description}</Text>
+                                        )}
+                                        {/*<Text style={{ color: '#1d4ed8', marginTop: 4 }}>{selectedPost.link}</Text>*/}
+                                    </View>
+                                </TouchableOpacity>
+                            )}
+
                         </ScrollView>
                         <TouchableOpacity onPress={() => setSelectedPost(null)} style={{ marginTop: 20 }}>
                             <Text style={{ textAlign: 'center', color: colors.primary }}>닫기</Text>

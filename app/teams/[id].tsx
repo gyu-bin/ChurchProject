@@ -58,6 +58,7 @@ import loading3 from '@/assets/lottie/Animation - 1747201413764.json';
 import loading2 from '@/assets/lottie/Animation - 1747201431992.json';
 import loading1 from '@/assets/lottie/Animation - 1747201461030.json';
 import CustomDateModal from "@/components/dataPicker";
+import LoadingModal from "@/components/lottieModal";
 
 type Team = {
     id: string;
@@ -1898,38 +1899,12 @@ export default function TeamDetail() {
                         </View>
                     </Modal>
 
-                    <Modal
+                    <LoadingModal
                         visible={updateLoading}
-                        transparent={true}
-                        animationType="fade"
-                        statusBarTranslucent={true}
-                    >
-                        <View
-                            style={{
-                                flex: 1,
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                backgroundColor: 'rgba(0,0,0,0.7)',
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                bottom: 0,
-                            }}
-                        >
-                            <LottieView
-                                source={loadingAnimation}
-                                autoPlay={true}
-                                loop={true}
-                                speed={0.8}
-                                style={{ width: 400, height: 400 }}
-                            />
-                            <View style={{ alignItems: 'center' }}>
-                                <Text style={{ color: '#fff', fontSize: 22, fontWeight: '600', marginTop: 16 }}>저장 중...</Text>
-                                <Text style={{ color: '#fff', fontSize: 14, marginTop: 8, opacity: 0.8 }}>잠시만 기다려주세요</Text>
-                            </View>
-                        </View>
-                    </Modal>
+                        animations={loadingAnimations}
+                        message="저장 중..."
+                        subMessage="잠시만 기다려주세요"
+                    />
                 </>
 
                 <Modal
