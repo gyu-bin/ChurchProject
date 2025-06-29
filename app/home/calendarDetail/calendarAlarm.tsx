@@ -81,12 +81,6 @@ export default function AlarmModal({ visible, onClose, eventTitle, eventDate }: 
         Alert.alert('✅ 알림 예약 완료', `${dayjs(notifyDate).format('YYYY.MM.DD HH:mm')}에 알림이 전송됩니다.`);
         onClose();
     };
-
-    const deleteAlarm = async (alarmId: string) => {
-        await deleteDoc(doc(db, 'alarms', alarmId));
-        Alert.alert('알람이 삭제되었습니다.');
-    };
-
     return (
         <Modal visible={visible} transparent animationType="slide">
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }}>
@@ -128,18 +122,6 @@ export default function AlarmModal({ visible, onClose, eventTitle, eventDate }: 
                     <TouchableOpacity onPress={onClose} style={{ marginTop: 12 }}>
                         <Text style={{ color: '#888', textAlign: 'center' }}>닫기</Text>
                     </TouchableOpacity>
-
-                    <View style={{ marginTop: 24 }}>
-                        <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 12 }}>알람 목록</Text>
-                        {alarmList.map(alarm => (
-                            <View key={alarm.id} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                                <Text>{alarm.title} - {dayjs(alarm.date.toDate()).format('YYYY.MM.DD HH:mm')}</Text>
-                                <TouchableOpacity onPress={() => deleteAlarm(alarm.id)}>
-                                    <Text style={{ color: 'red' }}>삭제</Text>
-                                </TouchableOpacity>
-                            </View>
-                        ))}
-                    </View>
                 </View>
             </View>
         </Modal>
