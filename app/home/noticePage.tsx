@@ -84,7 +84,7 @@ export default function HomeNotices() {
                     shadowOffset: { width: 0, height: 1 },
                     shadowRadius: 4,
                     elevation: 5,
-                    height: 110,
+                    maxHeight: 80,
                     width: SCREEN_WIDTH * 0.7,
                 }}
             >

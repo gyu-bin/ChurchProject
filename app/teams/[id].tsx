@@ -42,7 +42,7 @@ import {
     TouchableOpacity,
     TouchableWithoutFeedback,
     View
-} from 'react-native';
+, Image as RNImage } from 'react-native';
 import Toast from "react-native-root-toast";
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import * as ImagePicker from "expo-image-picker";
@@ -52,7 +52,6 @@ import {getDownloadURL, ref, uploadBytes} from "firebase/storage"; // 필수
 import {Calendar} from "react-native-calendars";
 import LottieView from 'lottie-react-native';
 import {Image} from 'expo-image';
-
 import loading4 from '@/assets/lottie/Animation - 1747201330128.json';
 import loading3 from '@/assets/lottie/Animation - 1747201413764.json';
 import loading2 from '@/assets/lottie/Animation - 1747201431992.json';
@@ -161,7 +160,7 @@ export default function TeamDetail() {
         setLoadingAnimation(loadingAnimations[random]);
     }, []);
     const [updateLoading, setUpdateLoading] = useState(false); // 🔸 수정 중 로딩용
-
+    const [imageAspectRatio, setImageAspectRatio] = useState<number | undefined>();
     const [commonLocations] = useState([
         '본당',
         '카페',
@@ -192,6 +191,22 @@ export default function TeamDetail() {
         const unsubscribe = fetchTeam();
         return () => unsubscribe && unsubscribe();
     }, [team]);
+
+
+    useEffect(() => {
+        if (team?.thumbnail) {
+            RNImage.getSize(
+                team.thumbnail,
+                (width: number, height: number) => {
+                    setImageAspectRatio(width / height);
+                },
+                () => {
+                    console.warn('이미지 사이즈 가져오기 실패');
+                    setImageAspectRatio(1.5/2); // fallback 비율
+                }
+            );
+        }
+    }, [team?.thumbnail]);
 
     /*    useEffect(() => {
             getCurrentUser().then(setCurrentUser);
@@ -1088,7 +1103,7 @@ export default function TeamDetail() {
                 }}>
                     {/* 썸네일 이미지 */}
                     {team.thumbnail && (
-                        <View
+                        /*<View
                             style={{
                                 marginBottom: spacing.md,
                                 borderRadius: radius.lg,
@@ -1097,8 +1112,8 @@ export default function TeamDetail() {
                                 justifyContent: 'center',
                                 width: '100%',
                             }}
-                        >
-                            <View style={{
+                        >*/
+                            /*<View style={{
                                 position: 'absolute',
                                 width: '50%',
                                 height: 120,
@@ -1110,21 +1125,39 @@ export default function TeamDetail() {
                                 display: loaded ? 'none' : 'flex'
                             }}>
                                 <ActivityIndicator size="small" color="#888" />
-                            </View>
-
+                            </View>*/
+                        <View
+                            style={{
+                                width: '100%',
+                                marginBottom: spacing.md,
+                                borderRadius: radius.lg,
+                                overflow: 'hidden',
+                            }}
+                        >
                             <Image
                                 source={{ uri: team.thumbnail }}
                                 style={{
-                                    width: '50%',
-                                    height: 120,
-                                    borderRadius: radius.lg,
+                                    width: '100%',
+                                    aspectRatio: 16 / 9, // ✅ 비율 유지하면서 너비 꽉 차게
                                 }}
-                                contentFit="cover"
+                                contentFit="cover" // ✅ 이미지 일부 잘릴 수 있지만 시각적으로 좋음
                                 cachePolicy="disk"
                                 onLoad={() => setLoaded(true)}
                                 onError={() => setLoaded(true)}
                             />
                         </View>
+
+                        /*<Image
+                            source={{ uri: team.thumbnail }}
+                            style={{
+                                width: '100%',
+                                aspectRatio: imageAspectRatio || 1.5, // 기본값은 3:2
+                                borderRadius: radius.lg,
+                            }}
+                            contentFit="cover"
+                            contentPosition="center"
+                        />*/
+                        // </View>
                     )}
 
                     {/* 팀 이름 */}

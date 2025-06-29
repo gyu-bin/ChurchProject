@@ -9,13 +9,14 @@ import { addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query
 import React, { useEffect, useRef, useState } from 'react';
 import {
     Alert,
-    Dimensions,
+    Dimensions, Keyboard,
     KeyboardAvoidingView,
     Modal,
     PanResponder,
     Platform,
     ScrollView,
     Text, TextInput, TouchableOpacity,
+    TouchableWithoutFeedback,
     View
 } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
@@ -409,9 +410,10 @@ export default function DevotionPage() {
 
                         {/* 본문 or 수정 중 */}
                         <KeyboardAvoidingView
-                            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                             style={{ flex: 1 }}
                         >
+                            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
                             <ScrollView
                                 contentContainerStyle={{ padding: spacing.md }}
                                 keyboardShouldPersistTaps="handled"
@@ -446,43 +448,57 @@ export default function DevotionPage() {
                                     <Text style={{ color: colors.text, lineHeight: 20 }}>{post.content}</Text>
                                 )}
                             </ScrollView>
+                            </TouchableWithoutFeedback>
                         </KeyboardAvoidingView>
                     </View>
                 ))}
             </ScrollView>
         </View>
             <Modal visible={writeModalVisible} animationType="slide">
-                <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 40 : 150, paddingHorizontal: spacing.lg }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg }}>
-                        <Text style={{ fontSize: font.body, fontWeight: 'bold', color: colors.text }}>✍️ 오늘의 묵상 작성</Text>
-                        <TouchableOpacity onPress={() => setWriteModalVisible(false)}>
-                            <Ionicons name="close" size={24} color={colors.text} />
-                        </TouchableOpacity>
-                    </View>
+                <KeyboardAvoidingView
+                    style={{ flex: 1 }}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                >
+                    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                        <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 40 : 150, paddingHorizontal: spacing.lg }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg }}>
+                                <Text style={{ fontSize: font.body, fontWeight: 'bold', color: colors.text }}>✍️ 오늘의 묵상 작성</Text>
+                                <TouchableOpacity onPress={() => setWriteModalVisible(false)}>
+                                    <Ionicons name="close" size={24} color={colors.text} />
+                                </TouchableOpacity>
+                            </View>
 
-                    <TextInput
-                        placeholder="오늘의 묵상 내용을 입력하세요"
-                        placeholderTextColor={colors.subtext}
-                        value={content}
-                        onChangeText={setContent}
-                        multiline
-                        style={{
-                            borderColor: colors.border,
-                            borderWidth: 1,
-                            borderRadius: radius.md,
-                            padding: spacing.md,
-                            minHeight: 150,
-                            color: colors.text,
-                            marginBottom: spacing.md
-                        }}
-                    />
+                            <TextInput
+                                placeholder="오늘의 묵상 내용을 입력하세요"
+                                placeholderTextColor={colors.subtext}
+                                value={content}
+                                onChangeText={setContent}
+                                multiline
+                                style={{
+                                    borderColor: colors.border,
+                                    borderWidth: 1,
+                                    borderRadius: radius.md,
+                                    padding: spacing.md,
+                                    minHeight: 150,
+                                    color: colors.text,
+                                    marginBottom: spacing.md,
+                                }}
+                            />
 
-                    <TouchableOpacity
-                        onPress={handleSubmit}
-                        style={{ backgroundColor: colors.primary, padding: spacing.md, borderRadius: radius.md, alignItems: 'center' }}>
-                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>작성 완료</Text>
-                    </TouchableOpacity>
-                </View>
+                            <TouchableOpacity
+                                onPress={handleSubmit}
+                                style={{
+                                    backgroundColor: colors.primary,
+                                    padding: spacing.md,
+                                    borderRadius: radius.md,
+                                    alignItems: 'center',
+                                }}
+                            >
+                                <Text style={{ color: '#fff', fontWeight: 'bold' }}>작성 완료</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </TouchableWithoutFeedback>
+                </KeyboardAvoidingView>
             </Modal>
 
 

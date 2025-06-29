@@ -403,6 +403,11 @@ export default function HomeScreen() {
 
                     </HeaderView>
 
+                        {/*공지 & 일정*/}
+                        <StyledView>
+                            <HomeNotices />
+                        </StyledView>
+
                     {/* 상단배너*/}
                     <BannerCarousel events={banners} goToEvent={goToEvent} theme={theme} />
 
@@ -457,12 +462,6 @@ export default function HomeScreen() {
                         <StyledView>
                             <TodayBible />
                         </StyledView>
-
-                    {/*공지 & 일정*/}
-                    <StyledView>
-                        <HomeNotices />
-                    </StyledView>
-
 
                 </ListHeaderContainer>
                 )}

@@ -185,18 +185,6 @@ export default function NanumPage() {
         }
     };
 
-    const deletePrayer = async (id: string) => {
-        Alert.alert('삭제 확인', '정말 이 기도제목을 삭제하시겠습니까?', [
-            { text: '취소', style: 'cancel' },
-            {
-                text: '삭제', style: 'destructive', onPress: async () => {
-                    await deleteDoc(doc(db, 'prayer_requests', id));
-                    setPrayers(prev => prev.filter(p => p.id !== id));
-                }
-            }
-        ]);
-    };
-
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
             <FlatList
