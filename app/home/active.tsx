@@ -331,29 +331,6 @@ export default function ActiveSection() {
                 {prayers.length > 0 && (
                     <FlexibleCarousel data={prayers} renderItem={renderPrayerCard} />
                 )}
-
-                {/*{prayers.map((prayer) => (
-                    <View
-                        key={prayer.id}
-                        style={{
-                            backgroundColor: colors.surface,
-                            borderRadius: 12,
-                            padding: spacing.md,
-                            marginBottom: spacing.sm,
-                            shadowColor: '#000',
-                            shadowOpacity: 0.05,
-                            shadowOffset: { width: 0, height: 1 },
-                            shadowRadius: 4,
-                            elevation: 2,
-                        }}
-                    >
-                        <Text style={{ fontWeight: 'bold', fontSize: font.body, color: colors.text, marginBottom: 4 }}>{prayer.title}</Text>
-                        <Text style={{ fontSize: font.body, color: colors.subtext, marginBottom: 6 }}>{prayer.content}</Text>
-                        <Text style={{ fontSize: font.caption, color: colors.subtext, textAlign: 'right' }}>
-                            {prayer.anonymous === 'Y' ? '익명' : prayer.name}
-                        </Text>
-                    </View>
-                ))}*/}
             </View>
         </View>
     );

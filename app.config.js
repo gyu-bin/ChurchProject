@@ -56,6 +56,8 @@ export default {
             OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? '',
         },
         runtimeVersion: '1.0.0',
-        // updates: { ... } 생략 → OTA 문제 방지
+        updates: {
+            url: 'https://u.expo.dev/52398581-ab99-4c0d-a8bb-dc94a4a5f439',
+        },
     },
 };

@@ -1,3 +1,4 @@
+/*
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import { Dimensions, FlatList, ImageBackground, Text, TouchableOpacity, View } from 'react-native';
@@ -80,16 +81,6 @@ export default function EventBannerCarousel({ events = [], goToEvent, theme }: a
           style={{ width: SCREEN_WIDTH }}
       >
         {item.bannerImage ? (
-            /*<TouchableOpacity
-                activeOpacity={0.9}
-                onPress={() => goToEvent(item.id)}
-                style={{
-                  width: "100%",
-                  paddingHorizontal: 20,
-                  paddingVertical: 24,
-                  alignItems: 'center',
-                }}
-            >*/
             <View
                 style={{
                   backgroundColor: '#CCB08A',
@@ -101,7 +92,7 @@ export default function EventBannerCarousel({ events = [], goToEvent, theme }: a
                   height: 400
                 }}
             >
-              {/* 배너 이미지 */}
+              {/!* 배너 이미지 *!/}
               <Image
                   source={{ uri: item.bannerImage }}
                   style={{
@@ -116,7 +107,7 @@ export default function EventBannerCarousel({ events = [], goToEvent, theme }: a
                   cachePolicy="disk"
               />
 
-              {/* 제목 */}
+              {/!* 제목 *!/}
               <Text
                   style={{
                     fontSize: 30,
@@ -129,7 +120,7 @@ export default function EventBannerCarousel({ events = [], goToEvent, theme }: a
                 {item.title}
               </Text>
 
-              {/* 날짜 + 시간 + 장소 */}
+              {/!* 날짜 + 시간 + 장소 *!/}
               <Text
                   style={{
                     fontSize: 20,
@@ -141,7 +132,6 @@ export default function EventBannerCarousel({ events = [], goToEvent, theme }: a
               </Text>
             </View>
 
-            // </TouchableOpacity>
         ) : (
             <View
                 style={{
@@ -301,3 +291,4 @@ export default function EventBannerCarousel({ events = [], goToEvent, theme }: a
     </View>
   );
 }
+*/
