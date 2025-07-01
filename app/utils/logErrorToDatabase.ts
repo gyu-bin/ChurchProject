@@ -1,7 +1,7 @@
 import { db } from '@/firebase/config';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
-async function logErrorToDatabase(error: Error, additionalInfo: string = '') {
+export async function logErrorToDatabase(error: Error, additionalInfo: string = '') {
   try {
     await addDoc(collection(db, 'errorLogs'), {
       message: error.message,
@@ -24,4 +24,4 @@ try {
   } else {
     console.error('Caught an unknown error type:', error);
   }
-} 
+}

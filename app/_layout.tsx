@@ -21,6 +21,7 @@ import { RootSiblingParent } from 'react-native-root-siblings';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux';
 import RootLayoutInner from './_layout-inner';
+import {logErrorToDatabase} from './utils/logErrorToDatabase';
 
 export default function RootLayout() {
     const colorScheme = useColorScheme();
@@ -57,6 +58,9 @@ export default function RootLayout() {
                 setIsAppReady(true);
             }, 300);
         } catch (e) {
+            if (e instanceof Error) {
+                await logErrorToDatabase(e, 'initializeApp 중 오류');
+            }
             console.error('앱 초기화 중 오류:', e);
             setIsAppReady(true);
         }
@@ -114,19 +118,23 @@ export default function RootLayout() {
         const storageKey = 'weeklyPushSent';
 
         const checkAndSendPush = async () => {
-            const lastSent = await AsyncStorage.getItem(storageKey);
+            try {
+                const lastSent = await AsyncStorage.getItem(storageKey);
 
-            if (
-                day === 0 &&
-                hour === 22 &&
-                minute === 0 &&
-                lastSent !== todayKey
-            ) {
-                await sendWeeklyRankingPush();
-                await AsyncStorage.setItem(storageKey, todayKey);
-                console.log('✅ 푸시 전송 완료');
-            } else {
-                // console.log('ℹ️ 푸시 전송 조건 미충족 or 이미 전송됨');
+                if (
+                    day === 0 &&
+                    hour === 22 &&
+                    minute === 0 &&
+                    lastSent !== todayKey
+                ) {
+                    await sendWeeklyRankingPush();
+                    await AsyncStorage.setItem(storageKey, todayKey);
+                    console.log('✅ 푸시 전송 완료');
+                }
+            } catch (e) {
+                if (e instanceof Error) {
+                    await logErrorToDatabase(e, 'checkAndSendPush 중 오류');
+                }
             }
         };
 
@@ -138,24 +146,29 @@ export default function RootLayout() {
         let unsubRef: (() => void) | null = null;
 
         const run = async () => {
-            const userRaw = await AsyncStorage.getItem('currentUser');
-            if (!userRaw) return;
+            try{const userRaw = await AsyncStorage.getItem('currentUser');
+                if (!userRaw) return;
 
-            const { email } = JSON.parse(userRaw);
-            const currentDeviceId = `${Device.modelName}-${Device.osName}-${Device.osVersion}`;
-            const deviceDocRef = doc(db, `devices/${email}/tokens/${currentDeviceId}`);
+                const { email } = JSON.parse(userRaw);
+                const currentDeviceId = `${Device.modelName}-${Device.osName}-${Device.osVersion}`;
+                const deviceDocRef = doc(db, `devices/${email}/tokens/${currentDeviceId}`);
 
-            const unsubscribe = onSnapshot(deviceDocRef, async (docSnap) => {
-                if (!docSnap.exists()) {
-                    await AsyncStorage.removeItem('currentUser');
-                    store.dispatch(logoutUser());
-                    store.dispatch(clearPrayers());
-                    store.dispatch(clearTeams());
-                    router.replace('/auth/login');
+                const unsubscribe = onSnapshot(deviceDocRef, async (docSnap) => {
+                    if (!docSnap.exists()) {
+                        await AsyncStorage.removeItem('currentUser');
+                        store.dispatch(logoutUser());
+                        store.dispatch(clearPrayers());
+                        store.dispatch(clearTeams());
+                        router.replace('/auth/login');
+                    }
+                });
+
+                unsubRef = unsubscribe;
+            }catch(e){
+                if (e instanceof Error) {
+                    await logErrorToDatabase(e, '계정 삭제 감지 run 중 오류');
                 }
-            });
-
-            unsubRef = unsubscribe;
+            }
         };
 
         run();

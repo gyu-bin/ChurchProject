@@ -1,30 +1,30 @@
-// app.config.js
 import 'dotenv/config';
+
 export default {
     expo: {
         name: 'ChurchAppExpo',
-        slug: 'ChurchAppExpo', // ✅ 반드시 소문자, EAS 프로젝트 slug와 일치
-        platforms: ["ios", "android"],
+        slug: 'ChurchAppExpo',
+        platforms: ['ios', 'android'],
         version: '1.0.0',
         orientation: 'portrait',
         owner: 'rbqls6651',
         scheme: 'churchappexpo',
         icon: './assets/images/icon.png',
         userInterfaceStyle: 'automatic',
-        newArchEnabled: true,
+        newArchEnabled: false, // ✅ 안정 버전은 비활성화
         ios: {
             supportsTablet: true,
             bundleIdentifier: 'com.rbqls6651.churchappexpo',
         },
         android: {
-            googleServicesFile: './google-services.json',
             package: 'com.rbqls6651.churchappexpo',
-            versionCode: 1,
+            // versionCode 제거: EAS에서 자동 증가
+            edgeToEdgeEnabled: true,
             adaptiveIcon: {
                 foregroundImage: './assets/images/adaptive-icon.png',
                 backgroundColor: '#ffffff',
             },
-            edgeToEdgeEnabled: true,
+            googleServicesFile: './google-services.json',
         },
         web: {
             bundler: 'metro',
@@ -44,7 +44,7 @@ export default {
                     backgroundColor: '#ffffff',
                 },
             ],
-            'expo-font'
+            'expo-font',
         ],
         experiments: {
             typedRoutes: true,
@@ -53,11 +53,9 @@ export default {
             eas: {
                 projectId: '52398581-ab99-4c0d-a8bb-dc94a4a5f439',
             },
-            OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? '', // ✅ EAS 빌드 시 env 주입됨
+            OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? '',
         },
-        runtimeVersion: "1.0.0",
-        updates: {
-            url: 'https://u.expo.dev/52398581-ab99-4c0d-a8bb-dc94a4a5f439',
-        },
+        runtimeVersion: '1.0.0',
+        // updates: { ... } 생략 → OTA 문제 방지
     },
 };

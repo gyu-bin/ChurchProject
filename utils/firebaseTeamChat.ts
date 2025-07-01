@@ -1,4 +1,4 @@
-// utils/firebaseTeamChat.ts
+// utils/logErrorToDatabase.ts
 import {
     collection,
     addDoc,

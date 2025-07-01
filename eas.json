@@ -13,8 +13,7 @@
       "android": {
         "buildType": "apk"
       },
-      "distribution": "internal",
-      "channel": "preview"
+      "distribution": "internal"
     },
     "production": {
       "android": {
