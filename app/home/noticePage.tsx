@@ -84,6 +84,7 @@ export default function HomeNotices() {
                     shadowOffset: { width: 0, height: 1 },
                     shadowRadius: 4,
                     elevation: 5,
+                    height: 70,
                     maxHeight: 80,
                     width: SCREEN_WIDTH * 0.7,
                 }}
@@ -112,7 +113,7 @@ export default function HomeNotices() {
         );
     };
 
-    const renderEventCard = (item: Notice) => {
+    /*const renderEventCard = (item: Notice) => {
         const eventDate = new Date(item.startDate.seconds * 1000);
 
         const today = new Date();
@@ -133,7 +134,7 @@ export default function HomeNotices() {
                     shadowOffset: { width: 0, height: 1 },
                     shadowRadius: 4,
                     elevation: 5,
-                    height: 110,
+                    height: 100,
                     width: SCREEN_WIDTH * 0.7,
                 }}
             >
@@ -152,14 +153,14 @@ export default function HomeNotices() {
                 </View>
             </View>
         );
-    };
-
+    };*/
+//오늘의 나눔
     return (
         <View>
             {/* 📢 공동체 소식 */}
-            <View style={{ marginBottom: spacing.lg }}>
+            <View style={{ marginBottom: spacing.sm }}>
                     <TouchableOpacity onPress={() => router.push('/home/notice/allNotice')}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Text style={{ fontSize: font.title, fontWeight: 'bold', color: colors.text }}>📢 공동체 소식</Text>
                             <Ionicons name="chevron-forward" size={20} color={colors.text} />
                         </View>

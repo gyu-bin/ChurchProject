@@ -52,7 +52,8 @@ export default function ChurchNewsPage() {
                     shadowOffset: { width: 0, height: 1 },
                     shadowRadius: 4,
                     elevation: 5,
-                    height: 110,
+                    height: 80,
+                    maxHeight: 100,
                     width: SCREEN_WIDTH * 0.7,
                 }}
             >
@@ -90,7 +91,7 @@ export default function ChurchNewsPage() {
                 <Text style={{ fontSize: 15, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>
                     {item.title}
                 </Text>
-                <Text numberOfLines={2} style={{ fontSize: 14, color: colors.subtext }}>
+                <Text numberOfLines={2} style={{ fontSize: 20, color: colors.subtext }}>
                     {item.content}
                 </Text>
             </View>
@@ -100,7 +101,7 @@ export default function ChurchNewsPage() {
     return (
         <View>
         {news.length > 0 && (
-                <View style={{ marginBottom: spacing.lg }}>
+                <View style={{ marginBottom: spacing.sm }}>
                     <TouchableOpacity onPress={() => router.push('/home/QuickMenuButton/churchNewsPage')}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
                             <Text style={{ fontSize: font.title, fontWeight: 'bold', color: colors.text }}>📰 시광 뉴스</Text>

@@ -34,7 +34,7 @@ export default function TodayBibleList() {
     }, []);
 
     return (
-        <View style={{ marginBottom: spacing.lg }}>
+        <View>
             <TouchableOpacity onPress={() => router.push('/share/DailyBible')}>
                 <View style={{
                     flexDirection: 'row',
@@ -56,6 +56,7 @@ export default function TodayBibleList() {
                             marginBottom: index < todayDevotions.length - 1 ? spacing.sm : 0,
                             borderBottomWidth: index < todayDevotions.length - 1 ? 1 : 0,
                             borderBottomColor: colors.border,
+                            backgroundColor: colors.surface,
                         }}
                     >
                         <Text

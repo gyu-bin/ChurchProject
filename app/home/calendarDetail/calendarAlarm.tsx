@@ -2,9 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import dayjs from 'dayjs';
 import * as Notifications from 'expo-notifications';
-import { addDoc, collection, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
+import { addDoc, collection, onSnapshot } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
-import { Alert, Modal, Platform, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, Platform, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
 import { db } from '@/firebase/config';
 
 interface AlarmModalProps {
@@ -25,8 +25,11 @@ export default function AlarmModal({ visible, onClose, eventTitle, eventDate }: 
     const [alarmList, setAlarmList] = useState<any[]>([]);
     const [currentUser, setCurrentUser] = useState<{ uid: string; name: string; email: string; role: string } | null>(null);
 
+    const isDark = useColorScheme() === 'dark';
+    const textColor = isDark ? '#fff' : '#000';
+    const bgColor = isDark ? '#1f2937' : '#fff';
+
     useEffect(() => {
-        // 사용자 정보 로딩
         AsyncStorage.getItem('currentUser').then((raw) => {
             if (raw) {
                 const user = JSON.parse(raw);
@@ -70,48 +73,98 @@ export default function AlarmModal({ visible, onClose, eventTitle, eventDate }: 
             trigger: notifyDate,
         });
 
-        const alarmData = {
-            userId: currentUser.uid || currentUser.email, // uid 없으면 이메일로라도 구분
+        await addDoc(collection(db, 'alarms'), {
+            userId: currentUser.uid || currentUser.email,
             title: eventTitle,
             date: notifyDate,
-        };
-
-        await addDoc(collection(db, 'alarms'), alarmData);
+        });
 
         Alert.alert('✅ 알림 예약 완료', `${dayjs(notifyDate).format('YYYY.MM.DD HH:mm')}에 알림이 전송됩니다.`);
         onClose();
     };
+
     return (
         <Modal visible={visible} transparent animationType="slide">
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-                <View style={{ backgroundColor: '#fff', padding: 24, borderRadius: 16, width: '90%' }}>
-                    <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 12 }}>언제 알림을 받을까요?</Text>
+                <View style={{ backgroundColor: bgColor, padding: 24, borderRadius: 16, width: '90%' }}>
+                    <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 12, color: textColor }}>언제 알림을 받을까요?</Text>
 
                     {[0, -1, -3].map((offset) => (
                         <TouchableOpacity
                             key={offset}
                             onPress={() => setSelectedOffset(offset)}
-                            style={{ paddingVertical: 8, backgroundColor: selectedOffset === offset ? '#eee' : 'transparent', borderRadius: 8 }}
+                            style={{
+                                paddingVertical: 8,
+                                backgroundColor: selectedOffset === offset ? (isDark ? '#374151' : '#eee') : 'transparent',
+                                borderRadius: 8,
+                            }}
                         >
-                            <Text style={{ fontSize: 16 }}>{offset === 0 ? '당일' : `${Math.abs(offset)}일 전`}</Text>
+                            <Text style={{ fontSize: 16, color: textColor }}>
+                                {offset === 0 ? '당일' : `${Math.abs(offset)}일 전`}
+                            </Text>
                         </TouchableOpacity>
                     ))}
 
+                    {/* 시간 선택 버튼 */}
                     <TouchableOpacity onPress={() => setShowTimePicker(true)} style={{ marginTop: 16 }}>
-                        <Text style={{ fontSize: 16 }}>⏰ 시간 선택: {dayjs(selectedTime).format('HH:mm')}</Text>
+                        <Text style={{ fontSize: 16, color: textColor }}>⏰ 시간 선택: {dayjs(selectedTime).format('HH:mm')}</Text>
                     </TouchableOpacity>
 
-                    {showTimePicker && (
+                    {/* iOS용 picker */}
+                    {showTimePicker && Platform.OS === 'ios' && (
+                        <Modal visible={true} transparent animationType="fade">
+                            <View style={{
+                                flex: 1,
+                                backgroundColor: 'rgba(0,0,0,0.4)',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                            }}>
+                                <View style={{
+                                    backgroundColor: bgColor,
+                                    padding: 24,
+                                    borderRadius: 16,
+                                    width: '80%',
+                                    alignItems: 'center',
+                                }}>
+                                    <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 12, color: textColor }}>시간 선택</Text>
+                                    <DateTimePicker
+                                        value={selectedTime}
+                                        mode="time"
+                                        display="spinner"
+                                        is24Hour={false}
+                                        themeVariant={isDark ? 'dark' : 'light'}
+                                        onChange={(event, date) => {
+                                            if (date) setSelectedTime(date);
+                                        }}
+                                    />
+                                    <TouchableOpacity
+                                        onPress={() => setShowTimePicker(false)}
+                                        style={{ marginTop: 12, padding: 10, backgroundColor: '#2563eb', borderRadius: 8 }}
+                                    >
+                                        <Text style={{ color: '#fff', fontWeight: '600' }}>확인</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </Modal>
+                    )}
+
+                    {/* Android용 picker */}
+                    {showTimePicker && Platform.OS === 'android' && (
                         <DateTimePicker
                             value={selectedTime}
                             mode="time"
-                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                            display="clock"
+                            is24Hour={false}
                             onChange={(event, date) => {
-                                if (date) setSelectedTime(date);
+                                if (event.type === 'set' && date) {
+                                    setSelectedTime(date);
+                                }
+                                setShowTimePicker(false);
                             }}
                         />
                     )}
 
+                    {/* 알림 예약 버튼 */}
                     <TouchableOpacity
                         onPress={handleScheduleNotification}
                         style={{ backgroundColor: '#2563eb', marginTop: 24, padding: 12, borderRadius: 8 }}
@@ -119,6 +172,7 @@ export default function AlarmModal({ visible, onClose, eventTitle, eventDate }: 
                         <Text style={{ color: '#fff', textAlign: 'center', fontWeight: '600' }}>알림 예약하기</Text>
                     </TouchableOpacity>
 
+                    {/* 닫기 버튼 */}
                     <TouchableOpacity onPress={onClose} style={{ marginTop: 12 }}>
                         <Text style={{ color: '#888', textAlign: 'center' }}>닫기</Text>
                     </TouchableOpacity>
