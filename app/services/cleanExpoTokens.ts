@@ -1,7 +1,7 @@
 import { db } from '@/firebase/config';
 import { collection, deleteDoc, doc, getDocs, query, updateDoc } from 'firebase/firestore';
 
-export async function cleanDuplicateExpoTokens() {
+export default async function cleanExpoTokens() {
     try {
         const q = query(collection(db, 'expoTokens'));
         const snap = await getDocs(q);

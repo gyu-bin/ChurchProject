@@ -30,4 +30,8 @@ export async function sendNotification(data: NotificationData) {
 
 export async function sendPushNotification(data: { to: string[] | string; title: string; body: string }) {
     // ... existing implementation ...
+}
+
+export default function notificationService() {
+  // ... existing code ...
 } 

@@ -32,7 +32,7 @@ type DeviceInfo = {
 };
 
 // ✅ 푸시 토큰 등록
-export async function registerPushToken() {
+export default async function registerPushToken() {
     try {
         // 시뮬레이터 체크
         if (!Device.isDevice) {

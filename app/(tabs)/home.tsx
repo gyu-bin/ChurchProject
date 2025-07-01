@@ -1,16 +1,16 @@
-import { useDesign } from '@/context/DesignSystem';
-import { useAppTheme } from '@/context/ThemeContext';
 import ActiveSection from '@/app/home/active';
-import HomeNews from '@/app/home/homeNews';
-import TodayBible from '@/app/home/todayBible';
 import BannerCarousel from '@/app/home/homeBanner';
+import HomeNews from '@/app/home/homeNews';
 import HomeNotices from "@/app/home/noticePage";
+import TodayBible from '@/app/home/todayBible';
 import catechismData from '@/assets/catechism/catechism.json';
 import { verses } from '@/assets/verses';
+import { useDesign } from '@/context/DesignSystem';
+import { useAppTheme } from '@/context/ThemeContext';
 import { db } from '@/firebase/config';
 import { useAppDispatch } from '@/hooks/useRedux';
 import { setScrollCallback } from '@/utils/scrollRefManager';
-import {AntDesign, Ionicons} from '@expo/vector-icons';
+import { AntDesign, Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -236,7 +236,6 @@ export default function HomeScreen() {
             if (raw) {
                 const userData = JSON.parse(raw);
                 setCurrentUser(userData);
-                setUser(userData);
             }
         };
         loadUser();
@@ -247,7 +246,6 @@ export default function HomeScreen() {
             const raw = await AsyncStorage.getItem('currentUser');
             if (!raw) return;
             const currentUser = JSON.parse(raw);
-            setUser(currentUser);
             const q = query(collection(db, 'notifications'), where('to', '==', currentUser.email));
             return onSnapshot(q, snapshot => {
                 const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -267,7 +265,6 @@ export default function HomeScreen() {
     }, []);
 
     useEffect(() => {
-        setVerse(verses[Math.floor(Math.random() * verses.length)]);
         fetchPrayers();
     }, []);
 
@@ -313,26 +310,28 @@ export default function HomeScreen() {
                 id: doc.id,
                 ...(doc.data()),
             })) as EventNotice[];
-            setBanners(noticeList);
-            // 마킹 데이터 생성
-            const marks: any = {};
-            noticeList.forEach(ev => {
-                // startDate ~ endDate 지원
-                const start = ev.startDate?.seconds ? new Date(ev.startDate.seconds * 1000) : null;
-                const end = ev.endDate?.seconds ? new Date(ev.endDate.seconds * 1000) : start;
-                if (start) {
-                    let d = new Date(start);
-                    while (d <= (end || start)) {
-                        const key = d.toISOString().split('T')[0];
-                        marks[key] = marks[key] || { marked: true, dots: [{ color: '#2563eb' }] };
-                        d.setDate(d.getDate() + 1);
+            if (JSON.stringify(noticeList) !== JSON.stringify(banners)) {
+                setBanners(noticeList);
+                // 마킹 데이터 생성
+                const marks: any = {};
+                noticeList.forEach(ev => {
+                    // startDate ~ endDate 지원
+                    const start = ev.startDate?.seconds ? new Date(ev.startDate.seconds * 1000) : null;
+                    const end = ev.endDate?.seconds ? new Date(ev.endDate.seconds * 1000) : start;
+                    if (start) {
+                        let d = new Date(start);
+                        while (d <= (end || start)) {
+                            const key = d.toISOString().split('T')[0];
+                            marks[key] = marks[key] || { marked: true, dots: [{ color: '#2563eb' }] };
+                            d.setDate(d.getDate() + 1);
+                        }
                     }
-                }
-            });
-            setMarkedDates(marks);
+                });
+                setMarkedDates(marks);
+            }
         });
         return () => unsub();
-    }, []);
+    }, [banners]);
 
     useEffect(() => {
         const eventQ = query(
