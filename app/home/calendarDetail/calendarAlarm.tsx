@@ -153,7 +153,7 @@ export default function AlarmModal({ visible, onClose, eventTitle, eventDate }: 
                         <DateTimePicker
                             value={selectedTime}
                             mode="time"
-                            display="clock"
+                            display="spinner"
                             is24Hour={false}
                             onChange={(event, date) => {
                                 if (event.type === 'set' && date) {

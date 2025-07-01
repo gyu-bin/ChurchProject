@@ -247,7 +247,7 @@ export default function PushDevotional() {
                     <DateTimePicker
                         mode="time"
                         value={tempTime}
-                        display="clock"
+                        display="spinner"
                         is24Hour={false}
                         onChange={handleAndroidTimeChange}
                     />

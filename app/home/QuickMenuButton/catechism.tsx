@@ -114,9 +114,9 @@ export default function CatechismPage() {
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm, position: 'relative' }}>
                 <TouchableOpacity
                     onPress={() => router.back()}
-                    style={{ position: 'absolute', left: 0, padding: 8, zIndex: 1 }}
+                    style={{ position: 'absolute', left: 15, padding: 8, zIndex: 1 }}
                 >
-                    <Ionicons name="arrow-back" size={24} color={colors.text} />
+                    <Ionicons name="arrow-back" size={30} color={colors.text} />
                 </TouchableOpacity>
                 <View style={{ flex: 1, alignItems: 'center' }}>
                     <TouchableOpacity

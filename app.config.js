@@ -34,7 +34,6 @@ export default {
         plugins: [
             'expo-router',
             'expo-web-browser',
-            'expo-linear-gradient',
             'expo-notifications',
             [
                 'expo-splash-screen',
@@ -55,9 +54,7 @@ export default {
             },
             OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? '', // ✅ EAS 빌드 시 env 주입됨
         },
-        runtimeVersion: {
-            policy: 'appVersion',
-        },
+        runtimeVersion: "1.0.0",
         updates: {
             url: 'https://u.expo.dev/52398581-ab99-4c0d-a8bb-dc94a4a5f439',
         },

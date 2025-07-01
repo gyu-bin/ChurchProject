@@ -2,7 +2,7 @@ import { useDesign } from "@/context/DesignSystem";
 import { db } from '@/firebase/config';
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
-import { Dimensions, Text, TouchableOpacity, View } from 'react-native';
+import {Dimensions, Platform, Text, TouchableOpacity, View} from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
 import FlexibleCarousel from "@/components/FlexibleCarousel";
 import {router} from "expo-router";
@@ -47,13 +47,14 @@ export default function ChurchNewsPage() {
                     backgroundColor: colors.surface,
                     borderRadius: 12,
                     padding: spacing.md,
+                    marginBottom: spacing.xs,
+                    marginTop: spacing.xs,
+                    marginLeft: spacing.xs,
                     shadowColor: '#000',
                     shadowOpacity: 0.05,
                     shadowOffset: { width: 0, height: 1 },
                     shadowRadius: 4,
                     elevation: 5,
-                    height: 80,
-                    maxHeight: 100,
                     width: SCREEN_WIDTH * 0.7,
                 }}
             >
@@ -91,8 +92,11 @@ export default function ChurchNewsPage() {
                 <Text style={{ fontSize: 15, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>
                     {item.title}
                 </Text>
-                <Text numberOfLines={2} style={{ fontSize: 20, color: colors.subtext }}>
+                <Text numberOfLines={2} style={{ fontSize: 14, color: colors.subtext }}>
                     {item.content}
+                </Text>
+                <Text numberOfLines={2} style={{ fontSize: 14, color: colors.subtext }}>
+                    {item.link}
                 </Text>
             </View>
         );
@@ -105,7 +109,7 @@ export default function ChurchNewsPage() {
                     <TouchableOpacity onPress={() => router.push('/home/QuickMenuButton/churchNewsPage')}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm }}>
                             <Text style={{ fontSize: font.title, fontWeight: 'bold', color: colors.text }}>📰 시광 뉴스</Text>
-                            <Ionicons name="chevron-forward" size={20} color={colors.text} />
+                            <Ionicons name="chevron-forward" size={20} color={colors.text}/>
                         </View>
                     </TouchableOpacity>
                     <FlexibleCarousel data={news} renderItem={renderNewsCard} />

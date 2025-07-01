@@ -2,7 +2,7 @@ import { useDesign } from "@/context/DesignSystem";
 import { db } from '@/firebase/config';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
-import {Dimensions, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {Dimensions, Platform, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import FlexibleCarousel from "@/components/FlexibleCarousel";
 import {router} from "expo-router";
 import {Ionicons} from "@expo/vector-icons";
@@ -79,13 +79,14 @@ export default function HomeNotices() {
                     backgroundColor: colors.surface,
                     borderRadius: 12,
                     padding: spacing.md,
+                    marginBottom: spacing.xs,
+                    marginTop: spacing.xs,
+                    marginLeft: spacing.xs,
                     shadowColor: '#000',
                     shadowOpacity: 0.05,
                     shadowOffset: { width: 0, height: 1 },
                     shadowRadius: 4,
                     elevation: 5,
-                    height: 70,
-                    maxHeight: 80,
                     width: SCREEN_WIDTH * 0.7,
                 }}
             >
@@ -99,7 +100,6 @@ export default function HomeNotices() {
                         paddingVertical: 2,
                         borderRadius: 4,
                         marginRight: 6
-
                     }}>
                         공지사항
                     </Text>

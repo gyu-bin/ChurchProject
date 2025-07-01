@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  Dimensions,
   FlatList,
   Modal,
   PanResponder,
@@ -31,6 +32,7 @@ import RNPickerSelect from "react-native-picker-select";
 import EventDetailModal from "@/app/home/calendarDetail/calendarDetail";
 import CustomDropdown from "@/components/dropDown";
 import {router} from "expo-router";
+import AlarmModal from "@/app/home/calendarDetail/calendarAlarm";
 
 const daysOfWeek = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -49,6 +51,8 @@ const divisionData = [
   { label: "청년2부", value: "시선교회" },
   { label: "장년부", value: "시선교회" },
 ];
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
 
 export default function CalendarModal({
   visible,
@@ -69,6 +73,10 @@ export default function CalendarModal({
   const [divisionFilter, setDivisionFilter] = useState("전체");
   const [viewType, setViewType] = useState<"calendar" | "list">("calendar");
   const [showEventModal, setShowEventModal] = useState(false);
+  const [showAlarmModal, setShowAlarmModal] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+
+
   useEffect(() => {
     const fetchUser = async () => {
       const raw = await AsyncStorage.getItem("currentUser");
@@ -174,6 +182,11 @@ export default function CalendarModal({
     })
   ).current;
 
+  const handleOpenAlarm = (event: any) => {
+    setSelectedEvent(event);
+    setShowAlarmModal(true);
+  };
+
   if (!visible) return null;
 
   return (
@@ -210,67 +223,63 @@ export default function CalendarModal({
           pointerEvents="box-none"
         >
           <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 12,
-            }}
-          >
-            <View style={{ flex: 1 }}></View>
-            <View
               style={{
-                flex: 2,
-                flexDirection: "row",
-                justifyContent: "center",
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 12,
+                position: 'relative',
               }}
+          >
+            {/* 🔔 알림내역 - 왼쪽 */}
+            <TouchableOpacity onPress={() => router.push('/home/calendarDetail/alarmList')}>
+              <Text style={{ color: colors.text }}>🔔 알림내역</Text>
+            </TouchableOpacity>
+
+            {/* 📅 달력형 | 📋 리스트형 - 화면 정중앙에 배치 */}
+            <View
+                style={{
+                  position: 'absolute',
+                  left: SCREEN_WIDTH / 2 - 100, // 버튼 너비 기준 조정 (100은 대략적 가로폭의 절반)
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  width: 200,
+                }}
             >
               <TouchableOpacity
-                onPress={() => setViewType("calendar")}
-                style={{
-                  padding: 10,
-                  backgroundColor:
-                    viewType === "calendar" ? colors.primary : colors.border,
-                  borderTopLeftRadius: 8,
-                  borderBottomLeftRadius: 8,
-                }}
-              >
-                <Text
+                  onPress={() => setViewType('calendar')}
                   style={{
-                    color: viewType === "calendar" ? "#fff" : colors.text,
+                    padding: 10,
+                    backgroundColor: viewType === 'calendar' ? colors.primary : colors.border,
+                    borderTopLeftRadius: 8,
+                    borderBottomLeftRadius: 8,
                   }}
-                >
+              >
+                <Text style={{ color: viewType === 'calendar' ? '#fff' : colors.text }}>
                   📅 달력형
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => setViewType("list")}
-                style={{
-                  padding: 10,
-                  backgroundColor:
-                    viewType === "list" ? colors.primary : colors.border,
-                  borderTopRightRadius: 8,
-                  borderBottomRightRadius: 8,
-                }}
+                  onPress={() => setViewType('list')}
+                  style={{
+                    padding: 10,
+                    backgroundColor: viewType === 'list' ? colors.primary : colors.border,
+                    borderTopRightRadius: 8,
+                    borderBottomRightRadius: 8,
+                  }}
               >
-                <Text
-                  style={{ color: viewType === "list" ? "#fff" : colors.text }}
-                >
+                <Text style={{ color: viewType === 'list' ? '#fff' : colors.text }}>
                   📋 리스트형
                 </Text>
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity onPress={() => router.push('/home/calendarDetail/alarmList')}>
-              <Text>알림내역</Text>
+            {/* ❌ 닫기 - 오른쪽 */}
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
-
-            <View style={{ flex: 1, alignItems: "flex-end" }}>
-              <TouchableOpacity onPress={onClose}>
-                <Ionicons name="close" size={24} color={colors.text} />
-              </TouchableOpacity>
-            </View>
           </View>
 
           {viewType === "calendar" ? (
@@ -557,45 +566,21 @@ export default function CalendarModal({
                 }}
               >
                 {/* campusFilter */}
-                <Dropdown
-                  style={{
-                    flex: 1,
-                    height: 40,
-                    borderColor: colors.border,
-                    borderWidth: 1,
-                    borderRadius: 8,
-                    paddingHorizontal: 8,
-                    backgroundColor: "#fff",
-                  }}
-                  placeholderStyle={{ fontSize: 14, color: "#888" }}
-                  selectedTextStyle={{ fontSize: 14, color: "#000" }}
-                  data={campusData}
-                  labelField="label"
-                  valueField="value"
-                  placeholder="캠퍼스"
-                  value={campusFilter}
-                  onChange={(item) => setCampusFilter(item.value)}
+                <CustomDropdown
+                    data={campusData}
+                    value={campusFilter}
+                    onChange={(item) => setCampusFilter(item.value)}
+                    placeholder="캠퍼스 선택"
+                    containerStyle={{ width: "48%", marginRight: 16 }}
                 />
 
                 {/* divisionFilter */}
-                <Dropdown
-                  style={{
-                    flex: 1,
-                    height: 40,
-                    borderColor: colors.border,
-                    borderWidth: 1,
-                    borderRadius: 8,
-                    paddingHorizontal: 8,
-                    backgroundColor: "#fff",
-                  }}
-                  placeholderStyle={{ fontSize: 14, color: "#888" }}
-                  selectedTextStyle={{ fontSize: 14, color: "#000" }}
-                  data={divisionData}
-                  labelField="label"
-                  valueField="value"
-                  placeholder="부서"
-                  value={divisionFilter}
-                  onChange={(item) => setDivisionFilter(item.value)}
+                <CustomDropdown
+                    data={divisionData}
+                    value={divisionFilter}
+                    onChange={(item) => setDivisionFilter(item.value)}
+                    placeholder="부서 선택"
+                    containerStyle={{ width: "48%" }}
                 />
               </View>
 
@@ -631,16 +616,23 @@ export default function CalendarModal({
                         elevation: 1,
                       }}
                     >
-                      <Text
-                        style={{
-                          fontSize: 16,
-                          fontWeight: "600",
-                          color: colors.text,
-                          marginBottom: 6,
-                        }}
-                      >
-                        {item.title}
-                      </Text>
+                      <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+                        <Text
+                            style={{
+                              fontSize: 16,
+                              fontWeight: "600",
+                              color: colors.text,
+                              marginBottom: 6,
+                            }}
+                        >
+                          {item.title}
+                        </Text>
+
+                        <TouchableOpacity onPress={() => handleOpenAlarm(item)}>
+                          <Text style={{ fontSize: 12, color: colors.primary }}>🔔알림받기</Text>
+                        </TouchableOpacity>
+                      </View>
+
 
                       <Text
                         style={{
@@ -657,6 +649,7 @@ export default function CalendarModal({
                         <Text style={{ fontSize: 13, color: colors.primary }}>
                           ({getDDayLabel(item.startDate)})
                         </Text>
+
                       </Text>
 
                       {item.place && (
@@ -716,6 +709,16 @@ export default function CalendarModal({
           )}
         </Pressable>
       </Pressable>
+      {selectedEvent && (
+          <AlarmModal
+              visible={showAlarmModal}
+              onClose={() => setShowAlarmModal(false)}
+              eventTitle={selectedEvent.title}
+              eventDate={new Date(selectedEvent.startDate?.seconds * 1000)}
+          />
+      )}
     </Modal>
+
+
   );
 }
