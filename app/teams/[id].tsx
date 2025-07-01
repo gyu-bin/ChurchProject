@@ -48,7 +48,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import * as ImagePicker from "expo-image-picker";
 import {ImagePickerAsset} from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
-import {getDownloadURL, ref, uploadBytes} from "firebase/storage"; // 필수
+import {deleteObject, getDownloadURL, ref, uploadBytes} from "firebase/storage"; // 필수
 import {Calendar} from "react-native-calendars";
 import LottieView from 'lottie-react-native';
 import {Image} from 'expo-image';
@@ -431,25 +431,35 @@ export default function TeamDetail() {
         }
     };
 
-    const uploadImageToFirebase = async (imageUri: string): Promise<string> => {
+    // ✅ 이미지 업로드 + 기존 이미지 삭제 함수
+    const uploadImageToFirebase = async (imageUri: string, oldUrl?: string): Promise<string> => {
         try {
-            // 이미지 조작 (크기 그대로, 포맷만 JPEG으로 확실히 지정)
+            // 기존 이미지 삭제
+            if (oldUrl) {
+                try {
+                    const decodedUrl = decodeURIComponent(oldUrl.split('?')[0]);
+                    const pathStart = decodedUrl.indexOf('/o/') + 3;
+                    const pathEnd = decodedUrl.length;
+                    const fullPath = decodedUrl.substring(pathStart, pathEnd).replace(/%2F/g, '/');
+                    const oldRef = ref(storage, fullPath);
+                    await deleteObject(oldRef);
+                    console.log('🗑️ 기존 이미지 삭제 완료:', fullPath);
+                } catch (e) {
+                    console.warn('⚠️ 기존 이미지 삭제 실패:', e);
+                }
+            }
+
+            // 새 이미지 업로드
             const manipulated = await ImageManipulator.manipulateAsync(
                 imageUri,
                 [],
                 { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
             );
-
             const response = await fetch(manipulated.uri);
             const blob = await response.blob();
-
             const filename = `uploads/${Date.now()}_${Math.floor(Math.random() * 10000)}.jpg`;
             const storageRef = ref(storage, filename);
-
-            await uploadBytes(storageRef, blob, {
-                contentType: 'image/jpeg',
-            });
-
+            await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
             return await getDownloadURL(storageRef);
         } catch (err) {
             console.error('🔥 업로드 실패:', err);
@@ -457,11 +467,9 @@ export default function TeamDetail() {
         }
     };
 
-    //수정함수
+    // ✅ 수정 함수
     const handleUpdateTeam = async () => {
         if (!team) return;
-
-        // 이미 버튼 클릭 시 모달 표시했으므로 여기서는 제거
 
         const currentCount = team.membersList?.length ?? 0;
         let newMax: number | null = null;
@@ -469,25 +477,20 @@ export default function TeamDetail() {
         if (!isUnlimited) {
             newMax = Number(editCapacity);
             if (isNaN(newMax) || newMax < currentCount) {
-                Alert.alert(
-                    '유효하지 않은 최대 인원',
-                    `현재 모임 인원(${currentCount}명)보다 작을 수 없습니다.`
-                );
+                Alert.alert('유효하지 않은 최대 인원', `현재 모임 인원(${currentCount}명)보다 작을 수 없습니다.`);
                 return;
             }
         } else {
-            newMax = -1; // 무제한은 -1로 저장
+            newMax = -1;
         }
 
-        const downloadUrls: string[] = [];
-
         try {
-            // 로그 추가
             console.log('모임 수정 시작. isClosed 상태:', isClosed);
 
-            for (const image of imageURLs) {
-                const downloadUrl = await uploadImageToFirebase(image.uri);
-                downloadUrls.push(downloadUrl);
+            let newThumbnailUrl = team.thumbnail;
+            if (imageURLs.length > 0 && imageURLs[0]?.uri) {
+                // 기존 이미지 삭제 후 업로드
+                newThumbnailUrl = await uploadImageToFirebase(imageURLs[0].uri, team.thumbnail);
             }
 
             const updateData: any = {
@@ -497,46 +500,31 @@ export default function TeamDetail() {
                 announcement,
                 scheduleDate,
                 openContact,
-                category: category,
-                isClosed: isClosed // 명시적으로 값 지정
+                category,
+                isClosed,
+                thumbnail: newThumbnailUrl
             };
 
-            // 조건부 필드 추가
             if (category === '✨ 반짝소모임') {
                 updateData.expirationDate = new Date(expirationDate);
             }
-
-            if (downloadUrls.length > 0) {
-                updateData.thumbnail = downloadUrls[0];
-            }
-
-            console.log('업데이트할 데이터:', updateData);
 
             const teamRef = doc(db, 'teams', team.id);
             await updateDoc(teamRef, updateData);
 
             setTeam(prev => prev && {
                 ...prev,
-                name: editName,
-                description: editDescription,
-                maxMembers: newMax,
-                openContact: openContact,
-                announcement,
-                scheduleDate: scheduleDate ?? undefined,
-                category: category,
-                isClosed: isClosed, // 중요: 상태 직접 추가
+                ...updateData
             });
 
-            // 로딩 애니메이션을 충분히 보여준 후 완료 메시지 표시
             setTimeout(() => {
                 Toast.show('✅ 수정 완료', { duration: 1500 });
-                fetchTeam(); // 팀 정보 다시 로드
+                fetchTeam();
                 setTimeout(() => {
-                    setUpdateLoading(false); // 데이터 로드 후 로딩 상태 종료
+                    setUpdateLoading(false);
                 }, 500);
             }, 1500);
 
-            // ✅ 반짝소모임이면 푸시 알림 발송
             if (editCategory === '✨ 반짝소모임') {
                 const snapshot = await getDocs(collection(db, 'users'));
                 const sentTokens = new Set<string>();
@@ -557,7 +545,7 @@ export default function TeamDetail() {
                                 sendPushNotification({
                                     to: token,
                                     title: '✨ 반짝소모임 업데이트!',
-                                    body: `반짝소모임${editName}에 지금 참여해보세요!`,
+                                    body: `반짝소모임 ${editName}에 지금 참여해보세요!`,
                                 })
                             );
                         }
@@ -571,9 +559,8 @@ export default function TeamDetail() {
         } catch (e) {
             console.error('❌ 모임 정보 수정 실패:', e);
             Alert.alert('에러', '모임 수정 중 문제가 발생했습니다.');
-            setUpdateLoading(false); // 에러 발생 시 즉시 모달 닫기
+            setUpdateLoading(false);
         } finally {
-            // 성공 시에는 일정 시간 후 닫기 (성공 메시지와 함께)
             if (updateLoading) {
                 setTimeout(() => {
                     setUpdateLoading(false);

@@ -25,7 +25,7 @@ import {ImagePickerAsset} from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import {getDownloadURL, ref, uploadBytes} from "firebase/storage";
 import {Calendar} from "react-native-calendars";
-import LottieView from "lottie-react-native";
+// import LottieView from "lottie-react-native";
 import loading1 from "@/assets/lottie/Animation - 1747201461030.json";
 import loading2 from "@/assets/lottie/Animation - 1747201431992.json";
 import loading3 from "@/assets/lottie/Animation - 1747201413764.json";
