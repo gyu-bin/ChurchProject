@@ -33,6 +33,9 @@ export default {
         },
         plugins: [
             'expo-router',
+            'expo-web-browser',
+            'expo-linear-gradient',
+            'expo-notifications',
             [
                 'expo-splash-screen',
                 {
