@@ -11,7 +11,7 @@ export default {
         scheme: 'churchappexpo',
         icon: './assets/images/icon.png',
         userInterfaceStyle: 'automatic',
-        newArchEnabled: false, // ✅ 안정 버전은 비활성화
+        // newArchEnabled: false,
         ios: {
             supportsTablet: true,
             bundleIdentifier: 'com.rbqls6651.churchappexpo',

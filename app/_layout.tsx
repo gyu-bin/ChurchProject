@@ -180,7 +180,7 @@ export default function RootLayout() {
         };
     }, []);
 
-    return (
+    return isAppReady ? (
         <Provider store={store}>
             <GestureHandlerRootView style={{ flex: 1 }}>
                 <RootSiblingParent>
@@ -194,5 +194,5 @@ export default function RootLayout() {
                 </RootSiblingParent>
             </GestureHandlerRootView>
         </Provider>
-    );
+    ) : null;
 }

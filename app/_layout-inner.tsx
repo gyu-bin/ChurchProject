@@ -37,7 +37,7 @@ export default function RootLayoutInner() {
   }
 
   //로그인 안될시 intro화면으로
-  if (!user && pathname !== '/intro' && !pathname.startsWith('/auth')) {
+  if (!user && !pathname.startsWith('/intro') && !pathname.startsWith('/auth')) {
     return <Redirect href="/intro" />;
   }
 
@@ -45,16 +45,6 @@ export default function RootLayoutInner() {
   if (user && pathname.startsWith('/auth')) {
     return <Redirect href="/(tabs)/home" />;
   }
-
-  // 로딩 중이면 로딩 화면
-  if (!fontsLoaded || loading) {
-    return (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#2563eb" />
-        </View>
-    );
-  }
-
   return (
       <ThemeProvider value={mode === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack>

@@ -100,7 +100,7 @@ export default function TabLayout({children}:any) {
                                 borderRadius: 32,
                                 justifyContent: 'center',
                                 alignItems: 'center',
-                                marginBottom: 24,
+                                // marginBottom: 24,
 
                                     // ✅ 배경: 밝은 하늘색 + 입체감
                                     backgroundColor: '#3b82f6', // Tailwind blue-500
@@ -117,7 +117,7 @@ export default function TabLayout({children}:any) {
                                 borderColor: '#93c5fd', // 밝은 blue-300 엣지
                             }}
                         >
-                            <Ionicons name="home" size={30} color="#ffffff" />
+                            <Ionicons name="home" size={35} color="#ffffff" />
                         </View>
                     ),
                 }}
