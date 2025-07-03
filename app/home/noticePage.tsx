@@ -25,50 +25,20 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 export default function HomeNotices() {
     const { colors, spacing, font, radius } = useDesign();
     const [notices, setNotices] = useState<any[]>([]);
-    const [events, setEvents] = useState<any[]>([]);
-
-    const [showCalendarModal, setShowCalendarModal] = useState(false);
 
     useEffect(() => {
         const noticeQ = query(collection(db, 'notice'), where('type', '==', 'notice'));
-        const eventQ = query(collection(db, 'notice'), where('type', '==', 'event'));
 
         const unsubNotice = onSnapshot(noticeQ, (snapshot) => {
             const noticeList = snapshot.docs.map((doc) => ({
                 id: doc.id,
                 ...(doc.data() as Omit<Notice, 'id'>),
             }));
-            setNotices(noticeList.slice(0, 2)); // 공지사항 2개
-        });
-
-        const unsubEvent = onSnapshot(eventQ, (snapshot) => {
-            const allEvents = snapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...(doc.data() as Omit<Notice, 'id'>),
-            }));
-
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            const upcomingEvents = allEvents
-                .filter((event) => {
-                    const eventDate = new Date(event.startDate?.seconds * 1000);
-                    eventDate.setHours(0, 0, 0, 0);
-                    return eventDate >= today;
-                })
-                .sort((a, b) => {
-                    const dateA = new Date(a.startDate?.seconds * 1000);
-                    const dateB = new Date(b.startDate?.seconds * 1000);
-                    return dateA.getTime() - dateB.getTime();
-                })
-                .slice(0, 2);
-
-            setEvents(upcomingEvents);
+            setNotices(noticeList.slice(0, 5)); // 공지사항 2개
         });
 
         return () => {
             unsubNotice();
-            unsubEvent();
         };
     }, []);
 
@@ -87,7 +57,6 @@ export default function HomeNotices() {
                     shadowOffset: { width: 0, height: 1 },
                     shadowRadius: 4,
                     elevation: 5,
-                    width: SCREEN_WIDTH * 0.7,
                 }}
             >
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
@@ -107,8 +76,16 @@ export default function HomeNotices() {
                         {item.date?.seconds ? new Date(item.date.seconds * 1000).toLocaleDateString('ko-KR') : ''}
                     </Text>
                 </View>
-                <Text style={{ fontSize: 15, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>{item.title}</Text>
-                <Text style={{ fontSize: 14, color: colors.subtext }}>{item.content}</Text>
+                <Text style={{ fontSize: 15, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>
+                    {item.title}
+                </Text>
+                <Text
+                    style={{ fontSize: 14, color: colors.subtext }}
+                    numberOfLines={4} // ✅ 최대 4줄 표시
+                    ellipsizeMode="tail" // ✅ 말줄임표 처리
+                >
+                    {item.content}
+                </Text>
             </View>
         );
     };

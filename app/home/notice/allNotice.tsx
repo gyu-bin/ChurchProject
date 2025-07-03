@@ -198,42 +198,86 @@ export default function NoticePage() {
             )}
 
             {/* ✅ 공지사항 추가 모달 */}
-            <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => setModalVisible(false)}>
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.3)' }}>
-                    <View style={{ backgroundColor: '#fff', width: '85%', borderRadius: 16, padding: 20, elevation: 10 }}>
-                        <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>공지사항 추가</Text>
+            <Modal
+                visible={modalVisible}
+                animationType="slide"
+                transparent
+                onRequestClose={() => setModalVisible(false)}
+            >
+                <View
+                    style={{
+                        flex: 1,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        backgroundColor: 'rgba(0,0,0,0.3)',
+                    }}
+                >
+                    <View
+                        style={{
+                            backgroundColor: '#fff',
+                            width: '90%',
+                            borderRadius: 16,
+                            padding: 20,
+                            elevation: 10,
+                            maxHeight: '80%', // 📌 모달 최대 높이 지정
+                        }}
+                    >
+                        <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>
+                            공지사항 추가
+                        </Text>
 
-                        <TextInput
-                            placeholder="제목"
-                            value={title}
-                            onChangeText={setTitle}
+                        {/* 입력 영역 스크롤 */}
+                        <ScrollView
+                            style={{ flexGrow: 0 }} // ✅ 여기 중요: 스크롤뷰가 전체 채우지 않게
+                            contentContainerStyle={{ paddingBottom: 16 }}
+                            showsVerticalScrollIndicator={false}
+                        >
+                            <TextInput
+                                placeholder="제목"
+                                value={title}
+                                onChangeText={setTitle}
+                                placeholderTextColor={colors.placeholder}
+                                style={{
+                                    borderColor: '#ccc',
+                                    borderWidth: 1,
+                                    borderRadius: 8,
+                                    padding: 10,
+                                    marginBottom: 10,
+                                    backgroundColor: colors.background
+                                }}
+                            />
+
+                            <TextInput
+                                placeholder="내용"
+                                placeholderTextColor={colors.placeholder}
+                                value={content}
+                                onChangeText={setContent}
+                                multiline
+                                style={{
+                                    borderColor: '#ccc',
+                                    borderWidth: 1,
+                                    borderRadius: 8,
+                                    padding: 10,
+                                    minHeight: 150,
+                                    maxHeight: 300, // ✨ 입력창 크기 제한
+                                    textAlignVertical: 'top',
+                                    backgroundColor: colors.background
+                                }}
+                            />
+                        </ScrollView>
+
+                        {/* 버튼 */}
+                        <View
                             style={{
-                                borderColor: '#ccc',
-                                borderWidth: 1,
-                                borderRadius: 8,
-                                padding: 10,
-                                marginBottom: 10,
+                                flexDirection: 'row',
+                                justifyContent: 'flex-end',
+                                marginTop: 12,
                             }}
-                        />
-
-                        <TextInput
-                            placeholder="내용"
-                            value={content}
-                            onChangeText={setContent}
-                            multiline
-                            style={{
-                                borderColor: '#ccc',
-                                borderWidth: 1,
-                                borderRadius: 8,
-                                padding: 10,
-                                minHeight: 100,
-                                textAlignVertical: 'top',
-                                marginBottom: 16,
-                            }}
-                        />
-
-                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
-                            <TouchableOpacity onPress={() => setModalVisible(false)} style={{ marginRight: 12 }}>
+                        >
+                            <TouchableOpacity
+                                onPress={() => setModalVisible(false)}
+                                style={{ marginRight: 12 }}
+                            >
                                 <Text style={{ color: '#888' }}>취소</Text>
                             </TouchableOpacity>
                             <TouchableOpacity onPress={handleAddNotice}>

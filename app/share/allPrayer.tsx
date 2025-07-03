@@ -28,6 +28,7 @@ interface PrayerItem {
     toDate?: () => Date;
   };
   anonymous?: 'Y' | 'N';
+  urgent?: 'Y' | 'N';
 }
 
 export default function PrayerListScreen() {
@@ -158,76 +159,95 @@ export default function PrayerListScreen() {
             tintColor={theme.colors.primary}
           />
         }
-        renderItem={({ item }) => (
-          <View
-            style={{
-              backgroundColor: theme.colors.surface,
-              borderRadius: 16,
-              paddingVertical: 20,
-              paddingHorizontal: 24,
-              marginBottom: 20,
-              width: screenWidth > 600 ? 500 : screenWidth * 0.9,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 3 },
-              shadowOpacity: 0.1,
-              shadowRadius: 6,
-              elevation: 4,
-              alignSelf: 'center',
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 17,
-                fontWeight: '600',
-                color: theme.colors.primary,
-                marginBottom: 8,
-              }}
-            >
-              🙏 {item.title}
-            </Text>
+        renderItem={({ item }) => {
+            const isUrgent = item.urgent === 'Y';
 
-            <Text
-              style={{
-                fontSize: 15,
-                color: theme.colors.text,
-                marginBottom: 10,
-                lineHeight: 22,
-              }}
-            >
-              {item.content}
-            </Text>
+            return (
+                <View
+                    style={{
+                        backgroundColor: isUrgent ? '#FEF2F2' : theme.colors.surface,
+                        borderRadius: 16,
+                        paddingVertical: 20,
+                        paddingHorizontal: 24,
+                        marginBottom: 20,
+                        width: screenWidth > 600 ? 500 : screenWidth * 0.9,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 3 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 6,
+                        elevation: 4,
+                        alignSelf: 'center',
+                        borderWidth: isUrgent ? 1.5 : 0,
+                        borderColor: isUrgent ? '#DC2626' : 'transparent',
+                    }}
+                >
+                    {isUrgent && (
+                        <Text
+                            style={{
+                                color: '#DC2626',
+                                fontSize: 13,
+                                fontWeight: 'bold',
+                                marginBottom: 4,
+                            }}
+                        >
+                            🔥 긴급 기도제목
+                        </Text>
+                    )}
 
-            <Text
-              style={{
-                fontSize: 13,
-                color: theme.colors.subtext,
-                textAlign: 'right',
-              }}
-            >
-                - {item.anonymous === 'Y' ? '익명' : item.name}
-            </Text>
+                    <Text
+                        style={{
+                            fontSize: 17,
+                            fontWeight: '600',
+                            color: isUrgent ? '#DC2626' : theme.colors.primary,
+                            marginBottom: 8,
+                        }}
+                    >
+                        {isUrgent ? `🔥 ${item.title}` : `🙏 ${item.title}`}
+                    </Text>
 
-            {currentUser.email === item.email && (
-              <TouchableOpacity
-                onPress={() => handleDelete(item.id)}
-                style={{
-                  marginTop: 16,
-                  backgroundColor: '#EF4444',
-                  paddingVertical: 10,
-                  borderRadius: 999,
-                  alignItems: 'center',
-                  shadowColor: '#000',
-                  shadowOpacity: 0.1,
-                  shadowRadius: 3,
-                }}
-              >
-                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>
-                  삭제
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
+                    <Text
+                        style={{
+                            fontSize: 15,
+                            color: theme.colors.text,
+                            marginBottom: 10,
+                            lineHeight: 22,
+                        }}
+                    >
+                        {item.content}
+                    </Text>
+
+                    <Text
+                        style={{
+                            fontSize: 13,
+                            color: theme.colors.subtext,
+                            textAlign: 'right',
+                        }}
+                    >
+                        - {item.anonymous === 'Y' ? '익명' : item.name}
+                    </Text>
+
+                    {currentUser.email === item.email && (
+                        <TouchableOpacity
+                            onPress={() => handleDelete(item.id)}
+                            style={{
+                                marginTop: 16,
+                                backgroundColor: '#EF4444',
+                                paddingVertical: 10,
+                                borderRadius: 999,
+                                alignItems: 'center',
+                                shadowColor: '#000',
+                                shadowOpacity: 0.1,
+                                shadowRadius: 3,
+                            }}
+                        >
+                            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>
+                                삭제
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+            );
+        }}
       />
     </SafeAreaView>
   );

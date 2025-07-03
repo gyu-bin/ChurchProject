@@ -474,12 +474,15 @@ export default function DevotionPage() {
                                 value={content}
                                 onChangeText={setContent}
                                 multiline
+                                scrollEnabled={true} // ✅ 내부 스크롤 활성화
+                                textAlignVertical="top" // ✅ 내용 위에서부터 시작
                                 style={{
                                     borderColor: colors.border,
                                     borderWidth: 1,
                                     borderRadius: radius.md,
                                     padding: spacing.md,
                                     minHeight: 150,
+                                    maxHeight: 400, // ✅ 최대 높이 제한
                                     color: colors.text,
                                     marginBottom: spacing.md,
                                 }}

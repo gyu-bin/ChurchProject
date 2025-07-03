@@ -420,8 +420,8 @@ export default function HomeScreen() {
                             },
                             {
                                 icon: <Text style={{ fontSize: 30 }}>📰</Text>,
-                                label: '시광 뉴스',
-                                action: () => router.push('../home/QuickMenuButton/churchNewsPage'),
+                                label: '주보',
+                                action: () => router.push('../home/QuickMenuButton/BulletinListPage'),
                             },
                             {
                                 icon: <Text style={{ fontSize: 30 }}>📖</Text>,
