@@ -1,11 +1,12 @@
 import { useDesign } from '@/context/DesignSystem';
 import { useAppTheme } from '@/context/ThemeContext';
 import { db } from '@/firebase/config';
+import { setScrollCallback } from "@/utils/scrollRefManager";
 import { showToast } from "@/utils/toast";
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { addDoc, collection, deleteDoc, doc, getDocs, query, where } from 'firebase/firestore';
+import { addDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     Alert,
@@ -55,6 +56,14 @@ export default function NanumPage() {
     const [initialIndex, setInitialIndex] = useState<number | null>(null);
     const [listKey, setListKey] = useState(Date.now());
     const flatListRef = useRef<FlatList>(null);
+    const mainListRef = useRef<FlatList>(null);
+
+    useEffect(() => {
+        setScrollCallback('nanum', () => {
+            mainListRef.current?.scrollToOffset({ offset: 0, animated: true });
+        });
+    }, []);
+
 
     useEffect(() => {
         const loadUser = async () => {
@@ -120,6 +129,7 @@ export default function NanumPage() {
             setCurrentIndex(1);
         } else {
             setCurrentIndex(index);
+            scrollToIndex(index, true);
         }
     };
     const goToNext = () => scrollToIndex(currentIndex + 1);
@@ -187,7 +197,7 @@ export default function NanumPage() {
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
-            <FlatList
+            <FlatList ref={mainListRef}
                 ListHeaderComponent={(
                     <View style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
                         <Text style={{ fontSize: 28, fontWeight: '700', color: '#2563eb', marginBottom: 24 }}>나눔</Text>

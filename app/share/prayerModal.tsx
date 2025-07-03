@@ -46,7 +46,7 @@ export default function PrayerSubmitPage() {
         loadUser();
     }, []);
 
-    /*const sendUrgentPrayerNotification = async () => {
+    const sendUrgentPrayerNotification = async () => {
         try {
             const snapshot = await getDocs(collection(db, 'users'));
             const sentTokens = new Set<string>();
@@ -79,7 +79,7 @@ export default function PrayerSubmitPage() {
         } catch (err) {
             console.error('❌ 긴급 기도제목 푸시 전송 실패:', err);
         }
-    };*/
+    };
 
     const handleSubmit = async () => {
         if (!title.trim() || !content.trim()) return;
@@ -95,10 +95,9 @@ export default function PrayerSubmitPage() {
                 urgent: isUrgent ? 'Y' : 'N',
             });
 
-            // 긴급일 경우 알림 전송 로직 (추후 구현 필요)
-           /* if (isUrgent) {
+            if (isUrgent) {
                 await sendUrgentPrayerNotification();
-            }*/
+            }
 
             Toast.show('✅ 제출되었습니다')
             router.back();

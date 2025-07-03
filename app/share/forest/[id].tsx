@@ -60,7 +60,7 @@ export default function ForestDetail() {
                         <Ionicons name="chevron-back" size={24} color={colors.text} />
                     </TouchableOpacity>
                     <Text style={{ fontSize: font.heading, fontWeight: 'bold', marginLeft: spacing.md, color: colors.text }}>
-                        대나무숲
+                        {post ? post.title : "로딩 중..."}
                     </Text>
                 </View>
 
@@ -71,6 +71,7 @@ export default function ForestDetail() {
                         <Text style={{ fontSize: 13, color: colors.subtext, marginBottom: 8 }}>
                             {formatDate(post.createdAt)}
                         </Text>
+                        <Text style={{ fontSize: 24, color: colors.text }}>{post.title}</Text>
                         <Text style={{ fontSize: 16, color: colors.text }}>{post.content}</Text>
                     </View>
                 )}

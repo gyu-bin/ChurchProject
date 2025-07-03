@@ -1,7 +1,7 @@
-import { useDesign } from '@/context/DesignSystem';
 import sgData from '@/assets/catechism/catechism.json';
 import largerData from '@/assets/catechism/largerCatechism.json';
 import shorterData from '@/assets/catechism/shorterCatechism.json';
+import { useDesign } from '@/context/DesignSystem';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';

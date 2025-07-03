@@ -1,70 +1,32 @@
+import React, { useRef, useState } from 'react';
+import { Dimensions, Text, TouchableOpacity, View } from 'react-native';
+import Carousel from 'react-native-reanimated-carousel';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useRef, useState } from 'react';
-import { Dimensions, FlatList, ImageBackground, Text, TouchableOpacity, View } from 'react-native';
+import { Image } from 'expo-image';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ko';
-import weekday from 'dayjs/plugin/weekday';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
-import {font} from "@/context/DesignSystem";
-import { Image } from 'expo-image';
-const SCREEN_WIDTH = Dimensions.get('window').width;
+import weekday from 'dayjs/plugin/weekday';
+import AnimatedDotsCarousel from 'react-native-animated-dots-carousel';
 
 dayjs.extend(weekday);
 dayjs.extend(localizedFormat);
 dayjs.locale('ko');
 
+const SCREEN_WIDTH = Dimensions.get('window').width;
+// const SCREEN_HEIGHT = SCREEN_WIDTH * 0.6; // 높이 비율 조정
+
 export default function EventBannerCarousel({ events = [], goToEvent, theme }: any) {
-  const flatListRef = useRef<FlatList>(null);
-  const [data, setData] = useState<any[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(1); // dummy 앞뒤
-
-  useEffect(() => {
-    if (!events || events.length === 0) return;
-
-    if (events.length === 1) {
-      setData(events);
-      setCurrentIndex(0);
-    } else {
-      const extended = [
-        { ...events[events.length - 1], id: 'dummy-left' },
-        ...events,
-        { ...events[0], id: 'dummy-right' },
-      ];
-      setData(extended);
-      setCurrentIndex(1);
-
-      setTimeout(() => {
-        flatListRef.current?.scrollToIndex({ index: 1, animated: false });
-      }, 10);
-    }
-  }, [events]);
-
-  const scrollToIndex = (index: number, animated = true) => {
-    if (index < 0 || index >= data.length) return;
-    flatListRef.current?.scrollToIndex({ index, animated });
-    setCurrentIndex(index);
-  };
-
-  const handleScrollEnd = (e: any) => {
-    const contentOffset = e.nativeEvent.contentOffset.x;
-    const index = Math.round(contentOffset / SCREEN_WIDTH);
-
-    if (index === 0) {
-      scrollToIndex(data.length - 2, false); // 오른쪽 끝에서 첫 아이템
-    } else if (index === data.length - 1) {
-      scrollToIndex(1, false); // 왼쪽 끝에서 첫 아이템
-    } else {
-      setCurrentIndex(index);
-    }
-  };
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const carouselRef = useRef<any>(null);
 
   const formattedDateTime = (
-      startDate: any, // Timestamp 또는 string
+      startDate: any,
       startTime: string,
       location: string
   ) => {
     const date = dayjs(startDate?.toDate ? startDate.toDate() : startDate);
-    if (!date.isValid()) return ''; // 혹시라도 아직 값이 안 들어온 경우
+    if (!date.isValid()) return '';
 
     const month = date.month() + 1;
     const day = date.date();
@@ -73,220 +35,230 @@ export default function EventBannerCarousel({ events = [], goToEvent, theme }: a
     return `${month}월 ${day}일(${dayOfWeek}) ${startTime}, ${location}`;
   };
 
-  const renderItem = ({ item }: any) => (
-      <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={() => goToEvent(item.id)}
-          style={{ width: SCREEN_WIDTH }}
-      >
-        {item.bannerImage ? (
-            <View
-                style={{
-                  backgroundColor: '#CCB08A',
-                  borderRadius: 16,
-                  paddingVertical: 24,
-                  paddingHorizontal: 20,
-                  alignItems: 'center',
-                  width: SCREEN_WIDTH * 0.93,
-                  height: 400
-                }}
-            >
-              {/* 배너 이미지 */}
-              <Image
-                  source={{ uri: item.bannerImage }}
-                  style={{
-                    marginTop: 20,
-                    width: SCREEN_WIDTH * 0.5,
-                    height: 250,
-                    borderRadius: 8,
-                    marginBottom: 16,
-                    overflow: 'hidden',
-                  }}
-                  contentFit="cover"
-                  cachePolicy="disk"
-              />
+    const renderItem = ({ item }: any) => (
+        <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => goToEvent(item.id)}
+            style={{ width: SCREEN_WIDTH }}
+        >
+            {item.bannerImage ? (
+                <View
+                    style={{
+                        backgroundColor: '#CCB08A',
+                        borderRadius: 16,
+                        paddingVertical: 24,
+                        paddingHorizontal: 20,
+                        alignItems: 'center',
+                        width: SCREEN_WIDTH * 0.93,
+                        height: 400
+                    }}
+                >
+                    {/* 배너 이미지 */}
+                    <Image
+                        source={{ uri: item.bannerImage }}
+                        style={{
+                            marginTop: 20,
+                            width: SCREEN_WIDTH * 0.5,
+                            height: 250,
+                            borderRadius: 8,
+                            marginBottom: 16,
+                            overflow: 'hidden',
+                        }}
+                        contentFit="cover"
+                        cachePolicy="disk"
+                    />
 
-              {/* 제목 */}
-              <Text
-                  style={{
-                    fontSize: 30,
-                    fontWeight: 'bold',
-                    color: '#fff',
-                    textAlign: 'center',
-                    marginBottom: 6,
-                  }}
-              >
-                {item.title}
-              </Text>
+                    {/* 제목 */}
+                    <Text
+                        style={{
+                            fontSize: 30,
+                            fontWeight: 'bold',
+                            color: '#fff',
+                            textAlign: 'center',
+                            marginBottom: 6,
+                        }}
+                    >
+                        {item.title}
+                    </Text>
 
-              {/* 날짜 + 시간 + 장소 */}
-              <Text
-                  style={{
-                    fontSize: 20,
-                    color: '#f0f0f0',
-                    textAlign: 'center',
-                  }}
-              >
-                {formattedDateTime(item.startDate, item.startTime, item.location)}
-              </Text>
-            </View>
+                    {/* 날짜 + 시간 + 장소 */}
+                    <Text
+                        style={{
+                            fontSize: 20,
+                            color: '#f0f0f0',
+                            textAlign: 'center',
+                        }}
+                    >
+                        {formattedDateTime(item.startDate, item.startTime, item.location)}
+                    </Text>
+                </View>
 
-        ) : (
-            <View
-                style={{
-                  width: SCREEN_WIDTH,
-                  backgroundColor: theme.colors.card,
-                  padding: 24,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  borderBottomWidth: 1,
-                  borderColor: theme.colors.border,
-                }}
-            >
-              <Text
-                  style={{
-                    fontSize: 24,
-                    fontWeight: 'bold',
-                    color: theme.colors.text,
-                    marginBottom: 10,
-                  }}
-              >
-                {item.title}
-              </Text>
-              <Text
-                  style={{
-                    fontSize: 18,
-                    fontWeight: 'bold',
-                    color: theme.colors.text,
-                    marginBottom: 10,
-                  }}
-              >
-               {item.content}
-              </Text>
-              <View
-                  style={{
-                    alignSelf: 'center',
-                    backgroundColor: theme.colors.primary,
-                    borderRadius: 8,
-                    paddingHorizontal: 16,
-                    paddingVertical: 7,
-                  }}
-              >
-                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15 }}>
-                  자세히 보기
-                </Text>
-              </View>
-            </View>
-        )}
-      </TouchableOpacity>
-  );
-
-  const realLength = events.length;
-  const visibleIndex = realLength === 1 ? 1 : Math.min(Math.max(currentIndex, 1), realLength);
+            ) : (
+                <View
+                    style={{
+                        width: SCREEN_WIDTH,
+                        backgroundColor: theme.colors.card,
+                        padding: 24,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        borderBottomWidth: 1,
+                        borderColor: theme.colors.border,
+                    }}
+                >
+                    <Text
+                        style={{
+                            fontSize: 24,
+                            fontWeight: 'bold',
+                            color: theme.colors.text,
+                            marginBottom: 10,
+                        }}
+                    >
+                        {item.title}
+                    </Text>
+                    <Text
+                        style={{
+                            fontSize: 18,
+                            fontWeight: 'bold',
+                            color: theme.colors.text,
+                            marginBottom: 10,
+                        }}
+                    >
+                        {item.content}
+                    </Text>
+                    <View
+                        style={{
+                            alignSelf: 'center',
+                            backgroundColor: theme.colors.primary,
+                            borderRadius: 8,
+                            paddingHorizontal: 16,
+                            paddingVertical: 7,
+                        }}
+                    >
+                        <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 15 }}>
+                            자세히 보기
+                        </Text>
+                    </View>
+                </View>
+            )}
+        </TouchableOpacity>
+    );
 
   return (
-    <View>
-      <View style={{ position: 'relative' }}>
-
-        {realLength > 1 && (
+      <View>
+        {/* 상단 페이지 인디케이터 */}
+        {events.length > 1 && (
             <View
                 style={{
                   position: 'absolute',
                   top: 15,
-                  right: 10,
+                  right: 15,
                   backgroundColor: 'rgba(0,0,0,0.5)',
-                  borderRadius: 20,
-                  paddingHorizontal: 12,
+                  borderRadius: 12,
+                  paddingHorizontal: 10,
                   paddingVertical: 4,
                   zIndex: 999,
                 }}
             >
               <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>
-                {visibleIndex} / {realLength}
+                {currentIndex + 1} / {events.length}
               </Text>
             </View>
         )}
 
-        <FlatList
-          ref={flatListRef}
-          data={data}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          snapToInterval={SCREEN_WIDTH}
-          decelerationRate="fast"
-          keyExtractor={(item, index) => item.id ?? `event-${index}`}
-          onMomentumScrollEnd={handleScrollEnd}
-          getItemLayout={(_, index) => ({
-            length: SCREEN_WIDTH,
-            offset: SCREEN_WIDTH * index,
-            index
-          })}
-          initialScrollIndex={events.length === 1 ? 0 : 1}
-          renderItem={renderItem}
+        {/* Carousel */}
+        <Carousel
+            ref={carouselRef}
+            loop
+            width={SCREEN_WIDTH}
+            height={400}
+            data={events}
+            autoPlay={false}
+            scrollAnimationDuration={800} // ✅ 부드러운 전환
+            onSnapToItem={(index) => setCurrentIndex(index)}
+            renderItem={renderItem}
+            // mode="normal"
         />
 
+        {/* 좌우 버튼 */}
+        {events.length > 1 && (
+            <>
+              <TouchableOpacity
+                  onPress={() => carouselRef.current?.prev()}
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: 15,
+                    transform: [{ translateY: -20 }],
+                    backgroundColor: 'rgba(0,0,0,0.4)',
+                    borderRadius: 30,
+                    padding: 10,
+                    zIndex: 999,
+                  }}
+              >
+                <Ionicons name="chevron-back" size={24} color="#fff" />
+              </TouchableOpacity>
 
-  {events.length > 1 && (
-        <TouchableOpacity
-          onPress={() => {
-          const nextIndex = currentIndex - 1;
-          if (nextIndex >= 0) {
-          scrollToIndex(nextIndex);
-      }
-      }}
-        style={{
-          position: 'absolute',
-          top: '45%',
-          left: 8,
-          backgroundColor: 'rgba(0,0,0,0.4)',
-          padding: 6,
-          borderRadius: 20,
-          zIndex: 10
-        }}>
-          <Ionicons name="chevron-back" size={16} color="#fff" />
-        </TouchableOpacity>
-)}
-  {events.length > 1 && (
-        <TouchableOpacity
-         onPress={() => {
-        const nextIndex = currentIndex + 1;
-        if (nextIndex < data.length) {
-        scrollToIndex(nextIndex);
-      }
-    }}
-        style={{
-          position: 'absolute',
-          top: '45%',
-          right: 8,
-          backgroundColor: 'rgba(0,0,0,0.4)',
-          padding: 6,
-          borderRadius: 20,
-          zIndex: 10
-        }}>
-          <Ionicons name="chevron-forward" size={16} color="#fff" />
-        </TouchableOpacity>
-      )}
-    </View>
+              <TouchableOpacity
+                  onPress={() => carouselRef.current?.next()}
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    right: 15,
+                    transform: [{ translateY: -20 }],
+                    backgroundColor: 'rgba(0,0,0,0.4)',
+                    borderRadius: 30,
+                    padding: 10,
+                    zIndex: 999,
+                  }}
+              >
+                <Ionicons name="chevron-forward" size={24} color="#fff" />
+              </TouchableOpacity>
+            </>
+        )}
 
-      {events.length > 1 && (
-        <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 8 }}>
-          {events.map((_:any, i:any) => (
-            <View
-              key={i}
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                marginHorizontal: 4,
-                backgroundColor: (i === currentIndex - 1)
-                  ? theme.colors.primary
-                  : theme.colors.border
-              }}
-            />
-          ))}
-        </View>
-      )}
-    </View>
+        {/* 도트 페이지 인디케이터 */}
+        {events.length > 1 && (
+            <View style={{ alignItems: 'center', marginTop: 10 }}>
+              <AnimatedDotsCarousel
+                  length={events.length}
+                  currentIndex={currentIndex}
+                  maxIndicators={5}
+                  interpolateOpacityAndColor
+                  activeIndicatorConfig={{
+                    color: theme.colors.primary,
+                    margin: 3,
+                    opacity: 1,
+                    size: 10,
+                  }}
+                  inactiveIndicatorConfig={{
+                    color: theme.colors.border,
+                    margin: 3,
+                    opacity: 0.5,
+                    size: 8,
+                  }}
+                  decreasingDots={[
+                      {
+                          quantity: 1, // ✅ 추가
+                          config: {
+                              size: 8,
+                              opacity: 0.7,
+                              color: theme.colors.border,
+                              margin: 3,
+                          },
+                      },
+                      {
+                          quantity: 1, // ✅ 추가
+                          config: {
+                              size: 6,
+                              opacity: 0.5,
+                              color: theme.colors.border,
+                              margin: 3,
+                          },
+                      },
+                  ]}
+              />
+            </View>
+        )}
+      </View>
   );
 }

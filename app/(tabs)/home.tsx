@@ -206,11 +206,7 @@ export default function HomeScreen() {
     const [notifications, setNotifications] = useState<any[]>([]);
     const [currentUser, setCurrentUser] = useState<any>(null);
     const flatListRef = useRef<FlatList>(null);
-    const [currentIndex, setCurrentIndex] = useState(1); // 첫 번째 실 데이터 인덱스
-    const [initialIndex, setInitialIndex] = useState<number | null>(null);
-    const [listKey, setListKey] = useState(Date.now());
     const dispatch = useAppDispatch();
-
 
     const mainListRef = useRef<FlatList>(null);
     const [quickModal, setQuickModal] = useState<null | 'verse' | 'calendar' | 'catechism' | 'ai'>(null);
