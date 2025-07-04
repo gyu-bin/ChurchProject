@@ -2,13 +2,15 @@ import { useDesign } from "@/context/DesignSystem";
 import { db } from '@/firebase/config';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import {View, Text, TouchableOpacity, useColorScheme} from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import dayjs from "dayjs";
 
 export default function TodayBibleList() {
     const { colors, spacing, font } = useDesign();
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
     const [todayDevotions, setTodayDevotions] = useState<any[]>([]);
     const [todayGratitudes, setTodayGratitudes] = useState<any[]>([]);
 
@@ -67,7 +69,7 @@ export default function TodayBibleList() {
                     alignItems: 'center',
                     marginBottom: spacing.sm,
                 }}>
-                    <Text style={{ fontSize: font.title, fontWeight: 'bold', color: colors.text }}>오늘의 나눔</Text>
+                    <Text style={{ fontSize: font.title, fontWeight: 'bold', color: colors.text }}>📖 오늘의 나눔</Text>
                     <Ionicons name="chevron-forward" size={20} color={colors.text} />
                 </View>
             </TouchableOpacity>
@@ -109,6 +111,16 @@ export default function TodayBibleList() {
                 </Text>
             )}
 
+            <View
+                style={{
+                    height: 0.5,
+                    backgroundColor: isDark
+                        ? 'rgba(255,255,255,0.1)' // 다크모드: 연한 화이트
+                        : 'rgba(0,0,0,0.1)',      // 라이트모드: 연한 블랙
+                    marginVertical: spacing.sm,
+                }}
+            />
+
             {/* 🙏 오늘의 감사나눔 */}
             <TouchableOpacity onPress={() => router.push('/share/thank')}>
                 <View style={{
@@ -118,7 +130,7 @@ export default function TodayBibleList() {
                     marginTop: spacing.lg,
                     marginBottom: spacing.sm,
                 }}>
-                    <Text style={{ fontSize: font.title, fontWeight: 'bold', color: colors.text }}>오늘의 감사나눔</Text>
+                    <Text style={{ fontSize: font.title, fontWeight: 'bold', color: colors.text }}>🙏 오늘의 감사나눔</Text>
                     <Ionicons name="chevron-forward" size={20} color={colors.text} />
                 </View>
             </TouchableOpacity>
@@ -142,7 +154,7 @@ export default function TodayBibleList() {
                                 marginBottom: spacing.xs,
                             }}
                         >
-                            {item.content?.slice(0, 40)}{item.content?.length > 40 ? '...' : ''}
+                            {item.content?.slice(0, 41)}{item.content?.length > 40 ? '...' : ''}
                         </Text>
                         <Text
                             style={{

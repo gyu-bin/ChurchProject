@@ -6,12 +6,13 @@ import {Dimensions, Platform, Text, TouchableOpacity, View} from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
 import FlexibleCarousel from "@/components/FlexibleCarousel";
 import {router} from "expo-router";
-
-const SCREEN_WIDTH = Dimensions.get('window').width;
-
+import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
+// const SCREEN_WIDTH = Dimensions.get('window').width;
 export default function ChurchNewsPage() {
     const { colors, spacing, font } = useDesign();
     const [news, setNews] = useState<any[]>([]);
+
+    const frame = useSafeAreaFrame();
 
     useEffect(() => {
         const newsQ = query(collection(db, 'church_news'));
@@ -55,10 +56,11 @@ export default function ChurchNewsPage() {
                     shadowOffset: { width: 0, height: 1 },
                     shadowRadius: 4,
                     elevation: 5,
-                    width: SCREEN_WIDTH * 0.7,
+                    width: frame.width * 0.7,
+                    // paddingLeft: 40
                 }}
             >
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6,  }}>
                     <Text style={{
                         backgroundColor: '#FFF3E0',
                         color: '#FB8C00',
@@ -89,14 +91,11 @@ export default function ChurchNewsPage() {
                             : ''}
                     </Text>
                 </View>
-                <Text style={{ fontSize: 15, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>
+                <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>
                     {item.title}
                 </Text>
-                <Text numberOfLines={2} style={{ fontSize: 14, color: colors.subtext }}>
+                <Text numberOfLines={3} style={{fontSize: 18, color: colors.subtext }}>
                     {item.content}
-                </Text>
-                <Text numberOfLines={2} style={{ fontSize: 14, color: colors.subtext }}>
-                    {item.link}
                 </Text>
             </View>
         );

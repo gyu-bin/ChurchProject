@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Dimensions, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Text, TouchableOpacity, View,useWindowDimensions } from 'react-native';
 import Carousel from 'react-native-reanimated-carousel';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -13,12 +13,17 @@ dayjs.extend(weekday);
 dayjs.extend(localizedFormat);
 dayjs.locale('ko');
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
+// const SCREEN_WIDTH = Dimensions.get('window').width;
 // const SCREEN_HEIGHT = SCREEN_WIDTH * 0.6; // 높이 비율 조정
 
 export default function EventBannerCarousel({ events = [], goToEvent, theme }: any) {
+    const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const [currentIndex, setCurrentIndex] = useState(0);
   const carouselRef = useRef<any>(null);
+
+    if (SCREEN_WIDTH === 0) {
+        return null; // 화면 크기 잡힐 때까지 렌더링 안함
+    }
 
   const formattedDateTime = (
       startDate: any,

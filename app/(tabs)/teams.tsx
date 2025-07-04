@@ -4,18 +4,21 @@ import { createMaterialTopTabNavigator } from '@react-navigation/material-top-ta
 import TeamsList from '../teams/TeamsList';
 import Community from '../teams/FeedList';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Platform } from 'react-native';
+import {Platform, useColorScheme} from 'react-native';
+import {useDesign} from "@/context/DesignSystem";
 
 const Tab = createMaterialTopTabNavigator();
 
 export default function TeamsTabNavigator() {
     const insets = useSafeAreaInsets();
-
+    const { colors, spacing, font } = useDesign();
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
     return (
         <Tab.Navigator
             screenOptions={{
                 tabBarStyle: {
-                    backgroundColor: '#fff',
+                    backgroundColor: colors.background,
                     elevation: 0,
                     shadowOpacity: 0,
                     borderBottomWidth: 1,

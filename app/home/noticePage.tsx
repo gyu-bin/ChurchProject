@@ -20,8 +20,6 @@ type Notice = {
     place?: string;
 };
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
-
 export default function HomeNotices() {
     const { colors, spacing, font, radius } = useDesign();
     const [notices, setNotices] = useState<any[]>([]);

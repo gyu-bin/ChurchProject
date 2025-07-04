@@ -17,7 +17,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {useSafeAreaFrame, useSafeAreaInsets} from 'react-native-safe-area-context';
 interface PrayerItem {
   id: string;
   title: string;
@@ -34,14 +34,15 @@ interface PrayerItem {
 export default function PrayerListScreen() {
   const { mode } = useAppTheme();
   const theme = useDesign();
-  const screenWidth = Dimensions.get('window').width;
+    const frame = useSafeAreaFrame();
+    const screenWidth = frame.width;
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
   const [prayers, setPrayers] = useState<PrayerItem[]>([]);
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
-
+    const isDark = mode === 'dark';
   useEffect(() => {
     const loadUser = async () => {
         const raw = await AsyncStorage.getItem('currentUser');
@@ -161,11 +162,16 @@ export default function PrayerListScreen() {
         }
         renderItem={({ item }) => {
             const isUrgent = item.urgent === 'Y';
+            const isDark = mode === 'dark'; // ✅ 다크모드 체크
 
             return (
                 <View
                     style={{
-                        backgroundColor: isUrgent ? '#FEF2F2' : theme.colors.surface,
+                        backgroundColor: isUrgent
+                            ? isDark
+                                ? '#7F1D1D' // 🔥 다크모드 긴급 배경
+                                : '#FEF2F2' // 🔥 라이트모드 긴급 배경
+                            : theme.colors.surface,
                         borderRadius: 16,
                         paddingVertical: 20,
                         paddingHorizontal: 24,
@@ -181,24 +187,13 @@ export default function PrayerListScreen() {
                         borderColor: isUrgent ? '#DC2626' : 'transparent',
                     }}
                 >
-                    {isUrgent && (
-                        <Text
-                            style={{
-                                color: '#DC2626',
-                                fontSize: 13,
-                                fontWeight: 'bold',
-                                marginBottom: 4,
-                            }}
-                        >
-                            🔥 긴급 기도제목
-                        </Text>
-                    )}
-
                     <Text
                         style={{
                             fontSize: 17,
                             fontWeight: '600',
-                            color: isUrgent ? '#DC2626' : theme.colors.primary,
+                            color: isUrgent
+                                ? (isDark ? '#F87171' : '#DC2626') // 🔥 긴급 제목 컬러
+                                : theme.colors.primary,
                             marginBottom: 8,
                         }}
                     >
@@ -219,7 +214,7 @@ export default function PrayerListScreen() {
                     <Text
                         style={{
                             fontSize: 13,
-                            color: theme.colors.subtext,
+                            color: theme.colors.text,
                             textAlign: 'right',
                         }}
                     >

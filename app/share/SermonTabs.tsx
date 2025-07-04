@@ -10,10 +10,11 @@ import {useSafeAreaInsets} from "react-native-safe-area-context";
 
 export default function SermonTabs() {
     const layout = useWindowDimensions();
-    const { colors, spacing } = useDesign();
+    const { colors, spacing, font } = useDesign();
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const [index, setIndex] = useState(0);
+
     const [routes] = useState([
         { key: 'share', title: '📖 설교 나눔' },
         { key: 'question', title: '❓ 설교 질문' },
@@ -36,7 +37,7 @@ export default function SermonTabs() {
                     style={{
                         color,
                         fontWeight: 'bold',
-                        fontSize: 14,
+                        fontSize: font.heading,
                     }}
                     allowFontScaling={false}
                 >
@@ -74,7 +75,7 @@ export default function SermonTabs() {
 
                 {/* 현재 탭 이름 */}
                 <Text style={{
-                    fontSize: 18,
+                    fontSize: font.heading,
                     fontWeight: 'bold',
                     color: colors.text,
                 }}>

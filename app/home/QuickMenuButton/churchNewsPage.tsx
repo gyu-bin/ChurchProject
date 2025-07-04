@@ -71,14 +71,16 @@ export default function ChurchNewsPage({ url }: { url: string }) {
 
     useEffect(() => {
         const fetchAllPreviews = async () => {
-            const previews: Record<string, { title?: string; image?: string; description?: string }> = {};
+            const previews = { ...previewMap }; // 🟢 기존 캐시 데이터 유지
 
             for (const post of posts) {
                 if (!post.link) continue;
 
+                // 이미 캐시에 있으면 fetch skip
+                if (previews[post.id]) continue;
+
                 try {
                     const data = await getLinkPreview(post.link);
-
                     if ('title' in data || 'images' in data) {
                         const title = 'title' in data ? data.title : undefined;
                         const image = 'images' in data && Array.isArray(data.images) ? data.images[0] : undefined;
@@ -196,7 +198,9 @@ export default function ChurchNewsPage({ url }: { url: string }) {
                     <TouchableOpacity key={t} onPress={() => setSelectedType(t)}>
                         <Text style={{
                             fontWeight: selectedType === t ? 'bold' : 'normal',
-                            color: selectedType === t ? colors.primary : colors.text
+                            color: selectedType === t ? colors.primary : colors.text,
+                            fontSize: font.title,
+                            padding: 10
                         }}>
                             {t}
                         </Text>
@@ -260,14 +264,15 @@ export default function ChurchNewsPage({ url }: { url: string }) {
                                         setTitle(item.title);
                                         setContent(item.content);
                                         setNewType(item.type);
+                                        setLink(item.link);
                                         setShowEditModal(true);
                                     }}>
-                                        <Text style={{ color: colors.primary, marginRight: 16 }}>수정</Text>
+                                        <Text style={{ fontSize:font.title,color: colors.primary, marginRight: 16 }}>수정</Text>
                                     </TouchableOpacity>
                                 )}
                                 {canDelete(item) && (
                                     <TouchableOpacity onPress={() => handleDelete(item.id)}>
-                                        <Text style={{ color: 'red' }}>삭제</Text>
+                                        <Text style={{ fontSize:font.title,color: 'red' }}>삭제</Text>
                                     </TouchableOpacity>
                                 )}
                             </View>
@@ -279,7 +284,14 @@ export default function ChurchNewsPage({ url }: { url: string }) {
             {/* ✅ 작성 버튼 */}
             {(user?.role === '교역자' || user?.role === '관리자' || user?.role === '임원') && (
                 <TouchableOpacity
-                    onPress={() => setShowModal(true)}
+                    onPress={() => {
+                        setTitle('');
+                        setContent('');
+                        setLink('');        // 🟢 link 초기화
+                        setNewType(selectedType);
+                        setSelectedPost(null);
+                        setShowModal(true);
+                    }}
                     style={{
                         backgroundColor: colors.primary,
                         marginHorizontal: spacing.md,
@@ -340,49 +352,157 @@ export default function ChurchNewsPage({ url }: { url: string }) {
 
             {/* ✅ 작성 모달 */}
             <Modal visible={showModal} transparent animationType="slide">
-                <View style={{ flex: 1, backgroundColor: '#00000088', justifyContent: 'center', padding: 20 }}>
-                    <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 20 }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                <View style={{
+                    flex: 1,
+                    backgroundColor: 'rgba(0,0,0,0.3)', // 반투명 블러 느낌
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    padding: 16
+                }}>
+                    <View style={{
+                        backgroundColor: colors.background,
+                        borderRadius: 24, // iOS 모달처럼 크게 라운딩
+                        padding: 20,
+                        width: '100%',
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 10 },
+                        shadowOpacity: 0.15,
+                        shadowRadius: 20,
+                        elevation: 10,
+                    }}>
+                        {/* 타이틀 */}
+                        <Text style={{
+                            fontSize: 20,
+                            fontWeight: '600',
+                            color: colors.text,
+                            textAlign: 'center',
+                            marginBottom: 16
+                        }}>
+                            새 게시물 작성
+                        </Text>
+
+                        {/* 타입 선택 버튼 */}
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
                             {types.map(t => (
-                                <TouchableOpacity key={t} onPress={() => setNewType(t)}>
-                                    <Text style={{ fontSize:font.heading, color: newType === t ? colors.primary : colors.text }}>{t}</Text>
+                                <TouchableOpacity
+                                    key={t}
+                                    onPress={() => setNewType(t)}
+                                    style={{
+                                        backgroundColor: newType === t
+                                            ? colors.primary // 활성화 시 Primary 컬러
+                                            : colors.card,   // 비활성화 시 Card 컬러 (다크모드 대응)
+                                        paddingVertical: 8,
+                                        paddingHorizontal: 14,
+                                        borderRadius: 16,
+                                        borderWidth: newType === t ? 0 : 1,
+                                        borderColor: colors.border // 비활성 버튼 테두리
+                                    }}
+                                >
+                                    <Text style={{
+                                        color: newType === t
+                                            ? colors.text // 활성화 시 Primary 위의 텍스트 컬러
+                                            : colors.text,     // 비활성화 시 일반 텍스트 컬러
+                                        fontSize: 15
+                                    }}>
+                                        {t}
+                                    </Text>
                                 </TouchableOpacity>
                             ))}
                         </View>
+
+                        {/* 제목 입력 */}
                         <TextInput
                             placeholder="제목"
                             value={title}
                             onChangeText={setTitle}
-                            style={{ borderBottomWidth: 1, marginBottom: 12, fontSize: 16, color: colors.text }}
-                            placeholderTextColor="#ccc"
+                            style={{
+                                backgroundColor: colors.surface,
+                                borderRadius: 12,
+                                padding: 14,
+                                marginBottom: 12,
+                                fontSize: 16,
+                                color: colors.text
+                            }}
+                            placeholderTextColor="#aaa"
                         />
+
+                        {/* 내용 입력 */}
                         <TextInput
                             placeholder="내용"
                             value={content}
                             onChangeText={setContent}
                             multiline
-                            style={{ height: 100, borderWidth: 1, padding: 10, marginBottom: 12, color: colors.text }}
+                            style={{
+                                backgroundColor: colors.surface,
+                                borderRadius: 12,
+                                padding: 14,
+                                height: 120,
+                                marginBottom: 12,
+                                fontSize: 15,
+                                color: colors.text,
+                                textAlignVertical: 'top'
+                            }}
                             placeholderTextColor="#aaa"
                         />
-                        {/* ✅ 링크 */}
+
+                        {/* 링크 입력 */}
                         <TextInput
                             placeholder="관련 링크 (선택사항)"
                             value={link}
                             onChangeText={setLink}
-                            style={{ borderBottomWidth: 1, marginBottom: 12, fontSize: 15, color: colors.text }}
-                            placeholderTextColor="#bbb"
+                            style={{
+                                backgroundColor: colors.surface,
+                                borderRadius: 12,
+                                padding: 14,
+                                marginBottom: 16,
+                                fontSize: 15,
+                                color: colors.text
+                            }}
+                            placeholderTextColor="#aaa"
                             autoCapitalize="none"
                             keyboardType="url"
                         />
 
-                        <TouchableOpacity onPress={handleSubmit} style={{ backgroundColor: colors.primary, padding: 10, borderRadius: 6 }}>
-                            <Text style={{ color: '#fff', textAlign: 'center' }}>등록</Text>
+                        {/* 등록 버튼 */}
+                        <TouchableOpacity
+                            onPress={handleSubmit}
+                            style={{
+                                backgroundColor: '#007AFF', // iOS 파란 버튼
+                                paddingVertical: 14,
+                                borderRadius: 12,
+                                marginBottom: 8
+                            }}
+                        >
+                            <Text style={{
+                                color: '#fff',
+                                textAlign: 'center',
+                                fontSize: 16,
+                                fontWeight: '600'
+                            }}>
+                                등록
+                            </Text>
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={() => {
-                            setShowModal(false);
-                            setSelectedPost(null); // 수정 모드 종료
-                        }} style={{ marginTop: 10 }}>
-                            <Text style={{ textAlign: 'center', color: colors.subtext }}>취소</Text>
+
+                        {/* 취소 버튼 */}
+                        <TouchableOpacity
+                            onPress={() => {
+                                setShowModal(false);
+                                setSelectedPost(null);
+                            }}
+                            style={{
+                                paddingVertical: 14,
+                                borderRadius: 12,
+                                borderWidth: 1,
+                                borderColor: '#ccc'
+                            }}
+                        >
+                            <Text style={{
+                                textAlign: 'center',
+                                color: '#666',
+                                fontSize: 16
+                            }}>
+                                취소
+                            </Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -390,33 +510,118 @@ export default function ChurchNewsPage({ url }: { url: string }) {
 
             {/* ✅ 수정 모달 */}
             <Modal visible={showEditModal} transparent animationType="slide">
-                <View style={{ flex: 1, backgroundColor: '#00000088', justifyContent: 'center', padding: 20 }}>
-                    <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 20 }}>
-                        <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.text, marginBottom: 10 }}>✏️ 게시글 수정</Text>
+                <View style={{
+                    flex: 1,
+                    backgroundColor: 'rgba(0,0,0,0.3)', // 반투명 블러 느낌
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    padding: 16
+                }}>
+                    <View style={{
+                        backgroundColor: colors.background,
+                        borderRadius: 24,
+                        padding: 24,
+                        width: '100%',
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 10 },
+                        shadowOpacity: 0.15,
+                        shadowRadius: 20,
+                        elevation: 10,
+                    }}>
+                        {/* 타이틀 */}
+                        <Text style={{
+                            fontSize: 20,
+                            fontWeight: '600',
+                            color: '#333',
+                            textAlign: 'center',
+                            marginBottom: 16
+                        }}>
+                            ✏️ 게시글 수정
+                        </Text>
 
+                        {/* 타입 선택 버튼 */}
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
+                            {types.map(t => (
+                                <TouchableOpacity
+                                    key={t}
+                                    onPress={() => setNewType(t)}
+                                    style={{
+                                        backgroundColor: newType === t
+                                            ? colors.primary // 활성화 시 Primary 컬러
+                                            : colors.card,   // 비활성화 시 Card 컬러 (다크모드 대응)
+                                        paddingVertical: 8,
+                                        paddingHorizontal: 14,
+                                        borderRadius: 16,
+                                        borderWidth: newType === t ? 0 : 1,
+                                        borderColor: colors.border // 비활성 버튼 테두리
+                                    }}
+                                >
+                                    <Text style={{
+                                        color: newType === t
+                                            ? colors.text // 활성화 시 Primary 위의 텍스트 컬러
+                                            : colors.text,     // 비활성화 시 일반 텍스트 컬러
+                                        fontSize: 15
+                                    }}>
+                                        {t}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        {/* 제목 입력 */}
                         <TextInput
                             placeholder="제목"
                             value={title}
                             onChangeText={setTitle}
-                            style={{ borderBottomWidth: 1, marginBottom: 12, fontSize: 16, color: colors.text }}
-                            placeholderTextColor="#ccc"
+                            style={{
+                                backgroundColor: colors.surface,
+                                borderRadius: 12,
+                                padding: 14,
+                                marginBottom: 12,
+                                fontSize: 16,
+                                color: colors.text,
+                            }}
+                            placeholderTextColor="#aaa"
                         />
+
+                        {/* 내용 입력 */}
                         <TextInput
                             placeholder="내용"
                             value={content}
                             onChangeText={setContent}
                             multiline
-                            style={{ height: 100, borderWidth: 1, padding: 10, marginBottom: 12, color: colors.text }}
-                            placeholderTextColor="#aaa"
+                            style={{
+                                backgroundColor: colors.surface,
+                                borderRadius: 12,
+                                padding: 14,
+                                height: 120,
+                                marginBottom: 12,
+                                fontSize: 15,
+                                color: colors.text,
+                                textAlignVertical: 'top'
+                            }}
+                            // placeholderTextColor="#aaa"
                         />
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-                            {types.map(t => (
-                                <TouchableOpacity key={t} onPress={() => setNewType(t)}>
-                                    <Text style={{ color: newType === t ? colors.primary : colors.text }}>{t}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
 
+                        <TextInput
+                            placeholder="관련 링크 (선택사항)"
+                            value={link}
+                            onChangeText={setLink}
+                            style={{
+                                backgroundColor: colors.surface,
+                                borderRadius: 12,
+                                padding: 14,
+                                marginBottom: 16,
+                                fontSize: 15,
+                                color: colors.text
+                            }}
+                            placeholderTextColor="#aaa"
+                            autoCapitalize="none"
+                            keyboardType="url"
+                        />
+
+
+                        {/* 수정 완료 버튼 */}
                         <TouchableOpacity
                             onPress={async () => {
                                 if (!title.trim() || !content.trim()) {
@@ -450,19 +655,42 @@ export default function ChurchNewsPage({ url }: { url: string }) {
                                 }
                             }}
                             style={{
-                                backgroundColor: colors.primary,
-                                padding: 10,
-                                borderRadius: 6,
+                                backgroundColor: '#007AFF',
+                                paddingVertical: 14,
+                                borderRadius: 12,
+                                marginBottom: 10
                             }}
                         >
-                            <Text style={{ color: '#fff', textAlign: 'center' }}>수정 완료</Text>
+                            <Text style={{
+                                color: '#fff',
+                                textAlign: 'center',
+                                fontSize: 16,
+                                fontWeight: '600'
+                            }}>
+                                수정 완료
+                            </Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity onPress={() => {
-                            setShowEditModal(false);
-                            setSelectedPost(null);
-                        }} style={{ marginTop: 10 }}>
-                            <Text style={{ textAlign: 'center', color: colors.subtext }}>취소</Text>
+                        {/* 취소 버튼 */}
+                        <TouchableOpacity
+                            onPress={() => {
+                                setShowEditModal(false);
+                                setSelectedPost(null);
+                            }}
+                            style={{
+                                paddingVertical: 14,
+                                borderRadius: 12,
+                                borderWidth: 1,
+                                borderColor: '#ccc'
+                            }}
+                        >
+                            <Text style={{
+                                textAlign: 'center',
+                                color: '#666',
+                                fontSize: 16
+                            }}>
+                                취소
+                            </Text>
                         </TouchableOpacity>
                     </View>
                 </View>

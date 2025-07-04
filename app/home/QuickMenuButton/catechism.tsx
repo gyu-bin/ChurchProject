@@ -16,7 +16,7 @@ import {
     View
 } from 'react-native';
 import PagerView from 'react-native-pager-view';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {useSafeAreaFrame, useSafeAreaInsets} from 'react-native-safe-area-context';
 
 const categories = [
     { label: '대요리 문답', key: 'larger', data: largerData },
@@ -36,6 +36,7 @@ export default function CatechismPage() {
     const [initialized, setInitialized] = useState(false);
     const router = useRouter();
     const { colors, font, spacing, radius } = useDesign();
+    const frame = useSafeAreaFrame();
     const insets = useSafeAreaInsets();
 
     const [fontScale, setFontScale] = useState(1); // 기본값: 1배
@@ -94,7 +95,7 @@ export default function CatechismPage() {
 
         setTimeout(() => {
             const ITEM_HEIGHT = 60;
-            const screenHeight = Dimensions.get('window').height;
+            const screenHeight = frame.height;
             const headerHeight = insets.top + 40 + spacing.lg * 2; // 여유 padding 포함
 
 // 플랫폼별 가중치 적용

@@ -1,19 +1,23 @@
 import React, { useRef, useEffect } from 'react';
-import { View, FlatList, Dimensions } from 'react-native';
-
+import { View, FlatList, useWindowDimensions } from 'react-native';
+import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 interface FlexibleCarouselProps {
     data: any[];
     renderItem: (item: any) => React.ReactNode;
 }
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const ITEM_WIDTH = SCREEN_WIDTH * 0.7;               // 80%
-const ITEM_MARGIN_RIGHT = SCREEN_WIDTH * 0.1;       // 5%
-const NEXT_VISIBLE = SCREEN_WIDTH * 0.25;            // 오른쪽 15% 보이게
-const SNAP_INTERVAL = ITEM_WIDTH + ITEM_MARGIN_RIGHT;
 const MULTIPLIER = 1000;
 
 const FlexibleCarousel: React.FC<FlexibleCarouselProps> = ({ data, renderItem }) => {
+    const frame = useSafeAreaFrame();
+    const insets = useSafeAreaInsets();
+
+    // 💡 동적 계산
+    const ITEM_WIDTH = frame.width * 0.7;
+    const ITEM_MARGIN_RIGHT = frame.width * 0.1;
+    const NEXT_VISIBLE = frame.width * 0.25;
+    const SNAP_INTERVAL = ITEM_WIDTH + ITEM_MARGIN_RIGHT;
+
     const flatListRef = useRef<FlatList>(null);
     const infiniteData = Array.from({ length: data.length * MULTIPLIER }, (_, i) => data[i % data.length]);
     const initialIndex = Math.floor(infiniteData.length / 2);
@@ -22,7 +26,7 @@ const FlexibleCarousel: React.FC<FlexibleCarouselProps> = ({ data, renderItem })
         setTimeout(() => {
             flatListRef.current?.scrollToIndex({ index: initialIndex, animated: false });
         }, 0);
-    }, []);
+    }, [initialIndex]);
 
     const handleScroll = (event: any) => {
         const offsetX = event.nativeEvent.contentOffset.x;
@@ -56,7 +60,7 @@ const FlexibleCarousel: React.FC<FlexibleCarouselProps> = ({ data, renderItem })
             keyExtractor={(_, index) => index.toString()}
             onMomentumScrollEnd={handleScroll}
             renderItem={({ item }) => (
-                <View style={{ width: ITEM_WIDTH, marginRight: ITEM_MARGIN_RIGHT }}>
+                <View style={{ width: frame.width, marginRight: ITEM_MARGIN_RIGHT }}>
                     {renderItem(item)}
                 </View>
             )}

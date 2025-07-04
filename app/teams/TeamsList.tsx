@@ -23,9 +23,9 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { EdgeInsets, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {EdgeInsets, useSafeAreaFrame, useSafeAreaInsets} from 'react-native-safe-area-context';
 import styled from 'styled-components/native';
-const SCREEN_WIDTH = Dimensions.get('window').width;
+// const SCREEN_WIDTH = Dimensions.get('window').width;
 
 // Define the theme interface
 interface Theme {
@@ -156,6 +156,8 @@ export default function TeamsList() {
     const mainListRef = useRef<FlatList>(null);
     const router = useRouter();
     const { colors, radius, spacing, font } = useDesign();
+    const frame = useSafeAreaFrame();
+    const SCREEN_WIDTH = frame.width;
     const insets = useSafeAreaInsets();
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearchVisible, setIsSearchVisible] = useState(false);

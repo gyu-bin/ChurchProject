@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, View, Text, TouchableOpacity, Dimensions, Platform } from 'react-native';
+import {Modal, View, Text, TouchableOpacity, Dimensions, Platform, useWindowDimensions} from 'react-native';
 import Carousel from 'react-native-reanimated-carousel';
 import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const SCREEN_HEIGHT = Dimensions.get('window').height;
+import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
+// const SCREEN_WIDTH = Dimensions.get('window').width;
+// const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 const dummyImageUrls = [
     'https://i.pinimg.com/736x/e3/08/ee/e308eedf0ca6ecacbaae866f2abf81d0.jpg',
@@ -17,6 +17,8 @@ const dummyImageUrls = [
 export default function PromoModal() {
     const [visible, setVisible] = useState(true); // 테스트용 항상 true
     const [currentIndex, setCurrentIndex] = useState(0);
+    const frame = useSafeAreaFrame();
+    const insets = useSafeAreaInsets();
 
     const closeModal = async () => {
         setVisible(false);
@@ -47,7 +49,7 @@ export default function PromoModal() {
             >
                 <View
                     style={{
-                        width: SCREEN_WIDTH * 0.9,
+                        width: frame.width * 0.9,
                         borderRadius: 20,
                         backgroundColor: '#fff',
                         overflow: 'hidden',
@@ -74,8 +76,8 @@ export default function PromoModal() {
                     {/* 이미지 캐러셀 */}
                     <Carousel
                         loop
-                        width={SCREEN_WIDTH * 0.9} // 💥 width 명시
-                        height={SCREEN_HEIGHT * 0.5} // 💥 height 명시
+                        width={frame.width * 0.9} // 💥 width 명시
+                        height={frame.height * 0.5} // 💥 height 명시
                         autoPlay={false}
                         data={dummyImageUrls}
                         scrollAnimationDuration={600}

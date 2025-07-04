@@ -33,14 +33,11 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {useSafeAreaFrame, useSafeAreaInsets} from 'react-native-safe-area-context';
 import { DefaultTheme } from 'styled-components';
 import styled from 'styled-components/native';
 import QuickCalendar from '../home/QuickMenuButton/calendar';
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const SIDE_MARGIN = 16;
-const ITEM_WIDTH = SCREEN_WIDTH - SIDE_MARGIN * 2;
 
 type Prayer = {
     id: string;
@@ -199,7 +196,7 @@ export default function HomeScreen() {
     const router = useRouter();
     const { mode } = useAppTheme();
     const theme = useDesign();
-    const insets = useSafeAreaInsets();
+    // const insets = useSafeAreaInsets();
     const [verse, setVerse] = useState(verses[0]);
     const [refreshing, setRefreshing] = useState(false);
     const [prayers, setPrayers] = useState<any[]>([]);
@@ -220,6 +217,9 @@ export default function HomeScreen() {
 
     const [events, setEvents] = useState<EventNotice[]>([]);
     const [calendarVisible, setCalendarVisible] = useState(false);
+
+    const frame = useSafeAreaFrame();
+    const insets = useSafeAreaInsets();
 
     useEffect(() => {
         setScrollCallback('home', () => {

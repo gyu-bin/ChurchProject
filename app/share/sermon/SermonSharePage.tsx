@@ -26,7 +26,7 @@ export default function SermonSharePage() {
     const [preacher, setPreacher] = useState('');
     const [content, setContent] = useState('');
     const [user, setUser] = useState<any>(null);
-
+    const [anonymous, setAnonymous] = useState(false);
     const insets = useSafeAreaInsets();
     const router = useRouter();
 
@@ -59,6 +59,7 @@ export default function SermonSharePage() {
                 title,
                 preacher,
                 content,
+                anonymous,
                 userEmail: user?.email,
                 createdAt: serverTimestamp(),
             });
@@ -78,6 +79,7 @@ export default function SermonSharePage() {
                 title,
                 preacher,
                 content,
+                anonymous,
                 updatedAt: serverTimestamp(),
             });
             resetForm();
@@ -110,6 +112,7 @@ export default function SermonSharePage() {
         setTitle('');
         setPreacher('');
         setContent('');
+        setAnonymous(false)
         setSelectedPost(null);
     };
 
@@ -204,6 +207,8 @@ export default function SermonSharePage() {
                 content={content}
                 setContent={setContent}
                 heading="✍️ 나눔 작성"
+                anonymous={anonymous} // 🟢 추가
+                setAnonymous={setAnonymous} // 🟢 추가
             />
 
             {/* 수정 모달 */}
@@ -218,16 +223,18 @@ export default function SermonSharePage() {
                 content={content}
                 setContent={setContent}
                 heading="✏️ 나눔 수정"
+                anonymous={anonymous} // 🟢 추가
+                setAnonymous={setAnonymous} // 🟢 추가
             />
         </View>
     );
 }
 
 function CenteredModal({
-                           visible, onClose, onSubmit, title, setTitle, preacher, setPreacher, content, setContent, heading
+                           visible, onClose, onSubmit, title, setTitle, preacher, setPreacher, content, setContent, heading,anonymous, setAnonymous
                        }: any) {
     const { colors, spacing, font, radius } = useDesign();
-
+    // const [anonymous, setAnonymous] = useState(true);
     return (
         <Modal
             visible={visible}
@@ -335,6 +342,45 @@ function CenteredModal({
                                 backgroundColor: colors.surface,
                             }}
                         />
+
+                        <TouchableOpacity
+                            onPress={() => setAnonymous((prev: boolean) => !prev)}
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                paddingTop: spacing.lg
+                            }}
+                        >
+                            <View
+                                style={{
+                                    width: 24,
+                                    height: 24,
+                                    borderWidth: 2,
+                                    borderColor: anonymous ? colors.primary : colors.border, // ✅ 선택 시 primary
+                                    backgroundColor: anonymous ? colors.primary : colors.surface, // ✅ 선택 시 filled
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    marginRight: 12,
+                                    borderRadius: 6, // ✅ 둥글게 (iOS 스타일)
+                                    shadowColor: '#000',
+                                    shadowOpacity: anonymous ? 0.2 : 0, // ✅ 선택 시 약간 그림자
+                                    shadowOffset: { width: 0, height: 2 },
+                                    shadowRadius: 3,
+                                    elevation: anonymous ? 3 : 0, // ✅ Android 그림자
+                                }}
+                            >
+                                {anonymous && (
+                                    <Ionicons
+                                        name="checkmark"
+                                        size={16}
+                                        color="#fff" // ✅ 선택 시 체크는 흰색
+                                    />
+                                )}
+                            </View>
+                            <Text style={{ fontSize: font.body, color: colors.text }}>
+                                익명으로 나누기
+                            </Text>
+                        </TouchableOpacity>
 
                         {/* 완료 버튼 */}
                         <TouchableOpacity

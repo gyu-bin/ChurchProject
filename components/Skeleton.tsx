@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, ViewStyle, Dimensions } from 'react-native';
-
 interface SkeletonBoxProps {
     width?: number;
     height?: number;

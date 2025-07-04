@@ -19,7 +19,7 @@ export default function SermonQuestionPage() {
     const [content, setContent] = useState('');
     const [author, setAuthor] = useState('');
     const [user, setUser] = useState<any>(null);
-    const [anonymous, setAnonymous] = useState(true);
+    const [anonymous, setAnonymous] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
@@ -106,7 +106,7 @@ export default function SermonQuestionPage() {
                     {item.content}
                 </Text>
                 <Text style={{ color: colors.subtext, marginTop: spacing.xs }}>
-                    {item.author} • {item.date}
+                    {item.author}
                 </Text>
                 {isMyPost && (
                     <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: spacing.sm }}>
@@ -253,19 +253,28 @@ export default function SermonQuestionPage() {
                             >
                                 <View
                                     style={{
-                                        width: 22,
-                                        height: 22,
-                                        borderWidth: 1.5,
-                                        borderColor: colors.primary,
-                                        backgroundColor: anonymous ? colors.primary : colors.surface,
+                                        width: 24,
+                                        height: 24,
+                                        borderWidth: 2,
+                                        borderColor: anonymous ? colors.primary : colors.border, // ✅ 선택 시 primary
+                                        backgroundColor: anonymous ? colors.primary : colors.surface, // ✅ 선택 시 filled
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        marginRight: 10,
-                                        borderRadius: 4,
+                                        marginRight: 12,
+                                        borderRadius: 6, // ✅ 둥글게 (iOS 스타일)
+                                        shadowColor: '#000',
+                                        shadowOpacity: anonymous ? 0.2 : 0, // ✅ 선택 시 약간 그림자
+                                        shadowOffset: { width: 0, height: 2 },
+                                        shadowRadius: 3,
+                                        elevation: anonymous ? 3 : 0, // ✅ Android 그림자
                                     }}
                                 >
                                     {anonymous && (
-                                        <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>✓</Text>
+                                        <Ionicons
+                                            name="checkmark"
+                                            size={16}
+                                            color="#fff" // ✅ 선택 시 체크는 흰색
+                                        />
                                     )}
                                 </View>
                                 <Text style={{ fontSize: font.body, color: colors.text }}>

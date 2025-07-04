@@ -20,11 +20,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const SIDE_MARGIN = 16;
-const ITEM_WIDTH = SCREEN_WIDTH - SIDE_MARGIN * 2;
-const SIDE_SPACING = (SCREEN_WIDTH - ITEM_WIDTH) / 2;
+import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Prayer = {
     id: string;
@@ -57,6 +53,11 @@ export default function NanumPage() {
     const [listKey, setListKey] = useState(Date.now());
     const flatListRef = useRef<FlatList>(null);
     const mainListRef = useRef<FlatList>(null);
+
+    const frame = useSafeAreaFrame();
+    const SIDE_MARGIN = 16;
+    const ITEM_WIDTH = frame.width - SIDE_MARGIN * 2;
+    const SIDE_SPACING = (frame.width - ITEM_WIDTH) / 2;
 
     useEffect(() => {
         setScrollCallback('nanum', () => {

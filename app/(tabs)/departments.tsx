@@ -25,8 +25,6 @@ const CAMPUS_DIVISIONS: Record<string, string[]> = {
     시선교회: ['유치부', '초등부', '중고등부', '청년1부', '청년2부', '장년부'],
 };
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
-
 const CAMPUSES = ['전체', '신촌캠퍼스', '문래캠퍼스', '시선교회'];
 const DEPARTMENTS = ['전체', '유치부', '초등부', '중고등부', '청년1부', '청년2부', '장년부'];
 const FEED_COLORS = ['#a1c4fd', '#fbc2eb', '#fddb92', '#f6d365', '#84fab0', '#fccb90', '#e0c3fc'];

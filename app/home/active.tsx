@@ -2,14 +2,14 @@ import { db } from '@/firebase/config';
 import { router } from "expo-router";
 import { collection, deleteDoc, doc, orderBy, query, where } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
-import { Dimensions, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
 import { useDesign } from '@/context/DesignSystem';
 import FlexibleCarousel from '../../components/FlexibleCarousel';
 import { Image } from 'expo-image';
 import dayjs from "dayjs";
 import { useRealtimeCollection } from '@/hooks/useRealtimeCollection';
-
+import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 interface Team {
     id: string;
     name: string;
@@ -33,11 +33,13 @@ interface PrayerRequest {
     urgent: any;
 }
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
-console.log(SCREEN_WIDTH);
 
 export default function ActiveSection() {
+    const frame = useSafeAreaFrame();
     const { colors, spacing, font } = useDesign();
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
+
     const { data: allTeams } = useRealtimeCollection('teams');
     const { data: allPrayers } = useRealtimeCollection('prayer_requests');
 
@@ -110,7 +112,7 @@ export default function ActiveSection() {
                     marginBottom: spacing.xs,
                     marginTop: spacing.xs,
                     marginLeft: spacing.xs,
-                    width: SCREEN_WIDTH * 0.75,
+                    width: frame.width * 0.75,
                     shadowColor: '#000',
                     shadowOpacity: 0.05,
                     shadowOffset: { width: 0, height: 1 },
@@ -190,7 +192,7 @@ export default function ActiveSection() {
                                 key={index}
                                 source={{ uri }}
                                 style={{
-                                    width: (SCREEN_WIDTH * 0.75 - spacing.md * 2 - spacing.sm * 2 - 8 * 2) / 4,
+                                    width: (frame.width * 0.75 - spacing.md * 2 - spacing.sm * 2 - 8 * 2) / 4,
                                     height: 50,
                                     right: 80,
                                     borderRadius: 6,
@@ -216,7 +218,11 @@ export default function ActiveSection() {
             <View
                 key={prayer.id}
                 style={{
-                    backgroundColor: isUrgent ? '#FFF5F5' : colors.surface,
+                    backgroundColor: isUrgent
+                        ? isDark
+                            ? '#ffa2a2' // 🟢 다크모드용 긴급 배경
+                            : '#FFF5F5' // 🟢 라이트모드용 긴급 배경
+                        : colors.surface,
                     borderRadius: 12,
                     padding: spacing.md,
                     marginBottom: spacing.xs,
@@ -229,14 +235,18 @@ export default function ActiveSection() {
                     shadowOffset: { width: 0, height: 1 },
                     shadowRadius: 4,
                     elevation: 5,
-                    width: SCREEN_WIDTH * 0.75,
+                    width: frame.width * 0.75,
                 }}
             >
                 <Text
                     style={{
                         fontWeight: 'bold',
                         fontSize: font.body,
-                        color: isUrgent ? colors.error : colors.text,
+                        color: isUrgent
+                            ? isDark
+                                ? '#fff' // 🟢 다크모드 긴급 텍스트 색상
+                                : colors.error
+                            : colors.text,
                         marginBottom: 4,
                     }}
                 >
@@ -245,7 +255,11 @@ export default function ActiveSection() {
                 <Text
                     style={{
                         fontSize: font.body,
-                        color: colors.text,
+                        color: isUrgent
+                            ? isDark
+                                ? '#fff' // 🟢 다크모드 긴급 텍스트 색상
+                                : colors.error
+                            : colors.text,
                         marginBottom: 8,
                     }}
                 >

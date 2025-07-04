@@ -21,10 +21,7 @@ import {
 } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import Toast from "react-native-root-toast";
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-// 위치에 맞게 경로 수정
-
-const { height } = Dimensions.get('window');
+import {useSafeAreaFrame, useSafeAreaInsets} from 'react-native-safe-area-context';
 
 export default function DevotionPage() {
     const [content, setContent] = useState('');
@@ -44,9 +41,14 @@ export default function DevotionPage() {
     const { colors, spacing, font, radius } = useDesign();
     const { mode, setThemeMode } = useAppTheme();
     const isDark = mode === 'dark';
+    //너비,높이
+    const frame = useSafeAreaFrame();
     const insets = useSafeAreaInsets();
     const [rankingRangeText, setRankingRangeText] = useState<string>(''); // 📅 날짜 표시용 추가
     const [anonymous, setAnonymous] = useState(false);
+
+
+
     const panResponder = useRef(
         PanResponder.create({
             onMoveShouldSetPanResponder: (_, gestureState) => {
@@ -483,37 +485,7 @@ export default function DevotionPage() {
                             </View>
 
                             {/* ✅ 익명 전환 스위치 */}
-                            <View style={{
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                justifyContent: 'flex-end',
-                                marginBottom: spacing.md,
-                            }}>
-                                <Text style={{ marginRight: 8, color: colors.subtext }}>
-                                    익명으로 작성
-                                </Text>
-                                <TouchableOpacity
-                                    onPress={() => setAnonymous(!anonymous)}
-                                    style={{
-                                        width: 40,
-                                        height: 24,
-                                        borderRadius: 12,
-                                        backgroundColor: anonymous ? colors.primary : '#ccc',
-                                        justifyContent: 'center',
-                                        paddingHorizontal: 2,
-                                    }}
-                                >
-                                    <View
-                                        style={{
-                                            width: 20,
-                                            height: 20,
-                                            borderRadius: 10,
-                                            backgroundColor: '#fff',
-                                            marginLeft: anonymous ? 16 : 0,
-                                        }}
-                                    />
-                                </TouchableOpacity>
-                            </View>
+
 
                             {/* ✅ 묵상 내용 입력 */}
                             <TextInput
@@ -530,12 +502,49 @@ export default function DevotionPage() {
                                     borderRadius: radius.md,
                                     padding: spacing.md,
                                     minHeight: 150,
-                                    maxHeight: 400,
+                                    maxHeight: 300,
                                     color: colors.text,
                                     marginBottom: spacing.md,
                                 }}
                             />
-
+                            <TouchableOpacity
+                                onPress={() => setAnonymous(prev => !prev)}
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    paddingBottom: spacing.lg
+                                }}
+                            >
+                                <View
+                                    style={{
+                                        width: 24,
+                                        height: 24,
+                                        borderWidth: 2,
+                                        borderColor: anonymous ? colors.primary : colors.border, // ✅ 선택 시 primary
+                                        backgroundColor: anonymous ? colors.primary : colors.surface, // ✅ 선택 시 filled
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        marginRight: 12,
+                                        borderRadius: 6, // ✅ 둥글게 (iOS 스타일)
+                                        shadowColor: '#000',
+                                        shadowOpacity: anonymous ? 0.2 : 0, // ✅ 선택 시 약간 그림자
+                                        shadowOffset: { width: 0, height: 2 },
+                                        shadowRadius: 3,
+                                        elevation: anonymous ? 3 : 0, // ✅ Android 그림자
+                                    }}
+                                >
+                                    {anonymous && (
+                                        <Ionicons
+                                            name="checkmark"
+                                            size={16}
+                                            color="#fff" // ✅ 선택 시 체크는 흰색
+                                        />
+                                    )}
+                                </View>
+                                <Text style={{ fontSize: font.body, color: colors.text }}>
+                                    익명으로 작성하기
+                                </Text>
+                            </TouchableOpacity>
                             {/* ✅ 작성 버튼 */}
                             <TouchableOpacity
                                 onPress={handleSubmit}
@@ -563,7 +572,7 @@ export default function DevotionPage() {
                 }}>
                     <View style={{
                         width: '85%',
-                        maxHeight: height * 0.85,
+                        maxHeight: frame.height * 0.85,
                         backgroundColor: colors.background,
                         padding: spacing.lg,
                         borderRadius: radius.lg,
