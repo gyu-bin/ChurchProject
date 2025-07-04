@@ -56,7 +56,7 @@ export default function HomeNotices() {
                     shadowOpacity: 0.05,
                     shadowOffset: { width: 0, height: 1 },
                     shadowRadius: 4,
-                    elevation: 5,
+                    elevation: 10,
                 }}
             >
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
@@ -81,10 +81,10 @@ export default function HomeNotices() {
                 </Text>
                 <Text
                     style={{ fontSize: 14, color: colors.subtext }}
-                    numberOfLines={4} // ✅ 최대 4줄 표시
+                    numberOfLines={5} // ✅ 최대 4줄 표시
                     ellipsizeMode="tail" // ✅ 말줄임표 처리
                 >
-                    {item.content}
+                    {item.content?.slice(0, 90)}{item.content?.length > 90 ? '...' : ''}
                 </Text>
             </View>
         );

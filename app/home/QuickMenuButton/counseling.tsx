@@ -30,6 +30,7 @@ import {
 } from 'firebase/firestore';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
 import { Dropdown } from 'react-native-element-dropdown';
+import {Ionicons} from "@expo/vector-icons";
 
 export default function CounselRequestPage() {
     const { colors, spacing, font, radius } = useDesign();
@@ -172,7 +173,7 @@ export default function CounselRequestPage() {
                         {/* 헤더 */}
                         <View style={{ position: 'relative', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: Platform.OS === 'android' ? insets.top + 10 : 16, paddingBottom: 16 }}>
                             <TouchableOpacity onPress={() => router.back()}>
-                                <Text style={{ color: colors.text, fontSize: font.body }}>←</Text>
+                                <Ionicons name="arrow-back" size={24} color={colors.text} />
                             </TouchableOpacity>
                             <View style={{ position: 'absolute', left: 0, right: 0, alignItems: 'center' }}>
                                 <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.text }}>

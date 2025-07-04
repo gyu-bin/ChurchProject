@@ -52,19 +52,32 @@ export default function SermonTabs() {
             <View style={{
                 flexDirection: 'row',
                 alignItems: 'center',
+                justifyContent: 'center',
                 paddingHorizontal: spacing.md,
                 paddingVertical: spacing.sm,
                 backgroundColor: colors.background,
                 borderBottomWidth: 1,
                 borderBottomColor: colors.border,
+                position: 'relative', // 💥 절대 위치 기준
             }}>
                 {/* 뒤로가기 버튼 */}
-                <TouchableOpacity onPress={() => router.back()} style={{ padding: 4, marginRight: 8 }}>
+                <TouchableOpacity
+                    onPress={() => router.back()}
+                    style={{
+                        position: 'absolute',
+                        left: spacing.md,
+                        padding: 4,
+                    }}
+                >
                     <Ionicons name="chevron-back" size={24} color={colors.text} />
                 </TouchableOpacity>
 
                 {/* 현재 탭 이름 */}
-                <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.text }}>
+                <Text style={{
+                    fontSize: 18,
+                    fontWeight: 'bold',
+                    color: colors.text,
+                }}>
                     {index === 0 ? '설교 나눔' : '설교 질문'}
                 </Text>
             </View>

@@ -3,6 +3,7 @@ import BannerCarousel from '@/app/home/homeBanner';
 import HomeNews from '@/app/home/homeNews';
 import HomeNotices from "@/app/home/noticePage";
 import TodayBible from '@/app/home/todayBible';
+import PromoModal from '@/app/PromoModal';
 import catechismData from '@/assets/catechism/catechism.json';
 import { verses } from '@/assets/verses';
 import { useDesign } from '@/context/DesignSystem';
@@ -508,6 +509,8 @@ export default function HomeScreen() {
                     </View>
                 </Pressable>
             </Modal>*/}
+
+            <PromoModal />
 
         </SafeArea>
     );

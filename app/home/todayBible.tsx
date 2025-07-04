@@ -10,31 +10,56 @@ import dayjs from "dayjs";
 export default function TodayBibleList() {
     const { colors, spacing, font } = useDesign();
     const [todayDevotions, setTodayDevotions] = useState<any[]>([]);
+    const [todayGratitudes, setTodayGratitudes] = useState<any[]>([]);
 
     useEffect(() => {
-        const q = query(collection(db, 'devotions'), orderBy('createdAt', 'desc'));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const all = snapshot.docs.map((doc) => ({
+        // 📖 오늘의 나눔 가져오기
+        const devotionQuery = query(collection(db, 'devotions'), orderBy('createdAt', 'desc'));
+        const unsubscribeDevotions = onSnapshot(devotionQuery, (snapshot) => {
+            const allDevotions = snapshot.docs.map((doc) => ({
                 id: doc.id,
                 ...(doc.data() as any),
             }));
 
             const today = dayjs().format('YYYY-MM-DD');
-            const filtered = all.filter((item) => {
+            const filteredDevotions = allDevotions.filter((item) => {
                 const createdAt = item.createdAt?.seconds
                     ? dayjs(item.createdAt.seconds * 1000)
                     : null;
                 return createdAt && createdAt.format('YYYY-MM-DD') === today;
             });
 
-            setTodayDevotions(filtered.slice(0, 2));
+            setTodayDevotions(filteredDevotions.slice(0, 2));
         });
 
-        return () => unsubscribe();
+        // 🙏 오늘의 감사나눔 가져오기
+        const gratitudeQuery = query(collection(db, 'gratitudes'), orderBy('createdAt', 'desc'));
+        const unsubscribeGratitudes = onSnapshot(gratitudeQuery, (snapshot) => {
+            const allGratitudes = snapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...(doc.data() as any),
+            }));
+
+            const today = dayjs().format('YYYY-MM-DD');
+            const filteredGratitudes = allGratitudes.filter((item) => {
+                const createdAt = item.createdAt?.seconds
+                    ? dayjs(item.createdAt.seconds * 1000)
+                    : null;
+                return createdAt && createdAt.format('YYYY-MM-DD') === today;
+            });
+
+            setTodayGratitudes(filteredGratitudes.slice(0, 2));
+        });
+
+        return () => {
+            unsubscribeDevotions();
+            unsubscribeGratitudes();
+        };
     }, []);
 
     return (
         <View>
+            {/* 📖 오늘의 나눔 */}
             <TouchableOpacity onPress={() => router.push('/share/DailyBible')}>
                 <View style={{
                     flexDirection: 'row',
@@ -66,7 +91,7 @@ export default function TodayBibleList() {
                                 marginBottom: spacing.xs,
                             }}
                         >
-                            {item.content?.slice(0, 20)}{item.content?.length > 50 ? '...' : ''}
+                            {item.content?.slice(0, 40)}{item.content?.length > 40 ? '...' : ''}
                         </Text>
                         <Text
                             style={{
@@ -74,13 +99,64 @@ export default function TodayBibleList() {
                                 color: colors.subtext,
                             }}
                         >
-                            작성자: {item.authorName}
+                            {item.authorName}
                         </Text>
                     </View>
                 ))
             ) : (
                 <Text style={{ color: colors.subtext, fontSize: font.body }}>
                     오늘의 나눔이 없습니다.
+                </Text>
+            )}
+
+            {/* 🙏 오늘의 감사나눔 */}
+            <TouchableOpacity onPress={() => router.push('/share/thank')}>
+                <View style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginTop: spacing.lg,
+                    marginBottom: spacing.sm,
+                }}>
+                    <Text style={{ fontSize: font.title, fontWeight: 'bold', color: colors.text }}>오늘의 감사나눔</Text>
+                    <Ionicons name="chevron-forward" size={20} color={colors.text} />
+                </View>
+            </TouchableOpacity>
+
+            {todayGratitudes.length > 0 ? (
+                todayGratitudes.map((item, index) => (
+                    <View
+                        key={item.id}
+                        style={{
+                            paddingVertical: spacing.md,
+                            marginBottom: index < todayGratitudes.length - 1 ? spacing.sm : 0,
+                            borderBottomWidth: index < todayGratitudes.length - 1 ? 1 : 0,
+                            borderBottomColor: colors.border,
+                            backgroundColor: colors.surface,
+                        }}
+                    >
+                        <Text
+                            style={{
+                                fontSize: font.body,
+                                color: colors.text,
+                                marginBottom: spacing.xs,
+                            }}
+                        >
+                            {item.content?.slice(0, 40)}{item.content?.length > 40 ? '...' : ''}
+                        </Text>
+                        <Text
+                            style={{
+                                fontSize: font.caption,
+                                color: colors.subtext,
+                            }}
+                        >
+                            {item.authorName}
+                        </Text>
+                    </View>
+                ))
+            ) : (
+                <Text style={{ color: colors.subtext, fontSize: font.body }}>
+                    오늘의 감사나눔이 없습니다.
                 </Text>
             )}
         </View>

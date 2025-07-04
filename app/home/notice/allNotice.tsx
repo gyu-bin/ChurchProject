@@ -8,16 +8,18 @@ import {
     TextInput,
     Platform,
     Modal,
-    Alert
+    Alert,
+    Keyboard,
+    TouchableWithoutFeedback,
+    KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import {collection, query, where, getDocs, addDoc, serverTimestamp, doc, getDoc, onSnapshot} from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import { useDesign } from '@/context/DesignSystem';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getAuth } from 'firebase/auth';
 
 interface NoticeItem {
     id: string;
@@ -36,8 +38,6 @@ export default function NoticePage() {
     const [modalVisible, setModalVisible] = useState(false);
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
-    const allowedRoles = ['교역자', '관리자'];
-    const [userRole, setUserRole] = useState<string | null>(null);
     const { colors, spacing, font } = useDesign();
     const router = useRouter();
     const insets = useSafeAreaInsets();
@@ -54,7 +54,7 @@ export default function NoticePage() {
             unsubscribe = onSnapshot(userRef, async (docSnap) => {
                 if (docSnap.exists()) {
                     const fresh = { ...docSnap.data(), email: cachedUser.email };
-                    setUser(fresh); // ✅ 실시간 업데이트
+                    setUser(fresh);
                     await AsyncStorage.setItem('currentUser', JSON.stringify(fresh));
                 }
             });
@@ -110,7 +110,6 @@ export default function NoticePage() {
             console.error(e);
         }
     };
-
 
     return (
         <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? insets.top : insets.top }}>
@@ -201,91 +200,99 @@ export default function NoticePage() {
             <Modal
                 visible={modalVisible}
                 animationType="slide"
-                transparent
+                transparent={false}
                 onRequestClose={() => setModalVisible(false)}
             >
-                <View
-                    style={{
-                        flex: 1,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        backgroundColor: 'rgba(0,0,0,0.3)',
-                    }}
+                <KeyboardAvoidingView
+                    style={{ flex: 1 }}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
                 >
-                    <View
-                        style={{
-                            backgroundColor: '#fff',
-                            width: '90%',
-                            borderRadius: 16,
-                            padding: 20,
-                            elevation: 10,
-                            maxHeight: '80%', // 📌 모달 최대 높이 지정
-                        }}
-                    >
-                        <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>
-                            공지사항 추가
-                        </Text>
-
-                        {/* 입력 영역 스크롤 */}
-                        <ScrollView
-                            style={{ flexGrow: 0 }} // ✅ 여기 중요: 스크롤뷰가 전체 채우지 않게
-                            contentContainerStyle={{ paddingBottom: 16 }}
-                            showsVerticalScrollIndicator={false}
-                        >
-                            <TextInput
-                                placeholder="제목"
-                                value={title}
-                                onChangeText={setTitle}
-                                placeholderTextColor={colors.placeholder}
+                    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                        <View style={{ flex: 1, backgroundColor: colors.background,paddingTop: Platform.OS === 'android' ? insets.top : insets.top }}>
+                            {/* ✅ 상단 헤더 */}
+                            <View
                                 style={{
-                                    borderColor: '#ccc',
-                                    borderWidth: 1,
-                                    borderRadius: 8,
-                                    padding: 10,
-                                    marginBottom: 10,
-                                    backgroundColor: colors.background
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    paddingHorizontal: spacing.lg,
+                                    paddingVertical: spacing.md,
+                                    borderBottomWidth: 1,
+                                    borderBottomColor: colors.border,
                                 }}
-                            />
-
-                            <TextInput
-                                placeholder="내용"
-                                placeholderTextColor={colors.placeholder}
-                                value={content}
-                                onChangeText={setContent}
-                                multiline
-                                style={{
-                                    borderColor: '#ccc',
-                                    borderWidth: 1,
-                                    borderRadius: 8,
-                                    padding: 10,
-                                    minHeight: 150,
-                                    maxHeight: 300, // ✨ 입력창 크기 제한
-                                    textAlignVertical: 'top',
-                                    backgroundColor: colors.background
-                                }}
-                            />
-                        </ScrollView>
-
-                        {/* 버튼 */}
-                        <View
-                            style={{
-                                flexDirection: 'row',
-                                justifyContent: 'flex-end',
-                                marginTop: 12,
-                            }}
-                        >
-                            <TouchableOpacity
-                                onPress={() => setModalVisible(false)}
-                                style={{ marginRight: 12 }}
                             >
-                                <Text style={{ color: '#888' }}>취소</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={handleAddNotice}>
-                                <Text style={{ color: '#2563EB', fontWeight: 'bold' }}>추가</Text>
-                            </TouchableOpacity>
+                                <Text
+                                    style={{
+                                        fontSize: font.heading,
+                                        fontWeight: 'bold',
+                                        color: colors.text,
+                                    }}
+                                >
+                                    📝 공지사항 작성
+                                </Text>
+                                <TouchableOpacity onPress={() => setModalVisible(false)}>
+                                    <Ionicons name="close" size={26} color={colors.text} />
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* ✅ 입력 영역 */}
+                            <View style={{ flex: 1, padding: spacing.lg }}>
+                                <TextInput
+                                    placeholder="공지 제목을 입력하세요"
+                                    placeholderTextColor={colors.placeholder}
+                                    value={title}
+                                    onChangeText={setTitle}
+                                    style={{
+                                        borderColor: colors.border,
+                                        borderWidth: 1,
+                                        borderRadius: 10,
+                                        padding: spacing.md,
+                                        fontSize: font.body,
+                                        marginBottom: spacing.md,
+                                        backgroundColor: colors.surface,
+                                        color: colors.text,
+                                    }}
+                                />
+                                <TextInput
+                                    placeholder="공지 내용을 입력하세요"
+                                    placeholderTextColor={colors.placeholder}
+                                    value={content}
+                                    onChangeText={setContent}
+                                    multiline
+                                    textAlignVertical="top"
+                                    style={{
+                                        borderColor: colors.border,
+                                        borderWidth: 1,
+                                        borderRadius: 10,
+                                        padding: spacing.md,
+                                        fontSize: font.body,
+                                        minHeight: 180,
+                                        backgroundColor: colors.surface,
+                                        color: colors.text,
+                                    }}
+                                />
+                            </View>
+
+                            {/* ✅ 하단 버튼 */}
+                            <View style={{ padding: spacing.lg }}>
+                                <TouchableOpacity
+                                    onPress={handleAddNotice}
+                                    style={{
+                                        backgroundColor: colors.primary,
+                                        borderRadius: 10,
+                                        paddingVertical: spacing.md,
+                                        alignItems: 'center',
+                                    }}
+                                >
+                                    <Text style={{ color: '#fff', fontSize: font.body, fontWeight: 'bold' }}>
+                                        작성 완료
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
-                    </View>
-                </View>
+                    </TouchableWithoutFeedback>
+                </KeyboardAvoidingView>
             </Modal>
         </View>
     );

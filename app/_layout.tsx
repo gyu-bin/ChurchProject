@@ -1,4 +1,5 @@
 // app/_layout.tsx
+// import PromoModal from "@/app/PromoModal";
 import { DesignSystemProvider } from '@/context/DesignSystem';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { db } from "@/firebase/config";
@@ -21,7 +22,7 @@ import { RootSiblingParent } from 'react-native-root-siblings';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux';
 import RootLayoutInner from './_layout-inner';
-import {logErrorToDatabase} from './utils/logErrorToDatabase';
+import { logErrorToDatabase } from './utils/logErrorToDatabase';
 
 export default function RootLayout() {
     const colorScheme = useColorScheme();

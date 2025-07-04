@@ -46,7 +46,7 @@ export default function DevotionPage() {
     const isDark = mode === 'dark';
     const insets = useSafeAreaInsets();
     const [rankingRangeText, setRankingRangeText] = useState<string>(''); // 📅 날짜 표시용 추가
-
+    const [anonymous, setAnonymous] = useState(false);
     const panResponder = useRef(
         PanResponder.create({
             onMoveShouldSetPanResponder: (_, gestureState) => {
@@ -134,9 +134,10 @@ export default function DevotionPage() {
                 content,
                 createdAt: new Date(),
                 authorEmail: user.email,
-                authorName: user.name,
+                authorName: anonymous ? '익명' : user?.name ?? '익명'
             });
             setContent('');
+            setAnonymous(false);
             setWriteModalVisible(false);
         } catch (e) {
             Alert.alert('오류', '묵상 내용을 업로드하지 못했습니다.');
@@ -460,34 +461,82 @@ export default function DevotionPage() {
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 >
                     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                        <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? 40 : 150, paddingHorizontal: spacing.lg }}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg }}>
-                                <Text style={{ fontSize: font.body, fontWeight: 'bold', color: colors.text }}>✍️ 오늘의 묵상 작성</Text>
+                        <View style={{
+                            flex: 1,
+                            backgroundColor: colors.background,
+                            paddingTop: Platform.OS === 'android' ? 40 : 150,
+                            paddingHorizontal: spacing.lg
+                        }}>
+                            {/* ✅ 상단 헤더 */}
+                            <View style={{
+                                flexDirection: 'row',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: spacing.lg
+                            }}>
+                                <Text style={{ fontSize: font.body, fontWeight: 'bold', color: colors.text }}>
+                                    ✍️ 오늘의 묵상 작성
+                                </Text>
                                 <TouchableOpacity onPress={() => setWriteModalVisible(false)}>
                                     <Ionicons name="close" size={24} color={colors.text} />
                                 </TouchableOpacity>
                             </View>
 
+                            {/* ✅ 익명 전환 스위치 */}
+                            <View style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'flex-end',
+                                marginBottom: spacing.md,
+                            }}>
+                                <Text style={{ marginRight: 8, color: colors.subtext }}>
+                                    익명으로 작성
+                                </Text>
+                                <TouchableOpacity
+                                    onPress={() => setAnonymous(!anonymous)}
+                                    style={{
+                                        width: 40,
+                                        height: 24,
+                                        borderRadius: 12,
+                                        backgroundColor: anonymous ? colors.primary : '#ccc',
+                                        justifyContent: 'center',
+                                        paddingHorizontal: 2,
+                                    }}
+                                >
+                                    <View
+                                        style={{
+                                            width: 20,
+                                            height: 20,
+                                            borderRadius: 10,
+                                            backgroundColor: '#fff',
+                                            marginLeft: anonymous ? 16 : 0,
+                                        }}
+                                    />
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* ✅ 묵상 내용 입력 */}
                             <TextInput
                                 placeholder="오늘의 묵상 내용을 입력하세요"
                                 placeholderTextColor={colors.subtext}
                                 value={content}
                                 onChangeText={setContent}
                                 multiline
-                                scrollEnabled={true} // ✅ 내부 스크롤 활성화
-                                textAlignVertical="top" // ✅ 내용 위에서부터 시작
+                                scrollEnabled={true}
+                                textAlignVertical="top"
                                 style={{
                                     borderColor: colors.border,
                                     borderWidth: 1,
                                     borderRadius: radius.md,
                                     padding: spacing.md,
                                     minHeight: 150,
-                                    maxHeight: 400, // ✅ 최대 높이 제한
+                                    maxHeight: 400,
                                     color: colors.text,
                                     marginBottom: spacing.md,
                                 }}
                             />
 
+                            {/* ✅ 작성 버튼 */}
                             <TouchableOpacity
                                 onPress={handleSubmit}
                                 style={{
