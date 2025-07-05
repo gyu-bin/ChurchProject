@@ -9,12 +9,16 @@ type DepartmentHeaderProps = {
   selectedCampus: Campus | "ALL";
   selectedDept: Department | "ALL";
   openFilter: () => void;
+  setViewType: (viewType: "card" | "feed") => void;
+  viewType: "card" | "feed";
 };
 
 export default function DepartmentHeader({
   selectedCampus,
   selectedDept,
   openFilter,
+  setViewType,
+  viewType,
 }: DepartmentHeaderProps) {
   const { colors, spacing, font } = useDesign();
   const router = useRouter();
@@ -99,6 +103,7 @@ export default function DepartmentHeader({
         style={{
           flexDirection: "row",
           alignItems: "center",
+          justifyContent: "space-between",
           paddingHorizontal: spacing.lg,
           marginTop: spacing.sm,
           marginBottom: spacing.sm,
@@ -151,6 +156,15 @@ export default function DepartmentHeader({
             </Text>
           </View>
         )}
+        <TouchableOpacity
+          onPress={() => setViewType(viewType === "card" ? "feed" : "card")}
+        >
+          <Ionicons
+            name={viewType === "card" ? "grid-outline" : "list-outline"}
+            size={24}
+            color={colors.text}
+          />
+        </TouchableOpacity>
       </View>
     </View>
   );
