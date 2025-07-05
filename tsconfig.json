@@ -4,18 +4,10 @@
     "strict": true,
     "moduleResolution": "node",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@constants/*": ["./app/constants/*"]
     },
-    "typeRoots": [
-      "./node_modules/@types",
-      "./types/env.d.ts",
-      "./types"
-    ]
+    "typeRoots": ["./node_modules/@types", "./types/env.d.ts", "./types"]
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
-  ]
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]
 }
