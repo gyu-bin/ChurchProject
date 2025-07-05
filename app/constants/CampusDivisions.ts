@@ -3,15 +3,15 @@ export type Campus = "SINCHON" | "MULLAE" | "SEESUN";
 export const ALL_CAMPUS = "ALL";
 export type AllCampus = typeof ALL_CAMPUS;
 
-export const CAMPUS_WITH_ALL = [ALL_CAMPUS, ...Object.values(CAMPUS_ENUM)];
-export type CampusWithAll = Campus | AllCampus;
-
 export const CAMPUS_ENUM: Record<CampusWithAll, string> = {
   ALL: "전체",
   SINCHON: "신촌캠퍼스",
   MULLAE: "문래캠퍼스",
   SEESUN: "시선교회",
 };
+
+export const CAMPUS_WITH_ALL = [ALL_CAMPUS, ...Object.values(CAMPUS_ENUM)];
+export type CampusWithAll = Campus | AllCampus;
 
 export type Department =
   | "PRE_SCHOOL"
@@ -34,12 +34,14 @@ export const DEPARTMENT_ENUM: Record<DepartmentWithAll, string> = {
   ADULT: "장년부",
 };
 
-export const DEPARTMENT_WITH_ALL = [
+export const DEPARTMENT_WITH_ALL: DepartmentWithAll[] = [
   ALL_DEPARTMENT,
-  ...Object.values(DEPARTMENT_ENUM),
+  ...(Object.keys(DEPARTMENT_ENUM) as Department[]),
 ];
+
 export type DepartmentWithAll = Department | AllDepartment;
 
+// TODO 추후 사용, 일단은 전부 다 있다고 가정
 export const CAMPUS_DIVISIONS: Record<Campus, DepartmentWithAll[]> = {
   SINCHON: [
     "PRE_SCHOOL",
