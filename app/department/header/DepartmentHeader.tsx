@@ -3,7 +3,7 @@ import { useDesign } from "@/context/DesignSystem";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Campus, Department } from "@/app/constants/CampusDivisions";
-import { isAll } from "./isAll";
+import { isAll } from "../../utils/isAll";
 
 type DepartmentHeaderProps = {
   selectedCampus: Campus | "ALL";
