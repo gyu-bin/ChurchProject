@@ -96,13 +96,27 @@ export default function useGetDepartmentPost({
             (snapshot) => {
               const fetchedPosts: DepartmentPost[] = [];
               snapshot.forEach((doc) => {
-                fetchedPosts.push({
+                const data = doc.data();
+                const post: DepartmentPost = {
                   id: doc.id,
-                  ...doc.data(),
-                } as DepartmentPost);
+                  content: data.content ?? "",
+                  campus: data.campus,
+                  division: data.division,
+                  imageUrls: data.imageUrls ?? [],
+                  createdAt: data.createdAt,
+                  author: {
+                    id: data.author.id,
+                    name: data.author.name,
+                    campus: data.author.campus,
+                    division: data.author.division,
+                  },
+                  likes: data.likes ?? [],
+                  comments: data.comments ?? [],
+                };
+
+                fetchedPosts.push(post);
               });
 
-              console.log(fetchedPosts);
               setPosts(fetchedPosts);
               setHasMore(fetchedPosts.length === limitCount);
               setLoading(false);

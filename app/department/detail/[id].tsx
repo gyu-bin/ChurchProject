@@ -4,7 +4,14 @@ import { useDesign } from "@/context/DesignSystem";
 import { db } from "@/firebase/config";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import { arrayRemove, arrayUnion, doc, getDoc, updateDoc } from "firebase/firestore";
+import {
+  arrayRemove,
+  arrayUnion,
+  doc,
+  getDoc,
+  Timestamp,
+  updateDoc,
+} from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -20,6 +27,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DepartmentPost } from "../list/useGetDepartmentPost";
+import { formatFirebaseTimestamp } from "@/app/utils/formatFirebaseTimestamp";
+import { CAMPUS_ENUM, DEPARTMENT_ENUM } from "@/app/constants/CampusDivisions";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -30,14 +39,14 @@ interface Comment {
     id: string;
     name: string;
   };
-  createdAt: any;
+  createdAt: Timestamp;
 }
 
 export default function DepartmentPostDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors, spacing, font, radius } = useDesign();
   const insets = useSafeAreaInsets();
-  
+
   const [post, setPost] = useState<DepartmentPost | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,13 +68,16 @@ export default function DepartmentPostDetail() {
     try {
       setLoading(true);
       const postDoc = await getDoc(doc(db, "department_posts", id));
-      
+
       if (postDoc.exists()) {
-        const postData = { id: postDoc.id, ...postDoc.data() } as DepartmentPost;
+        const postData = {
+          id: postDoc.id,
+          ...postDoc.data(),
+        } as DepartmentPost;
         setPost(postData);
         setLikeCount(postData.likes?.length || 0);
         setComments(postData.comments || []);
-        
+
         // Check if current user liked the post
         if (userInfo && postData.likes) {
           setLiked(postData.likes.includes(userInfo.email));
@@ -95,19 +107,19 @@ export default function DepartmentPostDetail() {
 
     try {
       const postRef = doc(db, "department_posts", post.id);
-      
+
       if (liked) {
         await updateDoc(postRef, {
           likes: arrayRemove(userInfo.email),
         });
-        setLikeCount(prev => prev - 1);
+        setLikeCount((prev) => prev - 1);
       } else {
         await updateDoc(postRef, {
           likes: arrayUnion(userInfo.email),
         });
-        setLikeCount(prev => prev + 1);
+        setLikeCount((prev) => prev + 1);
       }
-      
+
       setLiked(!liked);
     } catch (err) {
       console.error("좋아요 처리 실패:", err);
@@ -127,7 +139,7 @@ export default function DepartmentPostDetail() {
           id: userInfo.email,
           name: userInfo.name,
         },
-        createdAt: new Date(),
+        createdAt: Timestamp.now(),
       };
 
       const postRef = doc(db, "department_posts", post.id);
@@ -135,7 +147,7 @@ export default function DepartmentPostDetail() {
         comments: arrayUnion(comment),
       });
 
-      setComments(prev => [comment, ...prev]);
+      setComments((prev) => [comment, ...prev]);
       setNewComment("");
     } catch (err) {
       console.error("댓글 작성 실패:", err);
@@ -182,12 +194,24 @@ export default function DepartmentPostDetail() {
         </Text>
       </View>
       <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            marginBottom: 4,
+          }}
+        >
           <Text style={{ color: colors.text, fontWeight: "600", fontSize: 14 }}>
             {item.author.name}
           </Text>
-          <Text style={{ color: colors.subtext, fontSize: 12, marginLeft: spacing.sm }}>
-            {item.createdAt?.toLocaleDateString() || "방금 전"}
+          <Text
+            style={{
+              color: colors.subtext,
+              fontSize: 12,
+              marginLeft: spacing.sm,
+            }}
+          >
+            {formatFirebaseTimestamp(item.createdAt)}
           </Text>
         </View>
         <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20 }}>
@@ -207,9 +231,22 @@ export default function DepartmentPostDetail() {
 
   if (error || !post) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: spacing.lg }}>
-        <Ionicons name="alert-circle-outline" size={48} color={colors.subtext} />
-        <Text style={{ color: colors.subtext, marginTop: spacing.md, fontSize: 16 }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          padding: spacing.lg,
+        }}
+      >
+        <Ionicons
+          name="alert-circle-outline"
+          size={48}
+          color={colors.subtext}
+        />
+        <Text
+          style={{ color: colors.subtext, marginTop: spacing.md, fontSize: 16 }}
+        >
           {error || "게시물을 찾을 수 없습니다."}
         </Text>
         <TouchableOpacity
@@ -231,7 +268,7 @@ export default function DepartmentPostDetail() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <UserInitializer setUserInfo={setUserInfo} />
-      
+
       {/* Header */}
       <View
         style={{
@@ -249,15 +286,17 @@ export default function DepartmentPostDetail() {
           <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={{ flex: 1, alignItems: "center" }}>
-          <Text style={{ fontSize: font.title, fontWeight: "bold", color: colors.text }}>
+          <Text
+            style={{
+              fontSize: font.title,
+              fontWeight: "bold",
+              color: colors.text,
+            }}
+          >
             게시물
           </Text>
         </View>
-        <TouchableOpacity>
-          <Ionicons name="ellipsis-horizontal" size={24} color={colors.text} />
-        </TouchableOpacity>
       </View>
-
       <ScrollView style={{ flex: 1 }}>
         {/* Author Info */}
         <View
@@ -286,14 +325,16 @@ export default function DepartmentPostDetail() {
             </Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.text, fontWeight: "600", fontSize: 16 }}>
+            <Text
+              style={{ color: colors.text, fontWeight: "600", fontSize: 16 }}
+            >
               {post.author.name}
             </Text>
             <Text style={{ color: colors.subtext, fontSize: 14 }}>
-              {post.campus} • {post.division}
+              {CAMPUS_ENUM[post.campus]} • {DEPARTMENT_ENUM[post.division]}
             </Text>
             <Text style={{ color: colors.subtext, fontSize: 12 }}>
-              {post.createdAt?.toDate?.()?.toLocaleDateString() || "방금 전"}
+              {formatFirebaseTimestamp(post.createdAt)}
             </Text>
           </View>
         </View>
@@ -309,11 +350,13 @@ export default function DepartmentPostDetail() {
               keyExtractor={(_, index) => index.toString()}
               renderItem={renderImage}
               onMomentumScrollEnd={(event) => {
-                const index = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
+                const index = Math.round(
+                  event.nativeEvent.contentOffset.x / screenWidth
+                );
                 setCurrentImageIndex(index);
               }}
             />
-            
+
             {/* Image indicator */}
             {post.imageUrls.length > 1 && (
               <View
@@ -355,7 +398,11 @@ export default function DepartmentPostDetail() {
         >
           <TouchableOpacity
             onPress={handleLike}
-            style={{ flexDirection: "row", alignItems: "center", marginRight: spacing.lg }}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginRight: spacing.lg,
+            }}
           >
             <Ionicons
               name={liked ? "heart" : "heart-outline"}
@@ -368,7 +415,11 @@ export default function DepartmentPostDetail() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={{ flexDirection: "row", alignItems: "center", marginRight: spacing.lg }}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginRight: spacing.lg,
+            }}
           >
             <Ionicons name="chatbubble-outline" size={24} color={colors.text} />
             <Text style={{ color: colors.subtext, marginLeft: spacing.xs }}>
@@ -376,19 +427,30 @@ export default function DepartmentPostDetail() {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={{ flexDirection: "row", alignItems: "center" }}>
+          {/* // 공유 기능 추후 구현 */}
+          {/* <TouchableOpacity
+            style={{ flexDirection: "row", alignItems: "center" }}
+          >
             <Ionicons name="share-outline" size={24} color={colors.text} />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
 
         {/* Comments */}
         <View style={{ backgroundColor: colors.card, marginTop: spacing.sm }}>
-          <View style={{ padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-            <Text style={{ color: colors.text, fontWeight: "600", fontSize: 16 }}>
+          <View
+            style={{
+              padding: spacing.md,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.border,
+            }}
+          >
+            <Text
+              style={{ color: colors.text, fontWeight: "600", fontSize: 16 }}
+            >
               댓글 ({comments.length})
             </Text>
           </View>
-          
+
           {comments.length > 0 ? (
             <FlatList
               data={comments}
@@ -406,7 +468,6 @@ export default function DepartmentPostDetail() {
         </View>
       </ScrollView>
 
-      {/* Comment Input */}
       <View
         style={{
           flexDirection: "row",
@@ -451,4 +512,4 @@ export default function DepartmentPostDetail() {
       </View>
     </View>
   );
-} 
+}
