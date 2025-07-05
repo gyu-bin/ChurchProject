@@ -14,20 +14,29 @@ import {
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 
+type PostAuthor = {
+  id: string;
+  name: string;
+  campus: string;
+  division: string;
+};
+/**
+ * [{"author": {"campus": "문래", "division": "청년1부", "id": "hayeongpark@naver.com", "name": "박하영테"},
+ * "campus": "MULLAE",
+ * "content": "Asdfasdf",
+ *  "createdAt": [Object],
+ *  "division": "PRE_SCHOOL",
+ *  "id": "75e9bd87-25ac-489d-b93b-61265240718d", "imageUrls": []},
+ */
 export interface DepartmentPost {
   id: string;
   content: string;
   campus: CampusWithAll;
   division: DepartmentWithAll;
   imageUrls: string[];
-  createdAt: any; // Firestore Timestamp
-  author: {
-    id: string;
-    name: string;
-    campus: string;
-    division: string;
-  };
-  likes?: string[]; // Array of user emails who liked the post
+  createdAt: any; // firestore timestamp
+  author: PostAuthor;
+  likes?: string[];
   comments?: {
     id: string;
     text: string;
@@ -92,6 +101,8 @@ export default function useGetDepartmentPost({
                   ...doc.data(),
                 } as DepartmentPost);
               });
+
+              console.log(fetchedPosts);
               setPosts(fetchedPosts);
               setHasMore(fetchedPosts.length === limitCount);
               setLoading(false);

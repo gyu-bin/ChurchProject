@@ -6,23 +6,25 @@ export default function useDepartmentFilter() {
   const [selectedCampus, setSelectedCampus] = useState<Campus | "ALL">("ALL");
   const [selectedDept, setSelectedDept] = useState<Department | "ALL">("ALL");
 
-  const [tempCampus, setTempCampus] = useState(selectedCampus);
-  const [tempDept, setTempDept] = useState(selectedDept);
-
   const openFilter = () => {
-    setTempCampus(selectedCampus);
-    setTempDept(selectedDept);
     setIsOpenFilter(true);
   };
-  const applyFilter = () => {
+
+  const applyFilter = ({
+    tempCampus,
+    tempDept,
+  }: {
+    tempCampus: Campus | "ALL";
+    tempDept: Department | "ALL";
+  }) => {
     setSelectedCampus(tempCampus);
     setSelectedDept(tempDept);
     // setVisibleCount(5);
     setIsOpenFilter(false);
   };
   const resetFilter = () => {
-    setTempCampus("ALL");
-    setTempDept("ALL");
+    setSelectedCampus("ALL");
+    setSelectedDept("ALL");
   };
 
   return {

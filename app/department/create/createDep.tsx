@@ -1,6 +1,6 @@
 import {
-    CampusWithAll,
-    DepartmentWithAll,
+  CampusWithAll,
+  DepartmentWithAll,
 } from "@/app/constants/CampusDivisions";
 import CampusDivisionSelect from "@/components/ui/division/CampusDivisionSelect";
 import DepartmentSelect from "@/components/ui/division/DepartmentSelect";
@@ -11,15 +11,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import styled from "styled-components/native";

@@ -1,19 +1,26 @@
 import {
+  CAMPUS_ENUM,
   CAMPUS_WITH_ALL,
   CampusWithAll,
+  DEPARTMENT_ENUM,
   DEPARTMENT_WITH_ALL,
   DepartmentWithAll,
 } from "@/app/constants/CampusDivisions";
 import { useDesign } from "@/context/DesignSystem";
-import { Modal, View, TouchableOpacity, Text } from "react-native";
+import { useState } from "react";
+import { Modal, Text, TouchableOpacity, View } from "react-native";
 
 type DepartmentFilterModalProps = {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   resetFilter: () => void;
-  applyFilter: () => void;
-  setCampus: (campus: CampusWithAll) => void;
-  setDept: (dept: DepartmentWithAll) => void;
+  applyFilter: ({
+    tempCampus,
+    tempDept,
+  }: {
+    tempCampus: CampusWithAll;
+    tempDept: DepartmentWithAll;
+  }) => void;
   selectedCampus: CampusWithAll;
   selectedDept: DepartmentWithAll;
 };
@@ -23,19 +30,26 @@ export default function DepartmentFilterModal({
   setIsOpen,
   resetFilter,
   applyFilter,
-  setCampus,
-  setDept,
   selectedCampus,
   selectedDept,
 }: DepartmentFilterModalProps) {
+  const [tempCampus, setTempCampus] = useState(selectedCampus);
+  const [tempDept, setTempDept] = useState(selectedDept);
+
   const { colors } = useDesign();
+  const closeModal = () => {
+    setIsOpen(false);
+  };
+
+  console.log(selectedCampus, selectedDept);
 
   return (
     <Modal
       visible={isOpen}
       animationType="slide"
       transparent
-      onRequestClose={() => setIsOpen(false)}
+      onDismiss={closeModal}
+      onRequestClose={closeModal}
     >
       <View
         style={{
@@ -82,28 +96,28 @@ export default function DepartmentFilterModal({
           >
             {CAMPUS_WITH_ALL.map((c) => (
               <TouchableOpacity
-                key={c}
-                onPress={() => setCampus(c as CampusWithAll)}
+                key={c + "campus"}
+                onPress={() => setTempCampus(c as CampusWithAll)}
                 style={{
                   paddingHorizontal: 14,
                   paddingVertical: 7,
                   borderRadius: 16,
                   backgroundColor:
-                    selectedCampus === c ? colors.primary : colors.background,
+                    tempCampus === c ? colors.primary : colors.background,
                   borderWidth: 1,
                   borderColor:
-                    selectedCampus === c ? colors.primary : colors.border,
+                    tempCampus === c ? colors.primary : colors.border,
                   marginBottom: 6,
                 }}
               >
                 <Text
                   style={{
-                    color: selectedCampus === c ? "#fff" : colors.text,
+                    color: tempCampus === c ? "#fff" : colors.text,
                     fontWeight: "bold",
                     fontSize: 14,
                   }}
                 >
-                  {c}
+                  {CAMPUS_ENUM[c]}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -127,28 +141,27 @@ export default function DepartmentFilterModal({
           >
             {DEPARTMENT_WITH_ALL.map((d) => (
               <TouchableOpacity
-                key={d}
-                onPress={() => setDept(d as DepartmentWithAll)}
+                key={d + "dept"}
+                onPress={() => setTempDept(d as DepartmentWithAll)}
                 style={{
                   paddingHorizontal: 14,
                   paddingVertical: 7,
                   borderRadius: 16,
                   backgroundColor:
-                    selectedDept === d ? colors.primary : colors.background,
+                    tempDept === d ? colors.primary : colors.background,
                   borderWidth: 1,
-                  borderColor:
-                    selectedDept === d ? colors.primary : colors.border,
+                  borderColor: tempDept === d ? colors.primary : colors.border,
                   marginBottom: 6,
                 }}
               >
                 <Text
                   style={{
-                    color: selectedDept === d ? "#fff" : colors.text,
+                    color: tempDept === d ? "#fff" : colors.text,
                     fontWeight: "bold",
                     fontSize: 14,
                   }}
                 >
-                  {d}
+                  {DEPARTMENT_ENUM[d]}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -176,7 +189,7 @@ export default function DepartmentFilterModal({
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={applyFilter}
+              onPress={() => applyFilter({ tempCampus, tempDept })}
               style={{
                 backgroundColor: colors.primary,
                 borderRadius: 12,

@@ -2,7 +2,12 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useDesign } from "@/context/DesignSystem";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { Campus, Department } from "@/app/constants/CampusDivisions";
+import {
+  Campus,
+  CAMPUS_ENUM,
+  Department,
+  DEPARTMENT_ENUM,
+} from "@/app/constants/CampusDivisions";
 import { isAll } from "../../utils/isAll";
 
 type DepartmentHeaderProps = {
@@ -110,52 +115,56 @@ export default function DepartmentHeader({
           gap: 8,
         }}
       >
-        <View
-          style={{
-            backgroundColor:
-              isAll(selectedCampus) && isAll(selectedDept)
-                ? colors.primary
-                : colors.background,
-            borderRadius: 16,
-            paddingHorizontal: 14,
-            paddingVertical: 6,
-            borderWidth: 1,
-            borderColor:
-              isAll(selectedCampus) && isAll(selectedDept)
-                ? colors.primary
-                : colors.border,
-          }}
-        >
-          <Text
-            style={{
-              color:
-                isAll(selectedCampus) && isAll(selectedDept)
-                  ? "#fff"
-                  : colors.text,
-              fontWeight: "600",
-              fontSize: 15,
-            }}
-          >
-            전체 피드
-          </Text>
-        </View>
-        {(!isAll(selectedCampus) || !isAll(selectedDept)) && (
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
           <View
             style={{
-              backgroundColor: colors.primary,
+              backgroundColor:
+                isAll(selectedCampus) && isAll(selectedDept)
+                  ? colors.primary
+                  : colors.background,
               borderRadius: 16,
               paddingHorizontal: 14,
               paddingVertical: 6,
               borderWidth: 1,
-              borderColor: colors.primary,
+              borderColor:
+                isAll(selectedCampus) && isAll(selectedDept)
+                  ? colors.primary
+                  : colors.border,
             }}
           >
-            <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>
-              {selectedCampus}
-              {!isAll(selectedDept) ? " · " + selectedDept : ""}
+            <Text
+              style={{
+                color:
+                  isAll(selectedCampus) && isAll(selectedDept)
+                    ? "#fff"
+                    : colors.text,
+                fontWeight: "600",
+                fontSize: 15,
+              }}
+            >
+              전체 피드
             </Text>
           </View>
-        )}
+          {(!isAll(selectedCampus) || !isAll(selectedDept)) && (
+            <View
+              style={{
+                backgroundColor: colors.primary,
+                borderRadius: 16,
+                paddingHorizontal: 14,
+                paddingVertical: 6,
+                borderWidth: 1,
+                borderColor: colors.primary,
+              }}
+            >
+              <Text style={{ color: "#fff", fontWeight: "600", fontSize: 15 }}>
+                {CAMPUS_ENUM[selectedCampus]}
+                {!isAll(selectedDept)
+                  ? " · " + DEPARTMENT_ENUM[selectedDept]
+                  : ""}
+              </Text>
+            </View>
+          )}
+        </View>
         <TouchableOpacity
           onPress={() => setViewType(viewType === "card" ? "feed" : "card")}
         >

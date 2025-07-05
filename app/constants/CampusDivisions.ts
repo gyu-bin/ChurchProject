@@ -10,7 +10,9 @@ export const CAMPUS_ENUM: Record<CampusWithAll, string> = {
   SEESUN: "시선교회",
 };
 
-export const CAMPUS_WITH_ALL = [ALL_CAMPUS, ...Object.values(CAMPUS_ENUM)];
+export const CAMPUS_WITH_ALL: CampusWithAll[] = [
+  ...(Object.keys(CAMPUS_ENUM) as CampusWithAll[]),
+];
 export type CampusWithAll = Campus | AllCampus;
 
 export type Department =
@@ -35,7 +37,6 @@ export const DEPARTMENT_ENUM: Record<DepartmentWithAll, string> = {
 };
 
 export const DEPARTMENT_WITH_ALL: DepartmentWithAll[] = [
-  ALL_DEPARTMENT,
   ...(Object.keys(DEPARTMENT_ENUM) as Department[]),
 ];
 

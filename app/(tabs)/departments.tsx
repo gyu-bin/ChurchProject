@@ -26,8 +26,6 @@ export default function DepartmentsScreen() {
   const {
     selectedCampus,
     selectedDept,
-    setSelectedCampus,
-    setSelectedDept,
     openFilter,
     isOpenFilter,
     applyFilter,
@@ -159,8 +157,6 @@ export default function DepartmentsScreen() {
         setIsOpen={setIsOpenFilter}
         resetFilter={resetFilter}
         applyFilter={applyFilter}
-        setCampus={setSelectedCampus}
-        setDept={setSelectedDept}
         selectedCampus={selectedCampus}
         selectedDept={selectedDept}
       />
