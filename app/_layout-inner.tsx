@@ -70,7 +70,7 @@ export default function RootLayoutInner() {
           <Stack.Screen name="home/active" options={{ headerShown: false }} />
           <Stack.Screen name="share/DailyBible" options={{ headerShown: false }} />
           <Stack.Screen name="home/QuickMenuButton/counseling" options={{ headerShown: false }} />
-          <Stack.Screen name="department/createDep" options={{ headerShown: false }} />
+          <Stack.Screen name="department/create/createDep" options={{ headerShown: false }} />
           <Stack.Screen name="home/notice/allNotice" options={{ headerShown: false }} />
           <Stack.Screen name="home/QuickMenuButton/churchNewsPage" options={{ headerShown: false }} />
           <Stack.Screen name="share/thank" options={{ headerShown: false }} />
