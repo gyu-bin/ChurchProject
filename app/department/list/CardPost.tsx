@@ -1,12 +1,15 @@
+import { CAMPUS_ENUM, DEPARTMENT_ENUM } from "@/app/constants/CampusDivisions";
+import { formatFirebaseTimestamp } from "@/app/utils/formatFirebaseTimestamp";
 import { useDesign } from "@/context/DesignSystem";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { Dimensions, Image, Text, TouchableOpacity, View } from "react-native";
-import { DepartmentPost } from "../useGetDepartmentPost";
+import { Dimensions, Image, Text, View } from "react-native";
+import styled from "styled-components/native";
+import { DepartmentPost } from "./useGetDepartmentPost";
 
 const { width: screenWidth } = Dimensions.get("window");
-const POST_WIDTH = screenWidth - 32; // 16px padding on each side
-const IMAGE_HEIGHT = POST_WIDTH * 1.2; // Instagram-like aspect ratio
+const POST_WIDTH = screenWidth - 32;
+const IMAGE_HEIGHT = POST_WIDTH * 1.2;
 
 export default function CardPost({ item }: { item: DepartmentPost }) {
   const { colors, spacing, radius } = useDesign();
@@ -18,20 +21,7 @@ export default function CardPost({ item }: { item: DepartmentPost }) {
   };
 
   return (
-    <TouchableOpacity
-      style={{
-        backgroundColor: colors.card,
-        borderRadius: radius.lg,
-        marginBottom: spacing.md,
-        shadowColor: "#000",
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 3,
-        overflow: "hidden",
-      }}
-      onPress={handlePress}
-      activeOpacity={0.8}
-    >
+    <CardContainer onPress={handlePress} activeOpacity={0.8}>
       {/* Header */}
       <View
         style={{
@@ -62,11 +52,11 @@ export default function CardPost({ item }: { item: DepartmentPost }) {
             {item.author.name}
           </Text>
           <Text style={{ color: colors.subtext, fontSize: 12 }}>
-            {item.campus} • {item.division}
+            {CAMPUS_ENUM[item.campus]} • {DEPARTMENT_ENUM[item.division]}
           </Text>
         </View>
         <Text style={{ color: colors.subtext, fontSize: 12 }}>
-          {item.createdAt?.toDate?.()?.toLocaleDateString() || "방금 전"}
+          {formatFirebaseTimestamp(item.createdAt)}
         </Text>
       </View>
 
@@ -125,7 +115,6 @@ export default function CardPost({ item }: { item: DepartmentPost }) {
           {item.content || "내용이 없습니다"}
         </Text>
       </View>
-      {/* Footer Actions */}
       <View
         style={{
           flexDirection: "row",
@@ -148,17 +137,19 @@ export default function CardPost({ item }: { item: DepartmentPost }) {
             {item.comments?.length || 0}
           </Text>
         </View>
-
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            marginLeft: spacing.md,
-          }}
-        >
-          <Ionicons name="share-outline" size={20} color={colors.text} />
-        </View>
       </View>
-    </TouchableOpacity>
+    </CardContainer>
   );
 }
+
+// 스타일드 컴포넌트 왜 안되지...
+const CardContainer = styled.TouchableOpacity`
+  background-color: ${({ theme }) => theme.colors.card};
+  border-radius: ${({ theme }) => theme.radius.lg}px;
+  margin-bottom: ${({ theme }) => theme.spacing.sm}px;
+  shadow-color: #000;
+  shadow-opacity: 0.1;
+  shadow-radius: 8px;
+  elevation: 3;
+  overflow: hidden;
+`;

@@ -41,8 +41,6 @@ export default function DepartmentFilterModal({
     setIsOpen(false);
   };
 
-  console.log(selectedCampus, selectedDept);
-
   return (
     <Modal
       visible={isOpen}

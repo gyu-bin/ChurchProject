@@ -12,20 +12,17 @@ import {
   Text,
   View,
 } from "react-native";
-import FeedPost from "./type/FeedPost";
-import CardPost from "./type/CardPost";
 import useGetDepartmentPost, { DepartmentPost } from "./useGetDepartmentPost";
+import CardPost from "./CardPost";
 
 interface DepartmentFeedProps {
   selectedCampus?: CampusWithAll;
   selectedDivision?: DepartmentWithAll;
-  viewType?: "card" | "feed";
 }
 
 export default function DepartmentPostList({
   selectedCampus = "ALL",
   selectedDivision = "ALL",
-  viewType = "card",
 }: DepartmentFeedProps) {
   const { colors, spacing, radius } = useDesign();
   const { posts, loading, error, hasMore, loadMore, refresh } =
@@ -35,10 +32,6 @@ export default function DepartmentPostList({
       limitCount: 10,
       enableRealtime: true,
     });
-
-  const renderFeedPost = ({ item }: { item: DepartmentPost }) => (
-    <FeedPost item={item} />
-  );
 
   const renderCardPost = ({ item }: { item: DepartmentPost }) => (
     <CardPost item={item} />
@@ -83,105 +76,52 @@ export default function DepartmentPostList({
         </View>
       )}
 
-      {viewType === "feed" ? (
-        <FlatList
-          data={posts}
-          key={viewType}
-          keyExtractor={(item) => item.id}
-          renderItem={renderFeedPost}
-          numColumns={3}
-          columnWrapperStyle={{ paddingHorizontal: spacing.md }}
-          contentContainerStyle={{ paddingBottom: spacing.md }}
-          refreshControl={
-            <RefreshControl
-              refreshing={loading && posts.length === 0}
-              onRefresh={refresh}
-              colors={[colors.primary]}
-            />
-          }
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.1}
-          ListFooterComponent={renderFooter}
-          ListEmptyComponent={
-            !loading ? (
-              <View style={{ padding: spacing.xl, alignItems: "center" }}>
-                <Ionicons
-                  name="grid-outline"
-                  size={48}
-                  color={colors.subtext}
-                />
-                <Text
-                  style={{
-                    color: colors.subtext,
-                    marginTop: spacing.md,
-                    fontSize: 16,
-                  }}
-                >
-                  게시물이 없습니다.
-                </Text>
-                <Text
-                  style={{
-                    color: colors.subtext,
-                    fontSize: 14,
-                    textAlign: "center",
-                  }}
-                >
-                  선택한 캠퍼스와 부서에 게시물이 없거나{"\n"}새로운 게시물을
-                  작성해보세요.
-                </Text>
-              </View>
-            ) : null
-          }
-        />
-      ) : (
-        <FlatList
-          data={posts}
-          key={viewType}
-          keyExtractor={(item) => item.id}
-          renderItem={renderCardPost}
-          contentContainerStyle={{ padding: spacing.md }}
-          refreshControl={
-            <RefreshControl
-              refreshing={loading && posts.length === 0}
-              onRefresh={refresh}
-              colors={[colors.primary]}
-            />
-          }
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.1}
-          ListFooterComponent={renderFooter}
-          ListEmptyComponent={
-            !loading ? (
-              <View style={{ padding: spacing.xl, alignItems: "center" }}>
-                <Ionicons
-                  name="document-outline"
-                  size={48}
-                  color={colors.subtext}
-                />
-                <Text
-                  style={{
-                    color: colors.subtext,
-                    marginTop: spacing.md,
-                    fontSize: 16,
-                  }}
-                >
-                  게시물이 없습니다.
-                </Text>
-                <Text
-                  style={{
-                    color: colors.subtext,
-                    fontSize: 14,
-                    textAlign: "center",
-                  }}
-                >
-                  선택한 캠퍼스와 부서에 게시물이 없거나{"\n"}새로운 게시물을
-                  작성해보세요.
-                </Text>
-              </View>
-            ) : null
-          }
-        />
-      )}
+      <FlatList
+        data={posts}
+        keyExtractor={(item) => item.id}
+        renderItem={renderCardPost}
+        contentContainerStyle={{ padding: spacing.md }}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading && posts.length === 0}
+            onRefresh={refresh}
+            colors={[colors.primary]}
+          />
+        }
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.1}
+        ListFooterComponent={renderFooter}
+        ListEmptyComponent={
+          !loading ? (
+            <View style={{ padding: spacing.xl, alignItems: "center" }}>
+              <Ionicons
+                name="document-outline"
+                size={48}
+                color={colors.subtext}
+              />
+              <Text
+                style={{
+                  color: colors.subtext,
+                  marginTop: spacing.md,
+                  fontSize: 16,
+                }}
+              >
+                게시물이 없습니다.
+              </Text>
+              <Text
+                style={{
+                  color: colors.subtext,
+                  fontSize: 14,
+                  textAlign: "center",
+                }}
+              >
+                선택한 캠퍼스와 부서에 게시물이 없거나{"\n"}새로운 게시물을
+                작성해보세요.
+              </Text>
+            </View>
+          ) : null
+        }
+      />
     </View>
   );
 }
