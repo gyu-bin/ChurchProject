@@ -1,7 +1,13 @@
 // components/CustomGridCalendar.tsx
+import AlarmModal from "@/app/home/calendarDetail/calendarAlarm";
+import EventDetailModal from "@/app/home/calendarDetail/calendarDetail";
+import CustomDropdown from "@/components/dropDown";
 import { useDesign } from "@/context/DesignSystem";
 import { db } from "@/firebase/config";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import dayjs from "dayjs";
+import { router } from "expo-router";
 import {
   collection,
   doc,
@@ -14,25 +20,14 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   Dimensions,
   FlatList,
-  Modal,
   PanResponder,
-  PanResponderGestureState,
-  Platform,
-  Pressable,
+  PanResponderGestureState, Platform,
   SafeAreaView,
-  ScrollView,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Ionicons } from "@expo/vector-icons";
-import { Dropdown } from "react-native-element-dropdown";
-import RNPickerSelect from "react-native-picker-select";
-import EventDetailModal from "@/app/home/calendarDetail/calendarDetail";
-import CustomDropdown from "@/components/dropDown";
-import {router} from "expo-router";
-import AlarmModal from "@/app/home/calendarDetail/calendarAlarm";
+import {useSafeAreaFrame, useSafeAreaInsets} from "react-native-safe-area-context";
 
 const daysOfWeek = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -52,9 +47,7 @@ const divisionData = [
   { label: "장년부", value: "시선교회" },
 ];
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
-
-export default function CalendarModal({
+export default function CalendarPage({
   visible,
   onClose,
 }: {
@@ -75,7 +68,8 @@ export default function CalendarModal({
   const [showEventModal, setShowEventModal] = useState(false);
   const [showAlarmModal, setShowAlarmModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
-
+  const frame = useSafeAreaFrame();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -104,6 +98,29 @@ export default function CalendarModal({
     });
     return () => unsub();
   }, []);
+
+    const numRows = React.useMemo(() => {
+        const startOfMonth = currentMonth.startOf("month");
+        const endOfMonth = currentMonth.endOf("month");
+        const startDate = startOfMonth.startOf("week");
+        const endDate = endOfMonth.endOf("week");
+
+        let date = startDate.clone();
+        let rows = 0;
+
+        while (date.isBefore(endDate) || date.isSame(endDate)) {
+            rows++;
+            date = date.add(1, "week");
+        }
+        return rows; // 4, 5, 6
+    }, [currentMonth]);
+
+    const topAreaHeight = insets.top + 60; // SafeArea + 헤더
+    const bottomAreaHeight = 90; // 오늘/추가 버튼
+    const otherUIHeight = topAreaHeight + bottomAreaHeight + 180; // 필터 등
+
+    const maxCalendarHeight = frame.height - otherUIHeight;
+    const dateCellHeight = Math.min(maxCalendarHeight / numRows, 90);
 
   const handleToday = () => {
     setCurrentMonth(today);
@@ -187,453 +204,454 @@ export default function CalendarModal({
     setShowAlarmModal(true);
   };
 
-  if (!visible) return null;
-
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <Pressable
-        style={{
-          flex: 1,
-          backgroundColor: "rgba(0,0,0,0.3)",
-          justifyContent: "center",
-          alignItems: "center",
-          paddingTop: Platform.OS === "android" ? 40 : 80,
-        }}
-        onPress={onClose}
-        pointerEvents="box-none"
-      >
-        <Pressable
-          style={{
-            backgroundColor: colors.surface,
-            borderRadius: 20,
-            paddingTop: 20,
-            paddingHorizontal: 20,
-            width: "100%",
-            height: "100%",
-            maxHeight: "95%",
-            display: "flex",
-            flexDirection: "column",
-          }}
-          onPress={() => {}}
-          pointerEvents="box-none"
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? insets.top + 10 : insets.top,}}>
+        <View
+            style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingHorizontal: spacing.md,
+                paddingVertical: spacing.sm,
+                backgroundColor: colors.background,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.border,
+                position: 'relative', // 타이틀 절대 배치 기준
+            }}
         >
-          <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: 12,
-                position: 'relative',
-              }}
-          >
-            {/* 🔔 알림내역 - 왼쪽 */}
-            <TouchableOpacity onPress={() => router.push('/home/calendarDetail/alarmList')}>
-              <Text style={{ color: colors.text }}>🔔 알림내역</Text>
+            {/* 뒤로가기 */}
+            <TouchableOpacity onPress={() => router.back()}>
+                <Ionicons name="chevron-back" size={24} color={colors.text} />
             </TouchableOpacity>
 
-            {/* 📅 달력형 | 📋 리스트형 - 화면 정중앙에 배치 */}
-            <View
+            {/* 타이틀 중앙 고정 */}
+            <Text
                 style={{
-                  position: 'absolute',
-                  left: SCREEN_WIDTH / 2 - 100, // 버튼 너비 기준 조정 (100은 대략적 가로폭의 절반)
-                  flexDirection: 'row',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  width: 200,
+                    position: 'absolute', // 절대 위치
+                    left: '50%',          // 화면 가운데
+                    transform: [{ translateX: -25 }],
+                    fontSize: font.heading,
+                    fontWeight: "bold",
+                    color: colors.text,
+                    textAlign: 'center',
                 }}
             >
+                시광 캘린더
+            </Text>
+
+            {/* 오른쪽 알림내역 */}
+            <TouchableOpacity
+                style={{
+                    flexDirection: 'column',
+                    alignItems: 'center', // 가운데 정렬
+                    justifyContent: 'center',
+                }}
+                onPress={() => router.push('/home/calendarDetail/alarmList')}
+            >
+                <Text style={{ color: colors.text, fontSize: 18 }}>🔔</Text>
+                <Text style={{ color: colors.text, fontSize: 12 }}>알림내역</Text>
+            </TouchableOpacity>
+        </View>
+
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.background,
+          borderRadius: 20,
+          paddingTop: 10,
+          paddingHorizontal: 20,
+          width: "100%",
+          height: frame.height,
+          maxHeight: frame.height,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+          <View
+              style={{
+                  flexDirection: 'row',
+                  justifyContent: 'center', // 🔥 화면 중앙 정렬
+                  alignItems: 'center',
+              }}
+          >
               <TouchableOpacity
                   onPress={() => setViewType('calendar')}
                   style={{
-                    padding: 10,
-                    backgroundColor: viewType === 'calendar' ? colors.primary : colors.border,
-                    borderTopLeftRadius: 8,
-                    borderBottomLeftRadius: 8,
+                      paddingVertical: 10,
+                      paddingHorizontal: 16,
+                      backgroundColor: viewType === 'calendar' ? colors.primary : colors.border,
+                      borderTopLeftRadius: 8,
+                      borderBottomLeftRadius: 8,
                   }}
               >
-                <Text style={{ color: viewType === 'calendar' ? '#fff' : colors.text }}>
-                  📅 달력형
-                </Text>
+                  <Text style={{ color: viewType === 'calendar' ? '#fff' : colors.text }}>
+                      📅 달력형
+                  </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                   onPress={() => setViewType('list')}
                   style={{
-                    padding: 10,
-                    backgroundColor: viewType === 'list' ? colors.primary : colors.border,
-                    borderTopRightRadius: 8,
-                    borderBottomRightRadius: 8,
+                      paddingVertical: 10,
+                      paddingHorizontal: 16,
+                      backgroundColor: viewType === 'list' ? colors.primary : colors.border,
+                      borderTopRightRadius: 8,
+                      borderBottomRightRadius: 8,
                   }}
               >
-                <Text style={{ color: viewType === 'list' ? '#fff' : colors.text }}>
-                  📋 리스트형
+                  <Text style={{ color: viewType === 'list' ? '#fff' : colors.text }}>
+                      📋 리스트형
+                  </Text>
+              </TouchableOpacity>
+          </View>
+
+        {viewType === "calendar" ? (
+          <View style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            {/* 상단 월 표기 + 이동 */}
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                marginBottom: spacing.md,
+                alignItems: "center",
+              }}
+            >
+              <TouchableOpacity
+                onPress={() =>
+                  setCurrentMonth((prev) => prev.subtract(1, "month"))
+                }
+              >
+                <Text style={{ fontSize: 24, color: colors.primary }}>
+                  {"◀"}
+                </Text>
+              </TouchableOpacity>
+
+              <Text
+                style={{
+                  fontSize: font.heading,
+                  fontWeight: "bold",
+                  color: colors.text,
+                }}
+              >
+                {currentMonth.format("YYYY년 M월")}
+              </Text>
+
+              <TouchableOpacity
+                onPress={() =>
+                  setCurrentMonth((prev) => prev.add(1, "month"))
+                }
+              >
+                <Text style={{ fontSize: 24, color: colors.primary }}>
+                  {"▶"}
                 </Text>
               </TouchableOpacity>
             </View>
 
-            {/* ❌ 닫기 - 오른쪽 */}
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color={colors.text} />
-            </TouchableOpacity>
-          </View>
-
-          {viewType === "calendar" ? (
-            <View style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              {/* 상단 월 표기 + 이동 */}
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  marginBottom: spacing.md,
-                  alignItems: "center",
-                }}
-              >
-                <TouchableOpacity
-                  onPress={() =>
-                    setCurrentMonth((prev) => prev.subtract(1, "month"))
-                  }
-                >
-                  <Text style={{ fontSize: 24, color: colors.primary }}>
-                    {"◀"}
-                  </Text>
-                </TouchableOpacity>
-
-                <Text
-                  style={{
-                    fontSize: font.heading,
-                    fontWeight: "bold",
-                    color: colors.text,
-                  }}
-                >
-                  {currentMonth.format("YYYY년 M월")}
-                </Text>
-
-                <TouchableOpacity
-                  onPress={() =>
-                    setCurrentMonth((prev) => prev.add(1, "month"))
-                  }
-                >
-                  <Text style={{ fontSize: 24, color: colors.primary }}>
-                    {"▶"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={{ paddingBottom: 10, flexDirection: "row" }}>
-                <CustomDropdown
-                    data={campusData}
-                    value={campusFilter}
-                    onChange={(item) => setCampusFilter(item.value)}
-                    placeholder="캠퍼스 선택"
-                    containerStyle={{ width: "48%", marginRight: 16 }}
-                />
-                <CustomDropdown
-                    data={divisionData}
-                    value={divisionFilter}
-                    onChange={(item) => setDivisionFilter(item.value)}
-                    placeholder="부서 선택"
-                    containerStyle={{ width: "48%" }}
-                />
-              </View>
-
-              {/* 요일 */}
-              <View style={{ flexDirection: "row", marginBottom: 6 }}>
-                {daysOfWeek.map((day, idx) => (
-                  <Text
-                    key={idx}
-                    style={{
-                      flex: 1,
-                      textAlign: "center",
-                      fontWeight: "600",
-                      color:
-                        idx === 0 ? "red" : idx === 6 ? colors.primary : colors.subtext,
-                    }}
-                  >
-                    {day}
-                  </Text>
-                ))}
-              </View>
-
-              {/* 달력 */}
-              <View
-                {...panResponder.panHandlers}
-                style={{ flexShrink: 0, maxHeight: "60%" }}
-              >
-                {/*<View {...panResponder.panHandlers}>*/}
-                {getCalendarMatrix().map((week, i) => (
-                  <View key={i} style={{ flexDirection: "row" }}>
-                    {week.map((date) => {
-                      const dateStr = date.format("YYYY-MM-DD");
-                      const isSelected = dateStr === selectedDate;
-                      const isToday = dateStr === today.format("YYYY-MM-DD");
-                      const dayEvents = getEventsForDate(dateStr);
-
-                      return (
-                        <TouchableOpacity
-                          key={dateStr}
-                          style={{
-                            flex: 1,
-                            borderTopWidth: 1,
-                            borderBottomWidth: 1,
-                            borderColor: "#eee",
-                            borderRadius: 8,
-                            backgroundColor: isSelected
-                              ? colors.primary
-                              : undefined,
-                            height: 90,
-                            opacity: isCurrentMonth(date) ? 1 : 0,
-                            pointerEvents: isCurrentMonth(date)
-                              ? "auto"
-                              : "none",
-                          }}
-                          onPress={() => {
-                            if (dayEvents.length > 0) {
-                              setSelectedDate(dateStr);
-                              setShowEventModal(true);
-                            }
-                          }}
-                        >
-                          <Text
-                            style={{
-                              textAlign: "center",
-                              color: isSelected
-                                ? "#fff"
-                                : date.day() === 0
-                                ? "red"
-                                : date.day() === 6
-                                ? colors.primary
-                                : colors.text,
-                              fontWeight: isToday ? "bold" : "normal",
-                            }}
-                          >
-                            {date.date()}
-                          </Text>
-
-                          {dayEvents.slice(0, 3).map((ev) => (
-                            <View
-                              key={ev.id}
-                              style={{
-                                backgroundColor: isSelected
-                                  ? "#ffffff33"
-                                  : colors.background === "dark"
-                                  ? "black" // 다크모드용 배경
-                                  : colors.primary, // 라이트모드 배경
-                                paddingHorizontal: 6,
-                                paddingVertical: 2,
-                                borderRadius: 6,
-                                marginTop: 4,
-                                alignSelf: "center",
-                              }}
-                            >
-                              <Text
-                                style={{
-                                  fontSize: 11,
-                                  color: isSelected
-                                    ? "#fff"
-                                    : colors.background === "dark"
-                                    ? colors.primary // 다크모드 텍스트 색상
-                                    : "white",
-                                  fontWeight: "500",
-                                }}
-                                numberOfLines={1}
-                              >
-                                {ev.title}
-                              </Text>
-                            </View>
-                          ))}
-                          {/* ✅ 4개 이상이면 "더보기" 표시 */}
-                          {dayEvents.length > 3 && (
-                              <Text
-                                  style={{
-                                    fontSize: 10,
-                                    color: isSelected ? "#fff" : colors.primary,
-                                    textAlign: "center",
-                                    marginTop: 2,
-                                  }}
-                              >
-                                +{dayEvents.length - 3}개 더보기
-                              </Text>
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                ))}
-              </View>
-              {/*</View>*/}
-
-              <EventDetailModal
-                visible={showEventModal}
-                onClose={() => setShowEventModal(false)}
-                date={selectedDate}
-                events={getEventsForDate(selectedDate)}
-                colors={colors}
+            <View style={{ paddingBottom: 10, flexDirection: "row" }}>
+              <CustomDropdown
+                  data={campusData}
+                  value={campusFilter}
+                  onChange={(item) => setCampusFilter(item.value)}
+                  placeholder="캠퍼스 선택"
+                  containerStyle={{ width: "48%", marginRight: 16 }}
               />
+              <CustomDropdown
+                  data={divisionData}
+                  value={divisionFilter}
+                  onChange={(item) => setDivisionFilter(item.value)}
+                  placeholder="부서 선택"
+                  containerStyle={{ width: "48%" }}
+              />
+            </View>
 
-              {/* ✅ 상세 일정만 ScrollView 적용 */}
-              {/*<View style={{ flex: 1 }}>
-                            <Text style={{ fontWeight: 'bold', fontSize: font.body, color: colors.primary, marginTop: 20 }}>
-                                {selectedDate} 일정
-                            </Text>
-
-                             ✅ 최대 3개 정도 보이도록 height 제한
-                            <ScrollView
-                                style={{ maxHeight: 200 }} // 여기서 높이 조절 (70~75px * 3 + 여백 고려)
-                                contentContainerStyle={{ paddingBottom: 16 }}
-                                showsVerticalScrollIndicator={true}
-                            >
-                                {getEventsForDate(selectedDate).length > 0 ? (
-                                    getEventsForDate(selectedDate).map(ev => (
-                                        <View key={ev.id} style={{ paddingVertical: 6 }}>
-                                            <Text style={{ fontWeight: 'bold', color: colors.text }}>{ev.title}</Text>
-                                            {ev.place && (
-                                                <Text style={{ color: colors.subtext, fontSize: 13 }}>장소: {ev.place}</Text>
-                                            )}
-                                            {(ev.campus || ev.division) && (
-                                                <Text style={{ color: colors.subtext, fontSize: 13 }}>
-                                                    {ev.campus ? `캠퍼스: ${ev.campus}` : ''}{' '}
-                                                    {ev.division ? `부서: ${ev.division}` : ''}
-                                                </Text>
-                                            )}
-                                        </View>
-                                    ))
-                                ) : (
-                                    <Text style={{ color: colors.subtext, marginTop: 6 }}>일정이 없습니다.</Text>
-                                )}
-                            </ScrollView>
-                        </View>*/}
-
-              {/* 오늘 및 추가 버튼 */}
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "flex-end",
-                  paddingVertical: 12,
-                  paddingHorizontal: 16,
-                  position: "absolute",
-                  bottom: 0,
-                  right: 0,
-                  left: 0,
-                  backgroundColor: colors.surface,
-                  borderTopWidth: 1,
-                  borderTopColor: colors.border,
-                }}
-              >
-                {(user?.role === "관리자" ||
-                  user?.role === "교역자" ||
-                  user?.role === "임원") && (
-                  <TouchableOpacity
-                    style={{
-                      backgroundColor: colors.primary,
-                      padding: 10,
-                      borderRadius: 20,
-                      marginRight: 10,
-                    }}
-                  >
-                    <Ionicons name="add" size={20} color="#fff" />
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity
-                  onPress={handleToday}
+            {/* 요일 */}
+            <View style={{ flexDirection: "row", marginBottom: 6 }}>
+              {daysOfWeek.map((day, idx) => (
+                <Text
+                  key={idx}
                   style={{
-                    backgroundColor: colors.primary,
-                    padding: 10,
-                    borderRadius: 20,
+                    flex: 1,
+                    textAlign: "center",
+                    fontWeight: "600",
+                    color:
+                      idx === 0 ? "red" : idx === 6 ? colors.primary : colors.subtext,
                   }}
                 >
-                  <Text style={{ color: "#fff", fontWeight: "bold" }}>
-                    오늘
-                  </Text>
-                </TouchableOpacity>
-              </View>
-              {/*</View>*/}
+                  {day}
+                </Text>
+              ))}
             </View>
-          ) : (
-            <View style={{ flex: 1, backgroundColor: colors.background }}>
-              {/* 필터 */}
-              <View
-                style={{
-                  flexDirection: "row",
-                  marginBottom: 8,
-                  gap: 8,
-                  paddingHorizontal: 8,
-                  paddingTop: 8,
-                }}
-              >
-                {/* campusFilter */}
-                <CustomDropdown
-                    data={campusData}
-                    value={campusFilter}
-                    onChange={(item) => setCampusFilter(item.value)}
-                    placeholder="캠퍼스 선택"
-                    containerStyle={{ width: "48%", marginRight: 16 }}
-                />
 
-                {/* divisionFilter */}
-                <CustomDropdown
-                    data={divisionData}
-                    value={divisionFilter}
-                    onChange={(item) => setDivisionFilter(item.value)}
-                    placeholder="부서 선택"
-                    containerStyle={{ width: "48%" }}
-                />
-              </View>
+            {/* 달력 */}
+            <View
+              {...panResponder.panHandlers}
+              style={{ flexShrink: 0, maxHeight: "60%" }}
+            >
+              {/*<View {...panResponder.panHandlers}>*/}
+              {getCalendarMatrix().map((week, i) => (
+                <View key={i} style={{ flexDirection: "row" }}>
+                  {week.map((date) => {
+                    const dateStr = date.format("YYYY-MM-DD");
+                    const isSelected = dateStr === selectedDate;
+                    const isToday = dateStr === today.format("YYYY-MM-DD");
+                    const dayEvents = getEventsForDate(dateStr);
 
-              {/* FlatList 전체 영역 */}
-              <SafeAreaView style={{ flex: 1 }}>
-                <FlatList
-                  data={filteredEvents}
-                  keyExtractor={(item) => item.id}
-                  contentContainerStyle={{
-                    paddingHorizontal: 8,
-                    paddingBottom: 120,
-                  }}
-                  showsVerticalScrollIndicator={true}
-                  scrollEnabled={true}
-                  nestedScrollEnabled={true}
-                  style={{ flex: 1 }}
-                  removeClippedSubviews={false}
-                  onTouchStart={() => {}}
-                  onTouchEnd={() => {}}
-                  keyboardShouldPersistTaps="handled"
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      style={{
-                        backgroundColor: colors.surface,
-                        borderRadius: 12,
-                        padding: 16,
-                        marginBottom: 12,
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.05,
-                        shadowRadius: 4,
-                        elevation: 1,
-                      }}
-                    >
-                      <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-                        <Text
+                    return (
+                        <TouchableOpacity
+                            key={dateStr}
                             style={{
-                              fontSize: 16,
-                              fontWeight: "600",
-                              color: colors.text,
-                              marginBottom: 6,
+                                flex: 1,
+                                borderTopWidth: 1,
+                                borderBottomWidth: 1,
+                                borderColor: "#c0bebe",
+                                borderRadius: 8,
+                                backgroundColor: isSelected ? colors.primary : undefined,
+                                height: dateCellHeight+3, // ✅ 유동 높이 적용
+                                minHeight: dateCellHeight,
+                                opacity: isCurrentMonth(date) ? 1 : 0,
+                                pointerEvents: isCurrentMonth(date) ? "auto" : "none",
+                            }}
+                            onPress={() => {
+                                if (dayEvents.length > 0) {
+                                    setSelectedDate(dateStr);
+                                    setShowEventModal(true);
+                                }
                             }}
                         >
-                          {item.title}
+                        <Text
+                          style={{
+                            textAlign: "center",
+                            color: isSelected
+                              ? "#fff"
+                              : date.day() === 0
+                              ? "red"
+                              : date.day() === 6
+                              ? colors.primary
+                              : colors.text,
+                            fontWeight: isToday ? "bold" : "normal",
+                          }}
+                        >
+                          {date.date()}
                         </Text>
 
-                        <TouchableOpacity onPress={() => handleOpenAlarm(item)}>
-                          <Text style={{ fontSize: 12, color: colors.primary }}>🔔알림받기</Text>
-                        </TouchableOpacity>
-                      </View>
+                            <View
+                                style={{
+                                    maxHeight: 60, // 셀 내부에서 최대 50px만 차지
+                                    overflow: 'hidden', // 넘치는 내용 숨김
+                                }}
+                            >
+                                {dayEvents.slice(0, 3).map((ev) => (
+                                    <View
+                                        key={ev.id}
+                                        style={{
+                                            backgroundColor: isSelected
+                                                ? '#ffffff33'
+                                                : colors.background === 'dark'
+                                                    ? 'black'
+                                                    : colors.primary,
+                                            paddingHorizontal: 6,
+                                            paddingVertical: 2,
+                                            borderRadius: 6,
+                                            marginTop: 2,
+                                            alignSelf: 'center',
+                                        }}
+                                    >
+                                        <Text
+                                            style={{
+                                                fontSize: 11,
+                                                color: isSelected
+                                                    ? '#fff'
+                                                    : colors.background === 'dark'
+                                                        ? colors.primary
+                                                        : 'white',
+                                                fontWeight: '500',
+                                            }}
+                                            numberOfLines={1}
+                                        >
+                                            {ev.title}
+                                        </Text>
+                                    </View>
+                                ))}
+                            </View>
+                        {/* ✅ 4개 이상이면 "더보기" 표시 */}
+                        {dayEvents.length > 3 && (
+                            <Text
+                                style={{
+                                  fontSize: 10,
+                                  color: isSelected ? "#fff" : colors.primary,
+                                  textAlign: "center",
+                                  marginTop: 2,
+                                }}
+                            >
+                              +{dayEvents.length - 3}개 더보기
+                            </Text>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              ))}
+            </View>
+            {/*</View>*/}
+
+            <EventDetailModal
+              visible={showEventModal}
+              onClose={() => setShowEventModal(false)}
+              date={selectedDate}
+              events={getEventsForDate(selectedDate)}
+              colors={colors}
+            />
+
+            {/* 오늘 및 추가 버튼 */}
+              <View
+                  style={{
+                      flexDirection: "row",
+                      justifyContent: "flex-end",
+                      paddingVertical: 0,           // ⬆️ 버튼 위아래 여백
+                      paddingHorizontal: 20,
+                      marginTop: 'auto',             // ⬆️ 최하단으로 밀어냄
+                      backgroundColor: colors.background, // 배경 일체화
+                  }}
+              >
+                      {/* ✅ 추가 버튼 (권한 체크) */}
+                      {(user?.role === "관리자" ||
+                          user?.role === "교역자" ||
+                          user?.role === "임원") && (
+                          <TouchableOpacity
+                              style={{
+                                  backgroundColor: colors.primary,
+                                  padding: 14,
+                                  borderRadius: 28,
+                                  marginRight: 10,
+                                  elevation: 4,
+                                  shadowColor: "#000",
+                                  shadowOffset: { width: 0, height: 2 },
+                                  shadowOpacity: 0.3,
+                                  shadowRadius: 3,
+                              }}
+                          >
+                              <Ionicons name="add" size={24} color="#fff" />
+                          </TouchableOpacity>
+                      )}
+
+                      {/* ✅ 오늘 버튼 (모두 표시) */}
+                      <TouchableOpacity
+                          onPress={handleToday}
+                          style={{
+                              backgroundColor: colors.primary,
+                              paddingVertical: 10,
+                              paddingHorizontal: 15,
+                              borderRadius: 30,
+                              justifyContent: "center",
+                          }}
+                      >
+                          <Text style={{ color: "#fff", fontWeight: "bold" }}>
+                              오늘
+                          </Text>
+                      </TouchableOpacity>
+                  </View>
+            {/*</View>*/}
+          </View>
+        ) : (
+          <View style={{ flex: 1, backgroundColor: colors.background }}>
+            {/* 필터 */}
+            <View
+              style={{
+                flexDirection: "row",
+                marginBottom: 8,
+                gap: 8,
+                paddingHorizontal: 8,
+                paddingTop: 8,
+              }}
+            >
+              {/* campusFilter */}
+              <CustomDropdown
+                  data={campusData}
+                  value={campusFilter}
+                  onChange={(item) => setCampusFilter(item.value)}
+                  placeholder="캠퍼스 선택"
+                  containerStyle={{ width: "48%", marginRight: 16 }}
+              />
+
+              {/* divisionFilter */}
+              <CustomDropdown
+                  data={divisionData}
+                  value={divisionFilter}
+                  onChange={(item) => setDivisionFilter(item.value)}
+                  placeholder="부서 선택"
+                  containerStyle={{ width: "48%" }}
+              />
+            </View>
+
+            {/* FlatList 전체 영역 */}
+            <SafeAreaView style={{ flex: 1 }}>
+              <FlatList
+                data={filteredEvents}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={{
+                  paddingHorizontal: 8,
+                  paddingBottom: 120,
+                }}
+                showsVerticalScrollIndicator={true}
+                scrollEnabled={true}
+                nestedScrollEnabled={true}
+                style={{ flex: 1 }}
+                removeClippedSubviews={false}
+                onTouchStart={() => {}}
+                onTouchEnd={() => {}}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    style={{
+                      backgroundColor: colors.background,
+                      borderRadius: 12,
+                      padding: 16,
+                      marginBottom: 12,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.05,
+                      shadowRadius: 4,
+                      elevation: 1,
+                    }}
+                  >
+                    <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+                      <Text
+                          style={{
+                            fontSize: 16,
+                            fontWeight: "600",
+                            color: colors.text,
+                            marginBottom: 6,
+                          }}
+                      >
+                        {item.title}
+                      </Text>
+
+                      <TouchableOpacity onPress={() => handleOpenAlarm(item)}>
+                        <Text style={{ fontSize: 12, color: colors.primary }}>🔔알림받기</Text>
+                      </TouchableOpacity>
+                    </View>
 
 
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        color: colors.subtext,
+                        marginBottom: 4,
+                      }}
+                    >
+                      📅{" "}
+                      {dayjs(item.startDate?.seconds * 1000).format(
+                        "YYYY.MM.DD"
+                      )}{" "}
+                      ~ {dayjs(item.endDate?.seconds * 1000).format("MM.DD")}
+                      <Text style={{ fontSize: 13, color: colors.primary }}>
+                        ({getDDayLabel(item.startDate)})
+                      </Text>
+
+                    </Text>
+
+                    {item.place && (
                       <Text
                         style={{
                           fontSize: 13,
@@ -641,74 +659,54 @@ export default function CalendarModal({
                           marginBottom: 4,
                         }}
                       >
-                        📅{" "}
-                        {dayjs(item.startDate?.seconds * 1000).format(
-                          "YYYY.MM.DD"
-                        )}{" "}
-                        ~ {dayjs(item.endDate?.seconds * 1000).format("MM.DD")}
-                        <Text style={{ fontSize: 13, color: colors.primary }}>
-                          ({getDDayLabel(item.startDate)})
-                        </Text>
-
+                        📍 장소: {item.place}
                       </Text>
+                    )}
 
-                      {item.place && (
-                        <Text
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        gap: 8,
+                      }}
+                    >
+                      {item.campus && (
+                        <View
                           style={{
-                            fontSize: 13,
-                            color: colors.subtext,
-                            marginBottom: 4,
+                            backgroundColor: "#E3F2FD",
+                            paddingHorizontal: 8,
+                            paddingVertical: 4,
+                            borderRadius: 8,
+                            marginRight: 6,
                           }}
                         >
-                          📍 장소: {item.place}
-                        </Text>
+                          <Text style={{ fontSize: 12, color: "#1976D2" }}>
+                            캠퍼스: {item.campus}
+                          </Text>
+                        </View>
                       )}
-
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          flexWrap: "wrap",
-                          gap: 8,
-                        }}
-                      >
-                        {item.campus && (
-                          <View
-                            style={{
-                              backgroundColor: "#E3F2FD",
-                              paddingHorizontal: 8,
-                              paddingVertical: 4,
-                              borderRadius: 8,
-                              marginRight: 6,
-                            }}
-                          >
-                            <Text style={{ fontSize: 12, color: "#1976D2" }}>
-                              캠퍼스: {item.campus}
-                            </Text>
-                          </View>
-                        )}
-                        {item.division && (
-                          <View
-                            style={{
-                              backgroundColor: "#F3E5F5",
-                              paddingHorizontal: 8,
-                              paddingVertical: 4,
-                              borderRadius: 8,
-                            }}
-                          >
-                            <Text style={{ fontSize: 12, color: "#6A1B9A" }}>
-                              부서: {item.division}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                    </TouchableOpacity>
-                  )}
-                />
-              </SafeAreaView>
-            </View>
-          )}
-        </Pressable>
-      </Pressable>
+                      {item.division && (
+                        <View
+                          style={{
+                            backgroundColor: "#F3E5F5",
+                            paddingHorizontal: 8,
+                            paddingVertical: 4,
+                            borderRadius: 8,
+                          }}
+                        >
+                          <Text style={{ fontSize: 12, color: "#6A1B9A" }}>
+                            부서: {item.division}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                )}
+              />
+            </SafeAreaView>
+          </View>
+        )}
+      </View>
       {selectedEvent && (
           <AlarmModal
               visible={showAlarmModal}
@@ -717,8 +715,6 @@ export default function CalendarModal({
               eventDate={new Date(selectedEvent.startDate?.seconds * 1000)}
           />
       )}
-    </Modal>
-
-
+    </SafeAreaView>
   );
 }

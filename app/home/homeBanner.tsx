@@ -13,11 +13,9 @@ dayjs.extend(weekday);
 dayjs.extend(localizedFormat);
 dayjs.locale('ko');
 
-// const SCREEN_WIDTH = Dimensions.get('window').width;
-// const SCREEN_HEIGHT = SCREEN_WIDTH * 0.6; // 높이 비율 조정
-
 export default function EventBannerCarousel({ events = [], goToEvent, theme }: any) {
-    const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
+    const frame = useWindowDimensions();
+    const SCREEN_WIDTH = frame.width;
   const [currentIndex, setCurrentIndex] = useState(0);
   const carouselRef = useRef<any>(null);
 
@@ -63,7 +61,7 @@ export default function EventBannerCarousel({ events = [], goToEvent, theme }: a
                         source={{ uri: item.bannerImage }}
                         style={{
                             marginTop: 20,
-                            width: SCREEN_WIDTH * 0.5,
+                            width: SCREEN_WIDTH * 0.6,
                             height: 250,
                             borderRadius: 8,
                             marginBottom: 16,
@@ -171,18 +169,18 @@ export default function EventBannerCarousel({ events = [], goToEvent, theme }: a
         )}
 
         {/* Carousel */}
-        <Carousel
-            ref={carouselRef}
-            loop
-            width={SCREEN_WIDTH}
-            height={400}
-            data={events}
-            autoPlay={false}
-            scrollAnimationDuration={800} // ✅ 부드러운 전환
-            onSnapToItem={(index) => setCurrentIndex(index)}
-            renderItem={renderItem}
-            // mode="normal"
-        />
+          <Carousel
+              ref={carouselRef}
+              loop
+              enabled={false}           // 🛑 스와이프 막기
+              width={SCREEN_WIDTH}
+              height={400}
+              data={events}
+              autoPlay={false}
+              scrollAnimationDuration={1200} // ✅ 느린 전환
+              onSnapToItem={(index) => setCurrentIndex(index)}
+              renderItem={renderItem}
+          />
 
         {/* 좌우 버튼 */}
         {events.length > 1 && (
@@ -192,7 +190,7 @@ export default function EventBannerCarousel({ events = [], goToEvent, theme }: a
                   style={{
                     position: 'absolute',
                     top: '50%',
-                    left: 15,
+                    left: 0,
                     transform: [{ translateY: -20 }],
                     backgroundColor: 'rgba(0,0,0,0.4)',
                     borderRadius: 30,
@@ -208,7 +206,7 @@ export default function EventBannerCarousel({ events = [], goToEvent, theme }: a
                   style={{
                     position: 'absolute',
                     top: '50%',
-                    right: 15,
+                    right: 0,
                     transform: [{ translateY: -20 }],
                     backgroundColor: 'rgba(0,0,0,0.4)',
                     borderRadius: 30,

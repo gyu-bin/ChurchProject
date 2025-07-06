@@ -4,8 +4,6 @@ import Carousel from 'react-native-reanimated-carousel';
 import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
-// const SCREEN_WIDTH = Dimensions.get('window').width;
-// const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 const dummyImageUrls = [
     'https://i.pinimg.com/736x/e3/08/ee/e308eedf0ca6ecacbaae866f2abf81d0.jpg',
@@ -76,12 +74,18 @@ export default function PromoModal() {
                     {/* 이미지 캐러셀 */}
                     <Carousel
                         loop
-                        width={frame.width * 0.9} // 💥 width 명시
-                        height={frame.height * 0.5} // 💥 height 명시
+                        width={frame.width * 0.9}
+                        height={frame.height * 0.5}
                         autoPlay={false}
                         data={dummyImageUrls}
                         scrollAnimationDuration={600}
-                        onSnapToItem={(index) => setCurrentIndex(index)}
+                        onSnapToItem={(index) => setCurrentIndex(index)} // 스냅 후 바로 갱신
+                        onProgressChange={(_, absoluteProgress) => {
+                            const index = Math.round(absoluteProgress) % dummyImageUrls.length;
+                            if (index !== currentIndex) {
+                                setCurrentIndex(index);
+                            }
+                        }}
                         renderItem={({ item }) => (
                             <Image
                                 source={{ uri: item }}

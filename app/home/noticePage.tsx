@@ -79,16 +79,15 @@ export default function HomeNotices() {
                 </Text>
                 <Text
                     style={{ fontSize: 14, color: colors.subtext }}
-                    numberOfLines={5} // ✅ 최대 4줄 표시
+                    numberOfLines={10} // ✅ 최대 4줄 표시
                     ellipsizeMode="tail" // ✅ 말줄임표 처리
                 >
-                    {item.content?.slice(0, 90)}{item.content?.length > 90 ? '...' : ''}
+                    {item.content?.slice(0, 210)}{item.content?.length > 210 ? '...' : ''}
                 </Text>
             </View>
         );
     };
 
-//오늘의 나눔
     return (
         <View>
             {/* 📢 공동체 소식 */}
@@ -106,8 +105,6 @@ export default function HomeNotices() {
                     </View>
                 )}
             </View>
-
-            {/* 📅 다가오는 일정 */}
         </View>
     );
 }

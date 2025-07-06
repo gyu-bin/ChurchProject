@@ -312,12 +312,12 @@ export default function NanumPage() {
                             </TouchableOpacity>
                         </View>
 
-                        <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
+                       {/* <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
                             <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>🌲 대나무숲</Text>
                             <TouchableOpacity onPress={()=>router.push('/share/forest')} style={{ backgroundColor: theme.colors.primary, padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 }}>
                                 <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>🌲 대나무숲</Text>
                             </TouchableOpacity>
-                        </View>
+                        </View>*/}
 
                         <View style={{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, padding: theme.spacing.md, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 }}>
                             <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>📝 설교나눔/질문</Text>

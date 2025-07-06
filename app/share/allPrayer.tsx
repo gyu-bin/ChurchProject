@@ -18,6 +18,7 @@ import {
     View,
 } from 'react-native';
 import {useSafeAreaFrame, useSafeAreaInsets} from 'react-native-safe-area-context';
+import {Ionicons} from "@expo/vector-icons";
 interface PrayerItem {
   id: string;
   title: string;
@@ -98,56 +99,57 @@ export default function PrayerListScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <View
-     style={{
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: Platform.OS === 'android' ? insets.top + 10 : 0,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    position: 'relative',
-  }}
->
-  {/* ← 돌아가기 버튼 (좌측) */}
-  <TouchableOpacity
-    onPress={() => router.back()}
-    style={{
-      position: 'absolute',
-      left: 20,
-      paddingVertical: 4,
-      paddingHorizontal: 8,
-    }}
-  >
-    <Text style={{ color: theme.colors.text, fontSize: 25 }}>←</Text>
-  </TouchableOpacity>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background,paddingTop: Platform.OS === 'android' ? insets.top + 10 : 0,}}>
+        <View
+            style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingBottom: 20,
+                paddingHorizontal: 20,
+                position: 'relative',
+            }}
+        >
+            {/* ← 돌아가기 버튼 (좌측) */}
+            <TouchableOpacity
+                onPress={() => router.back()}
+                style={{
+                    position: 'absolute',
+                    left: 20,
+                    paddingVertical: 4,
+                    paddingHorizontal: 8,
+                }}
+            >
+                <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
+            </TouchableOpacity>
 
-  {/* 중앙 타이틀 */}
-  <Text
-    style={{
-      fontSize: 20,
-      fontWeight: 'bold',
-      color: theme.colors.text,
-      textAlign: 'center',
-    }}
-  >
-    📃 전체 기도제목
-  </Text>
+            {/* 중앙 타이틀 */}
+            <Text
+                style={{
+                    flex: 1,
+                    fontSize: 20,
+                    fontWeight: 'bold',
+                    color: theme.colors.text,
+                    textAlign: 'center',
+                    top:10
+                }}
+            >
+                📃 전체 기도제목
+            </Text>
 
-  {/* 🙏 기도제목 나누기 버튼 (우측) */}
-  <TouchableOpacity
-    onPress={() => router.push('/share/prayerModal')}
-    style={{
-      position: 'absolute',
-      right: 20,
-      paddingVertical: 4,
-      paddingHorizontal: 8,
-    }}
-  >
-    <Text style={{ color: theme.colors.primary, fontSize: 16 }}>🙏 나누기</Text>
-  </TouchableOpacity>
-</View>
+            {/* 🙏 기도제목 나누기 버튼 (우측) */}
+            <TouchableOpacity
+                onPress={() => router.push('/share/prayerModal')}
+                style={{
+                    position: 'absolute',
+                    right: 20,
+                    paddingVertical: 4,
+                    paddingHorizontal: 8,
+                }}
+            >
+                <Text style={{ color: theme.colors.primary, fontSize: 16 }}>🙏 나누기</Text>
+            </TouchableOpacity>
+        </View>
 
       <FlatList
         data={sortedPrayers}

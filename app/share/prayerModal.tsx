@@ -203,46 +203,50 @@ export default function PrayerSubmitPage() {
                             </Text>
                         </TouchableOpacity>
 
-                        <Text
-                            style={{
-                                fontSize: font.caption,
-                                fontWeight: '600',
-                                color: colors.subtext,
-                                marginBottom: spacing.sm,
-                            }}
-                        >
-                            긴급 기도제목 여부
-                        </Text>
+                        {(user?.role === '관리자' || user?.role === '교역자') && (
+                            <>
+                                <Text
+                                    style={{
+                                        fontSize: font.caption,
+                                        fontWeight: '600',
+                                        color: colors.subtext,
+                                        marginBottom: spacing.sm,
+                                    }}
+                                >
+                                    긴급 기도제목 여부
+                                </Text>
 
-                        <TouchableOpacity
-                            onPress={() => setIsUrgent(prev => !prev)}
-                            style={{
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                marginBottom: spacing.lg,
-                            }}
-                        >
-                            <View
-                                style={{
-                                    width: 22,
-                                    height: 22,
-                                    borderWidth: 1.5,
-                                    borderColor: colors.error,
-                                    backgroundColor: isUrgent ? colors.error : colors.surface,
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    marginRight: 10,
-                                    borderRadius: 4,
-                                }}
-                            >
-                                {isUrgent && (
-                                    <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>!</Text>
-                                )}
-                            </View>
-                            <Text style={{ fontSize: font.body, color: colors.text }}>
-                                모든 사람에게 알림을 보내요
-                            </Text>
-                        </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={() => setIsUrgent(prev => !prev)}
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        marginBottom: spacing.lg,
+                                    }}
+                                >
+                                    <View
+                                        style={{
+                                            width: 22,
+                                            height: 22,
+                                            borderWidth: 1.5,
+                                            borderColor: colors.error,
+                                            backgroundColor: isUrgent ? colors.error : colors.surface,
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            marginRight: 10,
+                                            borderRadius: 4,
+                                        }}
+                                    >
+                                        {isUrgent && (
+                                            <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>!</Text>
+                                        )}
+                                    </View>
+                                    <Text style={{ fontSize: font.body, color: colors.text }}>
+                                        모든 사람에게 알림을 보내요
+                                    </Text>
+                                </TouchableOpacity>
+                            </>
+                        )}
 
                         <TouchableOpacity
                             onPress={handleSubmit}
@@ -269,6 +273,7 @@ export default function PrayerSubmitPage() {
                             onPress={() => router.back()}
                             style={{
                                 alignItems: 'center',
+                                justifyContent: 'center',
                                 paddingVertical: spacing.sm,
                                 backgroundColor: colors.border,
                                 borderRadius: radius.md,

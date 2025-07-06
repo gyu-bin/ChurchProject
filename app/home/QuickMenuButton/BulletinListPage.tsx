@@ -10,13 +10,23 @@ import {
     Dimensions,
     Platform,
 } from "react-native";
-import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import {
+    collection,
+    query,
+    orderBy,
+    limit,
+    onSnapshot,
+    addDoc,
+    serverTimestamp,
+    getDocs,
+    deleteDoc
+} from "firebase/firestore";
+import {ref, uploadBytes, getDownloadURL, deleteObject} from "firebase/storage";
 import { db, storage } from "@/firebase/config";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {useSafeAreaFrame, useSafeAreaInsets} from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { router } from "expo-router";
 import * as FileSystem from "expo-file-system";
@@ -35,6 +45,8 @@ export default function BulletinPage() {
     const [imageFiles, setImageFiles] = useState<any[]>([]);
     const [pdfFile, setPdfFile] = useState<any>(null);
     const [uploading, setUploading] = useState(false);
+
+    const frame = useSafeAreaFrame();
 
     // 🚨 관리자 권한 (임시로 true 처리, 실제로는 로그인 유저 role 체크)
     const isAdmin = true;
@@ -96,41 +108,76 @@ export default function BulletinPage() {
         setUploading(true);
         const uploadedImageUrls: string[] = [];
 
-        // ✅ 이미지 업로드
-        for (const image of imageFiles) {
-            const response = await fetch(image.uri);
-            const blob = await response.blob();
-            const fileRef = ref(storage, `bulletins/images/${Date.now()}-${image.fileName || "image"}`);
-            await uploadBytes(fileRef, blob);
-            const downloadUrl = await getDownloadURL(fileRef);
-            uploadedImageUrls.push(downloadUrl);
+        try {
+            // 🗑 기존 주보 삭제
+            const q = query(collection(db, "bulletins"), orderBy("createdAt", "desc"), limit(1));
+            const snapshot = await getDocs(q);
+
+            if (!snapshot.empty) {
+                const docToDelete = snapshot.docs[0];
+                const data = docToDelete.data();
+
+                // 🔥 기존 이미지 삭제
+                if (data.images && Array.isArray(data.images)) {
+                    for (const url of data.images) {
+                        const filePath = decodeURIComponent(url.split('/o/')[1].split('?')[0]); // 파일 경로 추출
+                        const fileRef = ref(storage, filePath);
+                        await deleteObject(fileRef).catch(err => console.log("이미지 삭제 오류:", err));
+                    }
+                }
+
+                // 🔥 기존 PDF 삭제
+                if (data.pdf) {
+                    const pdfPath = decodeURIComponent(data.pdf.split('/o/')[1].split('?')[0]);
+                    const pdfRef = ref(storage, pdfPath);
+                    await deleteObject(pdfRef).catch(err => console.log("PDF 삭제 오류:", err));
+                }
+
+                // 🔥 Firestore 문서 삭제
+                await deleteDoc(docToDelete.ref);
+                console.log("✅ 기존 주보 삭제 완료");
+            }
+
+            // ✅ 이미지 업로드
+            for (const image of imageFiles) {
+                const response = await fetch(image.uri);
+                const blob = await response.blob();
+                const fileRef = ref(storage, `bulletins/images/${Date.now()}-${image.fileName || "image"}`);
+                await uploadBytes(fileRef, blob);
+                const downloadUrl = await getDownloadURL(fileRef);
+                uploadedImageUrls.push(downloadUrl);
+            }
+
+            // ✅ PDF 업로드
+            let pdfUrl = null;
+            if (pdfFile) {
+                const response = await fetch(pdfFile.uri);
+                const blob = await response.blob();
+                const fileRef = ref(storage, `bulletins/pdfs/${Date.now()}-${pdfFile.name}`);
+                await uploadBytes(fileRef, blob);
+                pdfUrl = await getDownloadURL(fileRef);
+            }
+
+            // ✅ Firestore 저장
+            await addDoc(collection(db, "bulletins"), {
+                title,
+                date: selectedDate.toISOString().split("T")[0],
+                images: uploadedImageUrls,
+                pdf: pdfUrl,
+                createdAt: serverTimestamp(),
+            });
+
+            Alert.alert("업로드 완료", "주보가 성공적으로 업로드되었습니다.");
+            setMode("view");
+            setTitle("");
+            setImageFiles([]);
+            setPdfFile(null);
+        } catch (err) {
+            console.error("❌ 업로드 중 오류:", err);
+            Alert.alert("업로드 실패", "주보 업로드 중 문제가 발생했습니다.");
+        } finally {
+            setUploading(false);
         }
-
-        // ✅ PDF 업로드
-        let pdfUrl = null;
-        if (pdfFile) {
-            const response = await fetch(pdfFile.uri);
-            const blob = await response.blob();
-            const fileRef = ref(storage, `bulletins/pdfs/${Date.now()}-${pdfFile.name}`);
-            await uploadBytes(fileRef, blob);
-            pdfUrl = await getDownloadURL(fileRef);
-        }
-
-        // ✅ Firestore 저장
-        await addDoc(collection(db, "bulletins"), {
-            title,
-            date: selectedDate.toISOString().split("T")[0],
-            images: uploadedImageUrls,
-            pdf: pdfUrl,
-            createdAt: serverTimestamp(),
-        });
-
-        Alert.alert("업로드 완료", "주보가 성공적으로 업로드되었습니다.");
-        setMode("view");
-        setTitle("");
-        setImageFiles([]);
-        setPdfFile(null);
-        setUploading(false);
     };
 
     const saveImageToGallery = async (url: string, filename: string) => {
@@ -230,8 +277,8 @@ export default function BulletinPage() {
                                     <Image
                                         source={{ uri: imgUrl }}
                                         style={{
-                                            width: Dimensions.get("window").width * 0.8,
-                                            height: Dimensions.get("window").height * 0.5,
+                                            width: frame.width* 0.8,
+                                            height: frame.height * 0.6,
                                             borderRadius: 8,
                                         }}
                                     />
@@ -371,6 +418,8 @@ export default function BulletinPage() {
             </ScrollView>
         </View>
     );
+
+    console.log(selectedBulletin)
 
     return mode === "upload" ? renderUploadMode() : renderViewMode();
 }

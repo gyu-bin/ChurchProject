@@ -379,10 +379,8 @@ export default function HomeScreen() {
                         </RowContainer>
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 }}>
                             {/* 📅 캘린더 버튼 */}
-                            <TouchableOpacity onPress={() => setCalendarVisible(true)} style={{ alignItems: 'center', paddingRight: 10}}>
-                                <View>
+                            <TouchableOpacity onPress={() => router.push(('/home/QuickMenuButton/calendar'))} style={{ alignItems: 'center', paddingRight: 10}}>
                                     <AntDesign name="calendar" size={30} color={theme.colors.text}/>
-                                </View>
                                 {/*<QuickMenuLabel>캘린더</QuickMenuLabel>*/}
                             </TouchableOpacity>
 

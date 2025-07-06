@@ -24,8 +24,9 @@ import loading3 from '@/assets/lottie/Animation - 1747201413764.json';
 import loading2 from '@/assets/lottie/Animation - 1747201431992.json';
 import loading1 from '@/assets/lottie/Animation - 1747201461030.json';
 import { useAuth } from "@/hooks/useAuth";
+import {useSafeAreaFrame} from "react-native-safe-area-context";
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
+
 const campuses = ['문래', '신촌', '시선교회'];
 const divisions = ['유치부', '초등부', '중고등부', '청년1부', '청년2부', '장년부'];
 const roles = [ '정회원','교역자','관리자'];
@@ -40,8 +41,9 @@ export default function RegisterSlideScreen() {
     const [loadingAnimation, setLoadingAnimation] = useState<any>(null);
     const loadingAnimations = [loading1, loading2, loading3, loading4];
     const { reload , login} = useAuth();
-
+    const frame = useSafeAreaFrame();
     const steps = ['email_name', 'password_confirm', 'info'] as const;
+    const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
     bcrypt.setRandomFallback((len: number) => {
         const result = [];
@@ -59,7 +61,59 @@ export default function RegisterSlideScreen() {
         setForm(prev => ({ ...prev, [key]: value }));
     };
 
+    // ✅ 스텝별 유효성 검사
+    const validateStep = (): boolean => {
+        const newErrors: { [key: string]: string } = {};
+
+        if (step === 0) {
+            // 이메일
+            if (!form.email) {
+                newErrors.email = '이메일을 입력하세요.';
+            } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+                newErrors.email = '유효한 이메일 형식이 아닙니다.';
+            }
+
+            // 이름
+            if (!form.name.trim()) {
+                newErrors.name = '이름을 입력하세요.';
+            } else if (form.name.trim().length < 2) {
+                newErrors.name = '이름은 최소 2자 이상이어야 합니다.';
+            }
+        }
+
+        if (step === 1) {
+            // 비밀번호
+            if (!form.password) {
+                newErrors.password = '비밀번호를 입력하세요.';
+            } else if (
+                form.password.length < 8 ||
+                !/[A-Z]/.test(form.password) ||
+                !/[a-z]/.test(form.password) ||
+                !/[0-9]/.test(form.password) ||
+                !/[!@#$%^&*]/.test(form.password)
+            ) {
+                newErrors.password = '비밀번호는 8자 이상, 대소문자, 숫자, 특수문자를 포함해야 합니다.';
+            }
+
+            // 비밀번호 확인
+            if (form.password !== form.confirm) {
+                newErrors.confirm = '비밀번호가 일치하지 않습니다.';
+            }
+        }
+
+        if (step === 2) {
+            if (!form.campus) newErrors.campus = '캠퍼스를 선택하세요.';
+            if (!form.division) newErrors.division = '소속을 선택하세요.';
+            if (!form.role) newErrors.role = '역할을 선택하세요.';
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleNext = async () => {
+        if (!validateStep()) return;
+
         if (step === steps.length - 1) {
             const randomIndex = Math.floor(Math.random() * loadingAnimations.length);
             setLoadingAnimation(loadingAnimations[randomIndex]);
@@ -92,7 +146,7 @@ export default function RegisterSlideScreen() {
         }
 
         Animated.timing(slideX, {
-            toValue: -(step + 1) * SCREEN_WIDTH,
+            toValue: -(step + 1) * frame.width,
             duration: 300,
             useNativeDriver: true,
         }).start(() => setStep(prev => prev + 1));
@@ -101,7 +155,7 @@ export default function RegisterSlideScreen() {
     const handleBack = () => {
         if (step === 0) {
             Animated.timing(slideX, {
-                toValue: SCREEN_WIDTH,
+                toValue: frame.width,
                 duration: 250,
                 useNativeDriver: true,
             }).start(() => router.replace('/auth/login'));
@@ -109,7 +163,7 @@ export default function RegisterSlideScreen() {
         }
         const newStep = step - 1;
         Animated.timing(slideX, {
-            toValue: -newStep * SCREEN_WIDTH,
+            toValue: -newStep * frame.width,
             duration: 300,
             useNativeDriver: true,
         }).start(() => setStep(newStep));
@@ -122,14 +176,14 @@ export default function RegisterSlideScreen() {
                 <View style={styles.slider}>
                     <Animated.View style={[styles.slideRow, { transform: [{ translateX: slideX }] }]}>
                         {/* 1. 이메일 + 이름 */}
-                        <View style={styles.slide}>
+                        <View style={[styles.slide, { width: frame.width}]}>
                             <TextInput style={styles.input} placeholder="이메일" placeholderTextColor="#666" value={form.email} onChangeText={text => updateField('email', text)} autoCapitalize="none" keyboardType="email-address" />
                             <TextInput style={[styles.input, { marginTop: 40 }]} placeholder="이름" placeholderTextColor="#666" value={form.name} onChangeText={text => updateField('name', text)} />
                             <Text style={{ marginTop: 8, fontSize: 13, color: 'red' }}>※ 가입 시 반드시 본명으로 해주세요.</Text>
                         </View>
 
                         {/* 2. 비밀번호 + 확인 */}
-                        <View style={styles.slide}>
+                        <View style={[styles.slide, { width: frame.width}]}>
                             <TextInput style={styles.input} placeholder="비밀번호" placeholderTextColor="#666" value={form.password} onChangeText={(text) => updateField('password', text)} secureTextEntry={!showPassword} autoCapitalize="none" textContentType="oneTimeCode" />
                             <TextInput style={[styles.input, { marginTop: 40 }]} placeholder="비밀번호 확인" placeholderTextColor="#666" value={form.confirm} onChangeText={(text) => updateField('confirm', text)} secureTextEntry={!showPassword} autoCapitalize="none" textContentType="oneTimeCode" />
                             <TouchableOpacity onPress={() => setShowPassword(prev => !prev)}><Text style={{ color: '#2563eb', marginTop: 10 }}>{showPassword ? '🙈 숨기기' : '👁 보기'}</Text></TouchableOpacity>
@@ -138,7 +192,7 @@ export default function RegisterSlideScreen() {
                         </View>
 
                         {/* 3. 캠퍼스 + 소속 + 역할 */}
-                        <View style={styles.slide}>
+                        <View style={[styles.slide, { width: frame.width}]}>
                             <Text style={styles.label}>캠퍼스 선택</Text>
                             <View style={styles.optionGroup}>{campuses.map(campus => (<TouchableOpacity key={campus} onPress={() => updateField('campus', campus)} style={[styles.option, form.campus === campus && styles.optionSelected]}><Text style={styles.optionText}>{campus}</Text></TouchableOpacity>))}</View>
                             <Text style={styles.label}>소속 선택</Text>
@@ -168,7 +222,7 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#fff' },
     slider: { flex: 1, overflow: 'hidden' },
     slideRow: { flexDirection: 'row' },
-    slide: { width: SCREEN_WIDTH, paddingHorizontal: 24, paddingTop: 40, justifyContent: 'flex-start' },
+    slide: { paddingHorizontal: 24, paddingTop: 40, justifyContent: 'flex-start' },
     input: { borderBottomWidth: 1, borderColor: '#ccc', paddingVertical: 12, fontSize: 18, marginTop: 100, color: '#111' },
     label: { fontSize: 16, fontWeight: '600', marginBottom: 12, marginTop: 40 },
     optionGroup: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
