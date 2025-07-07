@@ -1,24 +1,35 @@
 import { useDesign } from '@/context/DesignSystem';
 import { useAppTheme } from '@/context/ThemeContext';
-import { db } from '@/firebase/config'; // Firebase 초기화된 객체
-import { showToast } from "@/utils/toast";
+import { db } from '@/firebase/config';
+import { showToast } from '@/utils/toast';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
-import { useRouter } from 'expo-router';
-import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
+import { router, useRouter } from 'expo-router';
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  orderBy,
+  query,
+  limit,
+  startAfter,
+} from 'firebase/firestore';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    Dimensions,
-    FlatList,
-    Platform,
-    RefreshControl,
-    SafeAreaView,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  FlatList,
+  Platform,
+  RefreshControl,
+  SafeAreaView,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import {useSafeAreaFrame, useSafeAreaInsets} from 'react-native-safe-area-context';
-import {Ionicons} from "@expo/vector-icons";
+import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+
 interface PrayerItem {
   id: string;
   title: string;
@@ -32,55 +43,80 @@ interface PrayerItem {
   urgent?: 'Y' | 'N';
 }
 
+const PAGE_SIZE = 7;
+
 export default function PrayerListScreen() {
   const { mode } = useAppTheme();
   const theme = useDesign();
-    const frame = useSafeAreaFrame();
-    const screenWidth = frame.width;
+  const frame = useSafeAreaFrame();
+  const screenWidth = frame.width;
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
   const [prayers, setPrayers] = useState<PrayerItem[]>([]);
-  const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [lastVisible, setLastVisible] = useState<any>(null);
+  const [hasMore, setHasMore] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
-    const isDark = mode === 'dark';
+  const router = useRouter();
+  const isDark = mode === 'dark';
+
   useEffect(() => {
     const loadUser = async () => {
-        const raw = await AsyncStorage.getItem('currentUser');
-        if (raw) {
-            const userData = JSON.parse(raw);
-            setCurrentUser(userData);
-            setUser(userData);
-        }
+      const raw = await AsyncStorage.getItem('currentUser');
+      if (raw) {
+        const userData = JSON.parse(raw);
+        setCurrentUser(userData);
+      }
     };
     loadUser();
-}, []);
+    fetchInitialPrayers();
+  }, []);
 
-
-
-  const fetchPrayers = async () => {
-    const snapshot = await getDocs(collection(db, 'prayer_requests'));
-    const data: PrayerItem[] = snapshot.docs.map(doc => ({
+  const fetchInitialPrayers = async () => {
+    setLoading(true);
+    const q = query(
+      collection(db, 'prayer_requests'),
+      orderBy('createdAt', 'desc'),
+      limit(PAGE_SIZE)
+    );
+    const snapshot = await getDocs(q);
+    const data: PrayerItem[] = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...(doc.data() as Omit<PrayerItem, 'id'>),
     }));
     setPrayers(data);
+    setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
+    setHasMore(snapshot.docs.length === PAGE_SIZE);
+    setLoading(false);
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchPrayers(); // 페이지가 focus될 때마다 최신 데이터로 갱신
-    }, [])
-  );
+  const fetchMorePrayers = async () => {
+    if (!hasMore || loadingMore) return;
 
-  useEffect(() => {
-    fetchPrayers();
-  }, []);
+    setLoadingMore(true);
+    const q = query(
+      collection(db, 'prayer_requests'),
+      orderBy('createdAt', 'desc'),
+      startAfter(lastVisible),
+      limit(PAGE_SIZE)
+    );
+    const snapshot = await getDocs(q);
+    const data: PrayerItem[] = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...(doc.data() as Omit<PrayerItem, 'id'>),
+    }));
+
+    setPrayers((prev) => [...prev, ...data]);
+    setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
+    setHasMore(snapshot.docs.length === PAGE_SIZE);
+    setLoadingMore(false);
+  };
 
   const handleDelete = async (id: string) => {
     try {
       await deleteDoc(doc(db, 'prayer_requests', id));
-      setPrayers(prev => prev.filter(p => p.id !== id));
+      setPrayers((prev) => prev.filter((p) => p.id !== id));
       showToast('🙏 기도제목이 삭제되었습니다.');
     } catch (error) {
       console.error('🔥 기도제목 삭제 실패:', error);
@@ -89,71 +125,120 @@ export default function PrayerListScreen() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchPrayers();
+    await fetchInitialPrayers();
     setRefreshing(false);
   };
 
-  const sortedPrayers = prayers.slice().sort((a, b) =>
-    (b.createdAt?.toDate?.()?.getTime?.() || 0) -
-    (a.createdAt?.toDate?.()?.getTime?.() || 0)
-  );
+  const renderItem = ({ item }: { item: PrayerItem }) => {
+    const isUrgent = item.urgent === 'Y';
+
+    return (
+      <View
+        style={{
+          backgroundColor: isUrgent ? (isDark ? '#7F1D1D' : '#FEF2F2') : theme.colors.surface,
+          borderRadius: 16,
+          paddingVertical: 20,
+          paddingHorizontal: 24,
+          marginBottom: 20,
+          width: screenWidth > 600 ? 500 : screenWidth * 0.9,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 3 },
+          shadowOpacity: 0.1,
+          shadowRadius: 6,
+          elevation: 4,
+          alignSelf: 'center',
+          borderWidth: isUrgent ? 1.5 : 0,
+          borderColor: isUrgent ? '#DC2626' : 'transparent',
+        }}>
+        <Text
+          style={{
+            fontSize: 17,
+            fontWeight: '600',
+            color: isUrgent ? (isDark ? '#F87171' : '#DC2626') : theme.colors.primary,
+            marginBottom: 8,
+          }}>
+          {isUrgent ? `🔥 ${item.title}` : `🙏 ${item.title}`}
+        </Text>
+
+        <Text
+          style={{
+            fontSize: 15,
+            color: theme.colors.text,
+            marginBottom: 10,
+            lineHeight: 22,
+          }}>
+          {item.content}
+        </Text>
+
+        <Text
+          style={{
+            fontSize: 13,
+            color: theme.colors.text,
+            textAlign: 'right',
+          }}>
+          - {item.anonymous === 'Y' ? '익명' : item.name}
+        </Text>
+
+        {currentUser?.email === item.email && (
+          <TouchableOpacity
+            onPress={() => handleDelete(item.id)}
+            style={{
+              marginTop: 16,
+              backgroundColor: '#EF4444',
+              paddingVertical: 10,
+              borderRadius: 999,
+              alignItems: 'center',
+              shadowColor: '#000',
+              shadowOpacity: 0.1,
+              shadowRadius: 3,
+            }}>
+            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>삭제</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background,paddingTop: Platform.OS === 'android' ? insets.top + 10 : 0,}}>
-        <View
-            style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                paddingBottom: 20,
-                paddingHorizontal: 20,
-                position: 'relative',
-            }}
-        >
-            {/* ← 돌아가기 버튼 (좌측) */}
-            <TouchableOpacity
-                onPress={() => router.back()}
-                style={{
-                    position: 'absolute',
-                    left: 20,
-                    paddingVertical: 4,
-                    paddingHorizontal: 8,
-                }}
-            >
-                <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
-            </TouchableOpacity>
+    <SafeAreaView
+      style={{
+        flex: 1,
+        backgroundColor: theme.colors.background,
+        paddingTop: Platform.OS === 'android' ? insets.top + 10 : 0,
+      }}>
+      {/* 헤더 */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: 20,
+          height: 50,
+        }}>
+        <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
+          <Ionicons name='arrow-back' size={24} color={theme.colors.text} />
+        </TouchableOpacity>
+        <Text
+          style={{
+            fontSize: 20,
+            fontWeight: 'bold',
+            color: theme.colors.text,
+            textAlign: 'center',
+            flex: 1,
+            paddingLeft: '5%',
+          }}>
+          📃 전체 기도제목
+        </Text>
+        <TouchableOpacity onPress={() => router.push('/share/prayerModal')} style={{ padding: 8 }}>
+          <Text style={{ color: theme.colors.primary, fontSize: 16 }}>🙏 나누기</Text>
+        </TouchableOpacity>
+      </View>
 
-            {/* 중앙 타이틀 */}
-            <Text
-                style={{
-                    flex: 1,
-                    fontSize: 20,
-                    fontWeight: 'bold',
-                    color: theme.colors.text,
-                    textAlign: 'center',
-                    top:10
-                }}
-            >
-                📃 전체 기도제목
-            </Text>
-
-            {/* 🙏 기도제목 나누기 버튼 (우측) */}
-            <TouchableOpacity
-                onPress={() => router.push('/share/prayerModal')}
-                style={{
-                    position: 'absolute',
-                    right: 20,
-                    paddingVertical: 4,
-                    paddingHorizontal: 8,
-                }}
-            >
-                <Text style={{ color: theme.colors.primary, fontSize: 16 }}>🙏 나누기</Text>
-            </TouchableOpacity>
-        </View>
-
+      {/* 무한 스크롤 리스트 */}
       <FlatList
-        data={sortedPrayers}
+        data={prayers}
         keyExtractor={(item) => item.id}
+        renderItem={renderItem}
         contentContainerStyle={{ paddingBottom: 40 }}
         refreshControl={
           <RefreshControl
@@ -162,89 +247,13 @@ export default function PrayerListScreen() {
             tintColor={theme.colors.primary}
           />
         }
-        renderItem={({ item }) => {
-            const isUrgent = item.urgent === 'Y';
-            const isDark = mode === 'dark'; // ✅ 다크모드 체크
-
-            return (
-                <View
-                    style={{
-                        backgroundColor: isUrgent
-                            ? isDark
-                                ? '#7F1D1D' // 🔥 다크모드 긴급 배경
-                                : '#FEF2F2' // 🔥 라이트모드 긴급 배경
-                            : theme.colors.surface,
-                        borderRadius: 16,
-                        paddingVertical: 20,
-                        paddingHorizontal: 24,
-                        marginBottom: 20,
-                        width: screenWidth > 600 ? 500 : screenWidth * 0.9,
-                        shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 3 },
-                        shadowOpacity: 0.1,
-                        shadowRadius: 6,
-                        elevation: 4,
-                        alignSelf: 'center',
-                        borderWidth: isUrgent ? 1.5 : 0,
-                        borderColor: isUrgent ? '#DC2626' : 'transparent',
-                    }}
-                >
-                    <Text
-                        style={{
-                            fontSize: 17,
-                            fontWeight: '600',
-                            color: isUrgent
-                                ? (isDark ? '#F87171' : '#DC2626') // 🔥 긴급 제목 컬러
-                                : theme.colors.primary,
-                            marginBottom: 8,
-                        }}
-                    >
-                        {isUrgent ? `🔥 ${item.title}` : `🙏 ${item.title}`}
-                    </Text>
-
-                    <Text
-                        style={{
-                            fontSize: 15,
-                            color: theme.colors.text,
-                            marginBottom: 10,
-                            lineHeight: 22,
-                        }}
-                    >
-                        {item.content}
-                    </Text>
-
-                    <Text
-                        style={{
-                            fontSize: 13,
-                            color: theme.colors.text,
-                            textAlign: 'right',
-                        }}
-                    >
-                        - {item.anonymous === 'Y' ? '익명' : item.name}
-                    </Text>
-
-                    {currentUser.email === item.email && (
-                        <TouchableOpacity
-                            onPress={() => handleDelete(item.id)}
-                            style={{
-                                marginTop: 16,
-                                backgroundColor: '#EF4444',
-                                paddingVertical: 10,
-                                borderRadius: 999,
-                                alignItems: 'center',
-                                shadowColor: '#000',
-                                shadowOpacity: 0.1,
-                                shadowRadius: 3,
-                            }}
-                        >
-                            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>
-                                삭제
-                            </Text>
-                        </TouchableOpacity>
-                    )}
-                </View>
-            );
-        }}
+        onEndReached={fetchMorePrayers}
+        onEndReachedThreshold={0.1}
+        ListFooterComponent={
+          loadingMore ? (
+            <ActivityIndicator color={theme.colors.primary} style={{ marginVertical: 20 }} />
+          ) : null
+        }
       />
     </SafeAreaView>
   );

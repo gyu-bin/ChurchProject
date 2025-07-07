@@ -1,7 +1,6 @@
-// components/CustomDropdown.tsx
-import React from "react";
-import { ViewStyle, TextStyle } from "react-native";
-import { Dropdown } from "react-native-element-dropdown";
+import React from 'react';
+import { ViewStyle, TextStyle } from 'react-native';
+import { Dropdown } from 'react-native-element-dropdown';
 
 type DropdownOption = {
   label: string;
@@ -10,8 +9,8 @@ type DropdownOption = {
 
 interface CustomDropdownProps {
   data: DropdownOption[];
-  value: string;
-  onChange: (item: DropdownOption) => void;
+  value: string | null;
+  onChange: (item: DropdownOption) => void; // 🔥 전체 객체로 변경
   placeholder?: string;
   containerStyle?: ViewStyle;
   dropdownStyle?: ViewStyle;
@@ -19,12 +18,11 @@ interface CustomDropdownProps {
   disabled?: boolean;
   maxHeight?: number;
 }
-
 const CustomDropdown: React.FC<CustomDropdownProps> = ({
   data,
   value,
   onChange,
-  placeholder = "선택",
+  placeholder = '선택',
   containerStyle = {},
   dropdownStyle = {},
   textStyle = {},
@@ -34,21 +32,21 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
   return (
     <Dropdown
       style={{
-        height: 40,
-        borderColor: "#FFA726",
+        height: 48,
+        borderColor: '#FFA726',
         borderWidth: 1,
         borderRadius: 12,
         paddingHorizontal: 16,
-        backgroundColor: "#fff",
+        backgroundColor: '#fff',
         ...containerStyle,
       }}
       placeholderStyle={{
         fontSize: 15,
-        color: "#999",
+        color: '#999',
       }}
       selectedTextStyle={{
         fontSize: 15,
-        color: "#333",
+        color: '#333',
         ...textStyle,
       }}
       itemTextStyle={{
@@ -57,8 +55,8 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
       }}
       data={data}
       maxHeight={maxHeight}
-      labelField="label"
-      valueField="value"
+      labelField='label'
+      valueField='value'
       placeholder={placeholder}
       value={value}
       onChange={onChange}
