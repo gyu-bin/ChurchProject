@@ -209,6 +209,23 @@ export default function NoticePage() {
     Linking.openURL(url).catch((err) => console.error('링크 열기 오류:', err));
   };
 
+  const [campusFilter, setCampusFilter] = useState('전체');
+  const filteredNotices =
+    campusFilter === '전체'
+      ? notices
+      : notices.filter((n) => n.campus?.trim().toLowerCase() === campusFilter.trim().toLowerCase());
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
+
+  const toggleExpand = (id: string) => {
+    if (expandedIds.includes(id)) {
+      setExpandedIds(expandedIds.filter((item) => item !== id)); // 접기
+    } else {
+      setExpandedIds([...expandedIds, id]); // 펼치기
+    }
+  };
+
   return (
     <View
       style={{
@@ -231,17 +248,69 @@ export default function NoticePage() {
           <Ionicons name='chevron-back' size={24} color={colors.text} />
         </TouchableOpacity>
 
-        <Text style={{ fontSize: font.heading, fontWeight: 'bold', color: colors.text }}>
+        <Text
+          style={{
+            position: 'absolute', // ✅ 절대 위치
+            left: '50%',
+            transform: [{ translateX: -30 }], // ✅ 가운데 정렬
+            fontSize: font.heading,
+            fontWeight: 'bold',
+            color: colors.text,
+          }}>
           시광 광고
         </Text>
 
-        {user?.role === '교역자' || user?.role === '관리자' ? (
-          <TouchableOpacity onPress={() => setModalVisible(true)}>
-            <Ionicons name='add' size={26} color={colors.text} />
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 26 }} />
-        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          {/* ✅ 현재 필터 상태 표시 */}
+          <View
+            style={{
+              alignItems: 'center', // ✅ 모든 요소 중앙 정렬
+              justifyContent: 'center',
+            }}>
+            <TouchableOpacity
+              onPress={() => setFilterModalVisible(true)}
+              activeOpacity={0.8}
+              style={{
+                alignItems: 'center', // ✅ 세로 정렬
+                justifyContent: 'center',
+                paddingVertical: 8,
+                paddingHorizontal: 12,
+                backgroundColor: campusFilter === '전체' ? colors.surface : colors.primary + '22',
+                borderRadius: 20,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.1,
+                shadowRadius: 2,
+                elevation: 2,
+              }}>
+              {/* ✅ 위에 아이콘 */}
+              <Ionicons
+                name='filter'
+                size={20}
+                color={campusFilter === '전체' ? colors.subtext : colors.primary}
+                style={{ marginBottom: 4 }}
+              />
+            </TouchableOpacity>
+            {/* ✅ 아래에 상태 텍스트 */}
+            <Text
+              style={{
+                fontSize: 13,
+                color: campusFilter === '전체' ? colors.subtext : colors.primary,
+                fontWeight: '500',
+              }}>
+              {campusFilter === '전체' ? '모든 캠퍼스' : campusFilter}
+            </Text>
+          </View>
+
+          {/* ✅ 추가 버튼 */}
+          {user?.role === '교역자' || user?.role === '관리자' ? (
+            <TouchableOpacity onPress={() => setModalVisible(true)}>
+              <Ionicons name='add' size={26} color={colors.text} />
+            </TouchableOpacity>
+          ) : (
+            <View style={{ width: 26 }} />
+          )}
+        </View>
       </View>
 
       {/* ✅ 공지사항 목록 */}
@@ -249,8 +318,8 @@ export default function NoticePage() {
         <ActivityIndicator style={{ marginTop: 20 }} />
       ) : (
         <ScrollView contentContainerStyle={{ padding: spacing.md }}>
-          {notices.length > 0 ? (
-            notices.map((item) => {
+          {filteredNotices.length > 0 ? (
+            filteredNotices.map((item) => {
               const formattedDate = item.date?.seconds
                 ? new Date(item.date.seconds * 1000).toLocaleDateString('ko-KR')
                 : '';
@@ -268,7 +337,30 @@ export default function NoticePage() {
                     shadowOffset: { width: 0, height: 1 },
                     shadowRadius: 4,
                     elevation: 2,
+                    borderColor: '#b9b8b8',
+                    borderWidth: 1,
+                    position: 'relative', // ✅ 상단 버튼 위치 위해
                   }}>
+                  {/* ✅ 우측 상단 수정/삭제 */}
+                  {(user?.role === '교역자' || user?.role === '관리자') && (
+                    <View
+                      style={{
+                        position: 'absolute',
+                        top: 8,
+                        right: 8,
+                        flexDirection: 'row',
+                        gap: 10,
+                      }}>
+                      <TouchableOpacity onPress={() => openEditModal(item)}>
+                        <Text style={{ color: colors.primary, fontSize: 13 }}>✏️ </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => handleDeleteNotice(item.id)}>
+                        <Text style={{ color: colors.error, fontSize: 13 }}>🗑️</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {/* ✅ 상단 배지 */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
                     <Text
                       style={{
@@ -298,6 +390,8 @@ export default function NoticePage() {
                     </Text>
                     <Text style={{ fontSize: 12, color: colors.subtext }}>{formattedDate}</Text>
                   </View>
+
+                  {/* ✅ 제목 */}
                   <Text
                     style={{
                       fontSize: 15,
@@ -307,28 +401,36 @@ export default function NoticePage() {
                     }}>
                     {item.title}
                   </Text>
-                  <Text style={{ fontSize: 14, color: colors.subtext, marginBottom: 6 }}>
+
+                  {/* ✅ 내용 */}
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      color: colors.subtext,
+                    }}
+                    numberOfLines={expandedIds.includes(item.id) ? undefined : 10}>
                     {item.content}
                   </Text>
 
                   {/* ✅ 링크 미리보기 */}
                   {item.link && (
                     <TouchableOpacity onPress={() => item.link && openLink(item.link)}>
-                      <Text style={{ color: colors.primary, marginBottom: 8 }}>🔗 {item.link}</Text>
+                      <Text style={{ color: colors.primary, marginTop: 8 }}>🔗 {item.link}</Text>
                     </TouchableOpacity>
                   )}
 
-                  {/* ✅ 수정/삭제 버튼 */}
-                  {(user?.role === '교역자' || user?.role === '관리자') && (
-                    <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
-                      <TouchableOpacity onPress={() => openEditModal(item)}>
-                        <Text style={{ color: colors.primary, fontSize: 13 }}>수정</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={() => handleDeleteNotice(item.id)}>
-                        <Text style={{ color: colors.error, fontSize: 13 }}>삭제</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
+                  {/* ✅ 접기/펼치기 버튼 (박스 하단 중앙) */}
+                  <TouchableOpacity onPress={() => toggleExpand(item.id)} activeOpacity={0.8}>
+                    <Text
+                      style={{
+                        textAlign: 'center',
+                        color: colors.text,
+                        paddingTop: 12,
+                        fontSize: 14,
+                      }}>
+                      {expandedIds.includes(item.id) ? '▲' : '▼'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               );
             })
@@ -480,6 +582,90 @@ export default function NoticePage() {
             </View>
           </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
+      </Modal>
+
+      <Modal
+        visible={filterModalVisible}
+        animationType='slide'
+        transparent
+        onRequestClose={() => setFilterModalVisible(false)}>
+        <TouchableWithoutFeedback onPress={() => setFilterModalVisible(false)}>
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(0, 0, 0, 0.3)', // 반투명 배경
+              justifyContent: 'flex-end',
+            }}>
+            <TouchableWithoutFeedback>
+              <View
+                style={{
+                  backgroundColor: colors.surface,
+                  borderTopLeftRadius: 16,
+                  borderTopRightRadius: 16,
+                  paddingVertical: spacing.md,
+                  paddingHorizontal: spacing.lg,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: -2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 6,
+                  elevation: 10,
+                }}>
+                <Text
+                  style={{
+                    textAlign: 'center',
+                    fontSize: font.heading,
+                    fontWeight: '600',
+                    marginBottom: spacing.md,
+                    color: colors.text,
+                  }}>
+                  캠퍼스 선택
+                </Text>
+
+                {['전체', ...campusOptions.map((o) => o.label)].map((campusName, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    onPress={() => {
+                      setCampusFilter(campusName); // ✅ 필터 값 설정
+                      setFilterModalVisible(false); // ✅ 모달 닫기
+                    }}
+                    style={{
+                      paddingVertical: spacing.md,
+                      borderBottomWidth: index !== campusOptions.length ? 1 : 0,
+                      borderBottomColor: colors.border,
+                    }}>
+                    <Text
+                      style={{
+                        textAlign: 'center',
+                        fontSize: font.body,
+                        color: colors.text,
+                      }}>
+                      {campusName}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+
+                <TouchableOpacity
+                  onPress={() => setFilterModalVisible(false)}
+                  style={{
+                    marginTop: spacing.md,
+                    paddingVertical: spacing.md,
+                    backgroundColor: colors.primary,
+                    borderRadius: 12,
+                  }}>
+                  <Text
+                    style={{
+                      textAlign: 'center',
+                      fontSize: font.body,
+                      color: '#fff',
+                      fontWeight: 'bold',
+                    }}>
+                    취소
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </View>
   );

@@ -187,7 +187,7 @@ export default function ActiveSection() {
               {team.leader} · {team.membersList?.length ?? 1}명 참여
             </Text>
           </View>
-          <View
+          {/*<View
             style={{
               flexDirection: 'row',
               justifyContent: 'space-between',
@@ -208,7 +208,7 @@ export default function ActiveSection() {
                 contentFit='cover'
               />
             ))}
-          </View>
+          </View>*/}
         </View>
 
         <View style={{ position: 'absolute', right: 50, top: 12 }}>

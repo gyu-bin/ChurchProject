@@ -17,6 +17,7 @@ import {
   PanResponderGestureState,
   Platform,
   SafeAreaView,
+  ScrollView,
   Text,
   TouchableOpacity,
   View,
@@ -205,6 +206,12 @@ export default function CalendarPage({
     setShowAlarmModal(true);
   };
 
+  const months = [
+    dayjs().subtract(1, 'month'), // 전월
+    dayjs(), // 이번달
+    dayjs().add(1, 'month'), // 다음달
+  ];
+
   return (
     <SafeAreaView
       style={{
@@ -334,15 +341,15 @@ export default function CalendarPage({
                 data={campusData}
                 value={campusFilter}
                 onChange={(item) => setCampusFilter(item.value)}
-                placeholder='캠퍼스 선택'
                 containerStyle={{ width: '48%', marginRight: 16 }}
+                maxHeight={divisionData.length * 84 + 16}
               />
               <CustomDropdown
                 data={divisionData}
                 value={divisionFilter}
                 onChange={(item) => setDivisionFilter(item.value)}
-                placeholder='부서 선택'
                 containerStyle={{ width: '48%' }}
+                maxHeight={divisionData.length * 84 + 16}
               />
             </View>
 
@@ -532,8 +539,9 @@ export default function CalendarPage({
               <CustomDropdown
                 data={campusData}
                 value={campusFilter}
+                maxHeight={divisionData.length * 84 + 16}
                 onChange={(item) => setCampusFilter(item.value)}
-                containerStyle={{ width: '48%', height: 500, marginRight: 16 }}
+                containerStyle={{ width: '48%', marginRight: 16 }}
               />
 
               {/* divisionFilter */}
@@ -542,6 +550,7 @@ export default function CalendarPage({
                 value={divisionFilter}
                 onChange={(item) => setDivisionFilter(item.value)}
                 containerStyle={{ width: '48%', marginRight: 16 }}
+                maxHeight={divisionData.length * 84 + 16}
               />
             </View>
 

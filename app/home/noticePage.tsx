@@ -48,9 +48,11 @@ export default function HomeNotices() {
         style={{
           backgroundColor: colors.surface,
           borderRadius: 12,
+          borderWidth: 1,
+          borderColor: '#ddd',
           padding: spacing.md,
           marginBottom: spacing.xs,
-          marginTop: spacing.xs,
+          marginTop: spacing.md,
           marginLeft: spacing.xs,
           shadowColor: '#000',
           shadowOpacity: 0.05,
