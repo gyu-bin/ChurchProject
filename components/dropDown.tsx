@@ -17,6 +17,7 @@ interface CustomDropdownProps {
   textStyle?: TextStyle;
   disabled?: boolean;
   maxHeight?: number;
+  dropdownPosition?: 'auto' | 'top' | 'bottom';
 }
 const CustomDropdown: React.FC<CustomDropdownProps> = ({
   data,
@@ -28,6 +29,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
   textStyle = {},
   disabled = false,
   maxHeight = 200,
+  dropdownPosition = 'auto', // ✅ 추가
 }) => {
   return (
     <Dropdown
@@ -55,6 +57,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
       }}
       data={data}
       maxHeight={maxHeight}
+      dropdownPosition={dropdownPosition}
       labelField='label'
       valueField='value'
       placeholder={placeholder}

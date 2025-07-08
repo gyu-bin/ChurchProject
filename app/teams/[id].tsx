@@ -167,15 +167,16 @@ export default function TeamDetail() {
 
   const [commonLocations] = useState(['본당', '카페']);
   const categories = [
-    { label: '✨ 반짝소모임', value: '반짝소모임' },
-    { label: '🏃 운동/스포츠', value: '운동/스포츠' },
-    { label: '📚 책모임', value: '책모임' },
-    { label: '🎮 게임', value: '게임' },
-    { label: '🎭 문화생활', value: '문화생활' },
-    { label: '🤝 봉사', value: '봉사' },
-    { label: '📖 스터디', value: '스터디' },
-    { label: '🐾 동물', value: '동물' },
-    { label: '🍳 요리/제조', value: '요리/제조' },
+    { label: '✨ 반짝소모임', value: '✨ 반짝소모임' },
+    { label: '🏃 운동·스포츠', value: '🏃운동·스포츠' },
+    { label: '📚 책모임', value: '📚 책모임' },
+    { label: '🎮 게임', value: '🎮 게임' },
+    { label: '🎭 문화생활', value: '🎭 문화생활' },
+    { label: '📖 스터디', value: '📖 스터디' },
+    { label: '🐾 동물', value: '🐾 동물' },
+    { label: '🛠 제작', value: '🛠 제작' },
+    { label: '🤝 봉사', value: '🤝 봉사' },
+    { label: '📢 구인', value: '📢 구인' },
   ];
 
   const [editCategory, setEditCategory] = useState(team?.category || '');

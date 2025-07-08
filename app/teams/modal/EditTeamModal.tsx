@@ -20,14 +20,15 @@ import CustomDropdown from '@/components/dropDown'; // ✅ 추가
 
 const categories = [
   { label: '✨ 반짝소모임', value: '✨ 반짝소모임' },
-  { label: '🏃 운동/스포츠', value: '운동/스포츠' },
-  { label: '📚 책모임', value: '책모임' },
-  { label: '🎮 게임', value: '게임' },
-  { label: '🎭 문화생활', value: '문화생활' },
-  { label: '🤝 봉사', value: '봉사' },
-  { label: '📖 스터디', value: '스터디' },
-  { label: '🐾 동물', value: '동물' },
-  { label: '🍳 요리/제조', value: '요리/제조' },
+  { label: '🏃 운동·스포츠', value: '🏃운동·스포츠' },
+  { label: '📚 책모임', value: '📚 책모임' },
+  { label: '🎮 게임', value: '🎮 게임' },
+  { label: '🎭 문화생활', value: '🎭 문화생활' },
+  { label: '📖 스터디', value: '📖 스터디' },
+  { label: '🐾 동물', value: '🐾 동물' },
+  { label: '🛠 제작', value: '🛠 제작' },
+  { label: '🤝 봉사', value: '🤝 봉사' },
+  { label: '📢 구인', value: '📢 구인' },
 ];
 
 type EditTeamModalProps = {
@@ -110,7 +111,7 @@ const EditTeamModal = ({
   const [localExpirationDate, setLocalExpirationDate] = useState(expirationDate);
   const [calendarModalVisible, setCalendarModalVisible] = useState(false);
   const insets = useSafeAreaInsets();
-
+  const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   useEffect(() => {
     if (visible) {
       setLocalIsClosed(isClosed);
@@ -178,10 +179,12 @@ const EditTeamModal = ({
                 borderTopLeftRadius: 24,
                 borderTopRightRadius: 24,
                 paddingHorizontal: spacing.lg,
+                paddingVertical: spacing.lg,
                 paddingTop: spacing.md,
-                paddingBottom: insets.bottom + spacing.md,
-                height: '80%',
-                minHeight: '70%',
+                // paddingBottom: insets.bottom + spacing.md,
+                height: '92%',
+                minHeight: '80%',
+                maxHeight: '100%',
               }}>
               {/* 드래그 핸들 */}
               <View style={{ alignItems: 'center', marginBottom: spacing.sm }}>
@@ -218,7 +221,7 @@ const EditTeamModal = ({
                   {imageURLs.length ? (
                     <Image
                       source={{ uri: imageURLs[0].uri }}
-                      style={{ width: '100%', height: 180, borderRadius: radius.md }}
+                      style={{ width: '100%', height: 130, borderRadius: radius.md }}
                     />
                   ) : (
                     <View
@@ -279,6 +282,87 @@ const EditTeamModal = ({
                 {/* 카테고리 선택 드롭다운 */}
                 <View style={{ marginBottom: spacing.md }}>
                   <Text style={{ color: colors.text, marginBottom: 4 }}>카테고리</Text>
+
+                  {/* 카테고리 선택 버튼 */}
+                  <TouchableOpacity
+                    onPress={() => setCategoryModalVisible(true)}
+                    style={{
+                      borderColor: colors.border,
+                      borderWidth: 1,
+                      borderRadius: radius.sm,
+                      padding: spacing.md,
+                      backgroundColor: '#f9f9f9',
+                    }}>
+                    <Text style={{ color: colors.text }}>
+                      {localCategory || '카테고리를 선택하세요'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* 카테고리 선택 모달 */}
+                <Modal
+                  visible={categoryModalVisible}
+                  transparent
+                  animationType='fade'
+                  onRequestClose={() => setCategoryModalVisible(false)}>
+                  <TouchableWithoutFeedback onPress={() => setCategoryModalVisible(false)}>
+                    <View
+                      style={{
+                        flex: 1,
+                        backgroundColor: 'rgba(0,0,0,0.5)',
+                        justifyContent: 'center',
+                      }}>
+                      <View
+                        style={{
+                          marginHorizontal: 20,
+                          backgroundColor: colors.surface,
+                          borderRadius: 12,
+                          padding: spacing.lg,
+                        }}>
+                        <Text
+                          style={{
+                            fontSize: 18,
+                            fontWeight: '600',
+                            color: colors.text,
+                            marginBottom: 12,
+                          }}>
+                          카테고리 선택
+                        </Text>
+
+                        {categories.map((item, index) => (
+                          <TouchableOpacity
+                            key={index}
+                            onPress={() => {
+                              setLocalCategory(item.value);
+                              setCategory(item.value);
+                              setCategoryModalVisible(false);
+                            }}
+                            style={{
+                              paddingVertical: spacing.md,
+                              borderBottomWidth: index !== categories.length - 1 ? 1 : 0,
+                              borderBottomColor: colors.border,
+                            }}>
+                            <Text style={{ color: colors.text, fontSize: 16 }}>{item.label}</Text>
+                          </TouchableOpacity>
+                        ))}
+
+                        <TouchableOpacity
+                          onPress={() => setCategoryModalVisible(false)}
+                          style={{
+                            marginTop: spacing.md,
+                            paddingVertical: spacing.md,
+                            backgroundColor: colors.primary,
+                            borderRadius: radius.sm,
+                            alignItems: 'center',
+                          }}>
+                          <Text style={{ color: '#fff', fontWeight: 'bold' }}>취소</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </TouchableWithoutFeedback>
+                </Modal>
+                {/*<View style={{ marginBottom: spacing.md }}>
+                  <Text style={{ color: colors.text, marginBottom: 4 }}>카테고리</Text>
                   <CustomDropdown
                     data={categories}
                     value={localCategory} // ✅ 기존 카테고리 객체
@@ -286,9 +370,10 @@ const EditTeamModal = ({
                       setLocalCategory(item.value); // ✅ 로컬 state
                       setCategory(item.value); // ✅ 부모 state
                     }}
+                    dropdownPosition='top'
                     placeholder='카테고리를 선택하세요'
                   />
-                </View>
+                </View>*/}
 
                 {/* 날짜 선택 */}
                 {localCategory === '✨ 반짝소모임' && (
@@ -314,7 +399,7 @@ const EditTeamModal = ({
                     flexDirection: 'row',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    marginVertical: spacing.sm,
+                    // marginVertical: spacing.sm,
                   }}>
                   <Text style={{ color: colors.text }}>모임 마감</Text>
                   <Switch
@@ -333,7 +418,7 @@ const EditTeamModal = ({
                     paddingVertical: spacing.md,
                     borderRadius: radius.sm,
                     alignItems: 'center',
-                    marginTop: spacing.lg,
+                    marginTop: spacing.sm,
                   }}>
                   <Text style={{ color: '#fff', fontWeight: 'bold' }}>저장</Text>
                 </TouchableOpacity>

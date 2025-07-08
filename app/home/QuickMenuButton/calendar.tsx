@@ -206,12 +206,6 @@ export default function CalendarPage({
     setShowAlarmModal(true);
   };
 
-  const months = [
-    dayjs().subtract(1, 'month'), // 전월
-    dayjs(), // 이번달
-    dayjs().add(1, 'month'), // 다음달
-  ];
-
   return (
     <SafeAreaView
       style={{
@@ -342,7 +336,8 @@ export default function CalendarPage({
                 value={campusFilter}
                 onChange={(item) => setCampusFilter(item.value)}
                 containerStyle={{ width: '48%', marginRight: 16 }}
-                maxHeight={divisionData.length * 84 + 16}
+                maxHeight={campusData.length * 84 + 16}
+                dropdownPosition='bottom'
               />
               <CustomDropdown
                 data={divisionData}
@@ -350,6 +345,7 @@ export default function CalendarPage({
                 onChange={(item) => setDivisionFilter(item.value)}
                 containerStyle={{ width: '48%' }}
                 maxHeight={divisionData.length * 84 + 16}
+                dropdownPosition='bottom'
               />
             </View>
 
@@ -531,17 +527,18 @@ export default function CalendarPage({
               style={{
                 flexDirection: 'row',
                 marginBottom: 8,
-                gap: 8,
                 paddingHorizontal: 8,
                 paddingTop: 8,
+                // overflow: 'hidden',
               }}>
               {/* campusFilter */}
               <CustomDropdown
                 data={campusData}
                 value={campusFilter}
-                maxHeight={divisionData.length * 84 + 16}
+                maxHeight={campusData.length * 84 + 16}
                 onChange={(item) => setCampusFilter(item.value)}
                 containerStyle={{ width: '48%', marginRight: 16 }}
+                dropdownPosition='bottom'
               />
 
               {/* divisionFilter */}
@@ -551,6 +548,7 @@ export default function CalendarPage({
                 onChange={(item) => setDivisionFilter(item.value)}
                 containerStyle={{ width: '48%', marginRight: 16 }}
                 maxHeight={divisionData.length * 84 + 16}
+                dropdownPosition='bottom'
               />
             </View>
 
