@@ -3,9 +3,6 @@
 import { DesignSystemProvider } from '@/context/DesignSystem';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { db } from "@/firebase/config";
-import { clearPrayers } from "@/redux/slices/prayerSlice";
-import { clearTeams } from "@/redux/slices/teamSlice";
-import { logoutUser } from "@/redux/slices/userSlice";
 import { store } from "@/redux/store";
 import { savePushTokenToFirestore } from "@/services/pushTokenService";
 import { sendWeeklyRankingPush } from "@/services/sendWeeklyRankingPush";
@@ -14,7 +11,7 @@ import * as Device from 'expo-device';
 import * as NavigationBar from 'expo-navigation-bar';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
-import { doc, onSnapshot } from "firebase/firestore";
+import { collection, doc, getDocs, query, where } from "firebase/firestore";
 import React, { useEffect, useState } from 'react';
 import { AppState, useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -144,7 +141,7 @@ export default function RootLayout() {
 
     //계정이 삭제되었을때
     useEffect(() => {
-        let unsubRef: (() => void) | null = null;
+        // let unsubRef: (() => void) | null = null;
 
         const run = async () => {
             try{const userRaw = await AsyncStorage.getItem('currentUser');
@@ -154,17 +151,14 @@ export default function RootLayout() {
                 const currentDeviceId = `${Device.modelName}-${Device.osName}-${Device.osVersion}`;
                 const deviceDocRef = doc(db, `devices/${email}/tokens/${currentDeviceId}`);
 
-                const unsubscribe = onSnapshot(deviceDocRef, async (docSnap) => {
-                    if (!docSnap.exists()) {
-                        await AsyncStorage.removeItem('currentUser');
-                        store.dispatch(logoutUser());
-                        store.dispatch(clearPrayers());
-                        store.dispatch(clearTeams());
-                        router.replace('/auth/login');
-                    }
-                });
+                const fetchData = async () => {
+                    const q = query(collection(db, 'devices'), where('email', '==', email), where('deviceId', '==', currentDeviceId));
+                    const snapshot = await getDocs(q);
+                    // Process snapshot data here
+                };
 
-                unsubRef = unsubscribe;
+                fetchData();
+
             }catch(e){
                 if (e instanceof Error) {
                     await logErrorToDatabase(e, '계정 삭제 감지 run 중 오류');
@@ -174,11 +168,11 @@ export default function RootLayout() {
 
         run();
 
-        return () => {
-            if (unsubRef) {
-                unsubRef();
-            }
-        };
+        // return () => {
+        //     if (unsubRef) {
+        //         unsubRef();
+        //     }
+        // };
     }, []);
 
     return isAppReady ? (

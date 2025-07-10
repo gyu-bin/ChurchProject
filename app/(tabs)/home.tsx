@@ -4,12 +4,12 @@ import HomeNews from '@/app/home/homeNews';
 import HomeNotices from '@/app/home/noticePage';
 import TodayBible from '@/app/home/todayBible';
 import PromoModal from '@/app/PromoModal';
-import catechismData from '@/assets/catechism/catechism.json';
 import { verses } from '@/assets/verses';
 import { useDesign } from '@/context/DesignSystem';
 import { useAppTheme } from '@/context/ThemeContext';
 import { db } from '@/firebase/config';
 import { useAppDispatch } from '@/hooks/useRedux';
+import { performanceTest } from '@/utils/performanceTest';
 import { setScrollCallback } from '@/utils/scrollRefManager';
 import { AntDesign, Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -18,15 +18,14 @@ import { StatusBar } from 'expo-status-bar';
 import { collection, getDocs, onSnapshot, query, where } from 'firebase/firestore';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Dimensions,
-  FlatList,
-  Modal,
-  Platform,
-  Pressable,
-  RefreshControl,
-  Text,
-  TouchableOpacity,
-  View,
+    FlatList,
+    Modal,
+    Platform,
+    Pressable,
+    RefreshControl,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DefaultTheme } from 'styled-components';
@@ -217,9 +216,11 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
+    performanceTest.startTest('home_component_mount');
     setScrollCallback('home', () => {
       mainListRef.current?.scrollToOffset({ offset: 0, animated: true });
     });
+    performanceTest.endTest('home_component_mount');
   }, []);
 
   useEffect(() => {

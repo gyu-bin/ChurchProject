@@ -1,4 +1,6 @@
 //app/teams/[id].tsx
+import EditTeamModal from '@/app/teams/modal/EditTeamModal';
+import VoteModal from '@/app/teams/modal/VoteModal';
 import loading4 from '@/assets/lottie/Animation - 1747201330128.json';
 import loading3 from '@/assets/lottie/Animation - 1747201413764.json';
 import loading2 from '@/assets/lottie/Animation - 1747201431992.json';
@@ -18,47 +20,38 @@ import * as ImagePicker from 'expo-image-picker';
 import { ImagePickerAsset } from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  arrayRemove,
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  increment,
-  onSnapshot,
-  query,
-  setDoc,
-  Timestamp,
-  updateDoc,
-  where,
-  writeBatch,
+    arrayRemove,
+    collection,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    increment,
+    onSnapshot,
+    query,
+    setDoc,
+    Timestamp,
+    updateDoc,
+    where,
+    writeBatch,
 } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  RefreshControl,
-  Image as RNImage,
-  SafeAreaView,
-  ScrollView,
-  Share,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
+    ActivityIndicator,
+    Alert,
+    Platform,
+    RefreshControl,
+    Image as RNImage,
+    SafeAreaView,
+    ScrollView,
+    Share,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
-import { Calendar } from 'react-native-calendars';
 import Toast from 'react-native-root-toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import EditTeamModal from '@/app/teams/modal/EditTeamModal';
-import VoteModal from '@/app/teams/modal/VoteModal';
 import LocationModal from './modal/LocationModal';
 
 type Team = {
@@ -190,8 +183,13 @@ export default function TeamDetail() {
       setEditCategory(team.category || '');
     }
     getCurrentUser().then(setCurrentUser);
-    const unsubscribe = fetchTeam();
-    return () => unsubscribe && unsubscribe();
+    const fetchData = async () => {
+      const q = query(collection(db, 'teams'), where('id', '==', id));
+      const snapshot = await getDocs(q);
+      // Process snapshot data here
+    };
+
+    fetchData();
   }, []);
 
   useEffect(() => {

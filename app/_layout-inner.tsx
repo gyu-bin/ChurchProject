@@ -3,11 +3,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import * as Notifications from 'expo-notifications';
-import {Redirect, router, Stack, usePathname} from 'expo-router';
+import { Redirect, Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View } from 'react-native';
-import { useEffect } from 'react';
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -18,6 +16,18 @@ Notifications.setNotificationHandler({
     shouldShowList: true,
   }),
 });
+
+function handleRedirect(user, pathname) {
+  if (!user && !pathname.startsWith('/intro') && !pathname.startsWith('/auth')) {
+    return <Redirect href="/intro" />;
+  }
+
+  if (user && pathname.startsWith('/auth')) {
+    return <Redirect href="/(tabs)/home" />;
+  }
+
+  return null;
+}
 
 export default function RootLayoutInner() {
   const { user, loading } = useAuth();
@@ -36,15 +46,9 @@ export default function RootLayoutInner() {
     );
   }
 
-  //로그인 안될시 intro화면으로
-  if (!user && !pathname.startsWith('/intro') && !pathname.startsWith('/auth')) {
-    return <Redirect href="/intro" />;
-  }
+  const redirectComponent = handleRedirect(user, pathname);
+  if (redirectComponent) return redirectComponent;
 
-  //로그인이 되었아면 /홈으로
-  if (user && pathname.startsWith('/auth')) {
-    return <Redirect href="/(tabs)/home" />;
-  }
   return (
       <ThemeProvider value={mode === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack>

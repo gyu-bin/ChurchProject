@@ -9,28 +9,27 @@ import dayjs from 'dayjs';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  collection,
-  getDocs,
-  limit,
-  onSnapshot,
-  orderBy,
-  query,
-  startAfter,
-  where,
+    collection,
+    getDocs,
+    limit,
+    orderBy,
+    query,
+    startAfter,
+    where
 } from 'firebase/firestore';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Dimensions,
-  FlatList,
-  // Image,
-  Modal,
-  Platform,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Dimensions,
+    FlatList,
+    // Image,
+    Modal,
+    Platform,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { EdgeInsets, useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 import styled from 'styled-components/native';
@@ -278,7 +277,14 @@ export default function TeamsList() {
   );
 
   useEffect(() => {
-    fetchTeams(true);
+    const fetchData = async () => {
+      const q = query(collection(db, 'teams'), orderBy('createdAt', 'desc'));
+      const snapshot = await getDocs(q);
+      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setTeams(data);
+    };
+
+    fetchData();
   }, []);
 
   useFocusEffect(
@@ -299,27 +305,12 @@ export default function TeamsList() {
       limit(2)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const newDocs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const fetchData = async () => {
+      const snapshot = await getDocs(q);
+      // Process snapshot data here
+    };
 
-      setTeams((prev) => {
-        const updated = [...prev];
-        const ids = new Set(prev.map((item) => item.id));
-
-        newDocs.forEach((doc) => {
-          const index = updated.findIndex((item) => item.id === doc.id);
-          if (index >= 0) {
-            updated[index] = doc;
-          } else {
-            updated.unshift(doc);
-          }
-        });
-
-        return updated;
-      });
-    });
-
-    return () => unsubscribe();
+    fetchData();
   }, []);
 
   const onRefresh = async () => {

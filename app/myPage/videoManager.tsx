@@ -25,6 +25,7 @@ import {
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
 import Toast from 'react-native-root-toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Thread } from 'react-native-threads';
 
 // ✅ 영상 타입 정의
 type VideoItem = {
@@ -103,6 +104,14 @@ export default function VideoManager() {
     useEffect(() => {
         fetchVideos();
     }, []);
+
+    const thread = new Thread('./path/to/thread.js');
+
+    thread.onmessage = (message: any) => {
+      console.log('Message from thread:', message);
+    };
+
+    thread.postMessage('Start processing');
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? insets.top + 20 : 0 }}>

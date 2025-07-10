@@ -1,34 +1,32 @@
+import OptimizedFlatList from '@/components/OptimizedFlatList';
 import { useDesign } from '@/context/DesignSystem';
 import { useAppTheme } from '@/context/ThemeContext';
 import { db } from '@/firebase/config';
 import { showToast } from '@/utils/toast';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native';
-import { router, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import {
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  orderBy,
-  query,
-  limit,
-  startAfter,
+    collection,
+    deleteDoc,
+    doc,
+    getDocs,
+    limit,
+    orderBy,
+    query,
+    startAfter,
 } from 'firebase/firestore';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Dimensions,
-  FlatList,
-  Platform,
-  RefreshControl,
-  SafeAreaView,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Platform,
+    RefreshControl,
+    SafeAreaView,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 
 interface PrayerItem {
   id: string;
@@ -235,7 +233,7 @@ export default function PrayerListScreen() {
       </View>
 
       {/* 무한 스크롤 리스트 */}
-      <FlatList
+      <OptimizedFlatList
         data={prayers}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
@@ -254,6 +252,9 @@ export default function PrayerListScreen() {
             <ActivityIndicator color={theme.colors.primary} style={{ marginVertical: 20 }} />
           ) : null
         }
+        removeClippedSubviews={true}
+        initialNumToRender={10}
+        windowSize={5}
       />
     </SafeAreaView>
   );

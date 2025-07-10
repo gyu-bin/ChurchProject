@@ -1,14 +1,16 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import {
-    View, Text, TextInput, TouchableOpacity, FlatList,
-    KeyboardAvoidingView, Platform, ScrollView
-} from 'react-native';
-import { useEffect, useState } from 'react';
-import { db } from '@/firebase/config';
-import { doc, getDoc, collection, addDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDesign } from '@/context/DesignSystem';
+import { db } from '@/firebase/config';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { addDoc, collection, doc, getDoc, getDocs, orderBy, query } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import {
+    FlatList,
+    KeyboardAvoidingView, Platform,
+    Text, TextInput, TouchableOpacity,
+    View
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ForestDetail() {
     const { id } = useLocalSearchParams();
@@ -20,17 +22,20 @@ export default function ForestDetail() {
     const [comments, setComments] = useState<any[]>([]);
     const [comment, setComment] = useState('');
 
+    const q = query(collection(db, 'forest_posts', id as string, 'comments'), orderBy('createdAt', 'asc'));
+
     useEffect(() => {
         if (!id) return;
         const ref = doc(db, 'forest_posts', id as string);
         getDoc(ref).then(snapshot => {
             if (snapshot.exists()) setPost(snapshot.data());
         });
-        const q = query(collection(db, 'forest_posts', id as string, 'comments'), orderBy('createdAt', 'asc'));
-        const unsubscribe = onSnapshot(q, snap => {
-            setComments(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        });
-        return () => unsubscribe();
+        const fetchData = async () => {
+            const snapshot = await getDocs(q);
+            // Process snapshot data here
+        };
+
+        fetchData();
     }, [id]);
 
     const handleSubmit = async () => {

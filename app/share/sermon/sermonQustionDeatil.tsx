@@ -1,33 +1,33 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  FlatList,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Modal,
-  TouchableWithoutFeedback,
-} from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import {
-  collection,
-  addDoc,
-  doc,
-  getDoc,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  deleteDoc,
-  updateDoc,
-} from 'firebase/firestore';
+import OptimizedFlatList from '@/components/OptimizedFlatList';
+import { useDesign } from '@/context/DesignSystem';
 import { db } from '@/firebase/config';
-import { font, useDesign } from '@/context/DesignSystem';
 import { useAuth } from '@/hooks/useAuth';
 import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import {
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    getDoc,
+    onSnapshot,
+    orderBy,
+    query,
+    serverTimestamp,
+    updateDoc,
+} from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SermonQuestionDetail() {
@@ -139,7 +139,7 @@ export default function SermonQuestionDetail() {
           </View>
 
           {/* 💬 답글 목록 */}
-          <FlatList
+          <OptimizedFlatList
             data={replies}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
