@@ -1,18 +1,7 @@
-import {
-  CampusWithAll,
-  DepartmentWithAll,
-} from "@/app/constants/CampusDivisions";
-import { db } from "@/firebase/config";
-import {
-  collection,
-  getDocs,
-  limit,
-  onSnapshot,
-  orderBy,
-  query,
-  where,
-} from "firebase/firestore";
-import { useEffect, useState } from "react";
+import { CampusWithAll, DepartmentWithAll } from '@/app/constants/CampusDivisions';
+import { db } from '@/firebase/config';
+import { collection, getDocs, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
 
 type PostAuthor = {
   id: string;
@@ -75,18 +64,18 @@ export default function useGetDepartmentPost({
 
         // Build query
         let q = query(
-          collection(db, "department_posts"),
-          orderBy("createdAt", "desc"),
+          collection(db, 'department_posts'),
+          orderBy('createdAt', 'desc'),
           limit(limitCount)
         );
 
         // Add filters if provided
-        if (selectedCampus && selectedCampus !== "ALL") {
-          q = query(q, where("campus", "==", selectedCampus));
+        if (selectedCampus && selectedCampus !== 'ALL') {
+          q = query(q, where('campus', '==', selectedCampus));
         }
 
-        if (selectedDivision && selectedDivision !== "ALL") {
-          q = query(q, where("division", "==", selectedDivision));
+        if (selectedDivision && selectedDivision !== 'ALL') {
+          q = query(q, where('division', '==', selectedDivision));
         }
 
         if (enableRealtime) {
@@ -99,7 +88,7 @@ export default function useGetDepartmentPost({
                 const data = doc.data();
                 const post: DepartmentPost = {
                   id: doc.id,
-                  content: data.content ?? "",
+                  content: data.content ?? '',
                   campus: data.campus,
                   division: data.division,
                   imageUrls: data.imageUrls ?? [],
@@ -122,8 +111,8 @@ export default function useGetDepartmentPost({
               setLoading(false);
             },
             (err) => {
-              console.error("🔥 실시간 데이터 가져오기 실패:", err);
-              setError("데이터를 가져오는 중 오류가 발생했습니다.");
+              console.error('🔥 실시간 데이터 가져오기 실패:', err);
+              setError('데이터를 가져오는 중 오류가 발생했습니다.');
               setLoading(false);
             }
           );
@@ -141,8 +130,8 @@ export default function useGetDepartmentPost({
           setLoading(false);
         }
       } catch (err) {
-        console.error("🔥 부서 게시물 가져오기 실패:", err);
-        setError("데이터를 가져오는 중 오류가 발생했습니다.");
+        console.error('🔥 부서 게시물 가져오기 실패:', err);
+        setError('데이터를 가져오는 중 오류가 발생했습니다.');
         setLoading(false);
       }
     };
@@ -157,17 +146,17 @@ export default function useGetDepartmentPost({
       setLoading(true);
 
       let q = query(
-        collection(db, "department_posts"),
-        orderBy("createdAt", "desc"),
+        collection(db, 'department_posts'),
+        orderBy('createdAt', 'desc'),
         limit(limitCount)
       );
 
-      if (selectedCampus && selectedCampus !== "ALL") {
-        q = query(q, where("campus", "==", selectedCampus));
+      if (selectedCampus && selectedCampus !== 'ALL') {
+        q = query(q, where('campus', '==', selectedCampus));
       }
 
-      if (selectedDivision && selectedDivision !== "ALL") {
-        q = query(q, where("division", "==", selectedDivision));
+      if (selectedDivision && selectedDivision !== 'ALL') {
+        q = query(q, where('division', '==', selectedDivision));
       }
 
       const snapshot = await getDocs(q);
@@ -179,8 +168,8 @@ export default function useGetDepartmentPost({
       setPosts((prev) => [...prev, ...newPosts]);
       setHasMore(newPosts.length === limitCount);
     } catch (err) {
-      console.error("🔥 추가 데이터 로드 실패:", err);
-      setError("추가 데이터를 로드하는 중 오류가 발생했습니다.");
+      console.error('🔥 추가 데이터 로드 실패:', err);
+      setError('추가 데이터를 로드하는 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
@@ -195,17 +184,17 @@ export default function useGetDepartmentPost({
     // Re-fetch data with current filters
     try {
       let q = query(
-        collection(db, "department_posts"),
-        orderBy("createdAt", "desc"),
+        collection(db, 'department_posts'),
+        orderBy('createdAt', 'desc'),
         limit(limitCount)
       );
 
-      if (selectedCampus && selectedCampus !== "ALL") {
-        q = query(q, where("campus", "==", selectedCampus));
+      if (selectedCampus && selectedCampus !== 'ALL') {
+        q = query(q, where('campus', '==', selectedCampus));
       }
 
-      if (selectedDivision && selectedDivision !== "ALL") {
-        q = query(q, where("division", "==", selectedDivision));
+      if (selectedDivision && selectedDivision !== 'ALL') {
+        q = query(q, where('division', '==', selectedDivision));
       }
 
       const snapshot = await getDocs(q);
@@ -217,8 +206,8 @@ export default function useGetDepartmentPost({
       setPosts(fetchedPosts);
       setHasMore(fetchedPosts.length === limitCount);
     } catch (err) {
-      console.error("🔥 새로고침 실패:", err);
-      setError("새로고침 중 오류가 발생했습니다.");
+      console.error('🔥 새로고침 실패:', err);
+      setError('새로고침 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }

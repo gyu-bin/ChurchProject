@@ -1,13 +1,13 @@
-import { CAMPUS_ENUM, DEPARTMENT_ENUM } from "@/app/constants/CampusDivisions";
-import { formatFirebaseTimestamp } from "@/app/utils/formatFirebaseTimestamp";
-import { useDesign } from "@/context/DesignSystem";
-import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import { Dimensions, Image, Text, View } from "react-native";
-import styled from "styled-components/native";
-import { DepartmentPost } from "./useGetDepartmentPost";
+import { CAMPUS_ENUM, DEPARTMENT_ENUM } from '@/app/constants/CampusDivisions';
+import { formatFirebaseTimestamp } from '@/app/utils/formatFirebaseTimestamp';
+import { useDesign } from '@/context/DesignSystem';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { Dimensions, Image, Text, View } from 'react-native';
+import styled from 'styled-components/native';
+import { DepartmentPost } from './useGetDepartmentPost';
 
-const { width: screenWidth } = Dimensions.get("window");
+const { width: screenWidth } = Dimensions.get('window');
 const POST_WIDTH = screenWidth - 32;
 const IMAGE_HEIGHT = POST_WIDTH * 1.2;
 
@@ -25,30 +25,28 @@ export default function CardPost({ item }: { item: DepartmentPost }) {
       {/* Header */}
       <View
         style={{
-          flexDirection: "row",
-          alignItems: "center",
+          flexDirection: 'row',
+          alignItems: 'center',
           padding: spacing.md,
           borderBottomWidth: 1,
           borderBottomColor: colors.border,
-        }}
-      >
+        }}>
         <View
           style={{
             width: 32,
             height: 32,
             borderRadius: 16,
             backgroundColor: colors.primary,
-            alignItems: "center",
-            justifyContent: "center",
+            alignItems: 'center',
+            justifyContent: 'center',
             marginRight: spacing.sm,
-          }}
-        >
-          <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 14 }}>
+          }}>
+          <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>
             {item.author.name.charAt(0)}
           </Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: colors.text, fontWeight: "600", fontSize: 14 }}>
+          <Text style={{ color: colors.text, fontWeight: '600', fontSize: 14 }}>
             {item.author.name}
           </Text>
           <Text style={{ color: colors.subtext, fontSize: 12 }}>
@@ -62,7 +60,7 @@ export default function CardPost({ item }: { item: DepartmentPost }) {
 
       {/* Image Section */}
       {hasImages && (
-        <View style={{ position: "relative" }}>
+        <View style={{ position: 'relative' }}>
           <Image
             source={{ uri: item.imageUrls[0] }}
             style={{
@@ -70,26 +68,25 @@ export default function CardPost({ item }: { item: DepartmentPost }) {
               height: IMAGE_HEIGHT,
               backgroundColor: colors.background,
             }}
-            resizeMode="cover"
+            resizeMode='cover'
           />
 
           {/* Multiple images badge */}
           {hasMultipleImages && (
             <View
               style={{
-                position: "absolute",
+                position: 'absolute',
                 top: spacing.sm,
                 right: spacing.sm,
-                backgroundColor: "rgba(0, 0, 0, 0.7)",
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
                 borderRadius: radius.sm,
                 paddingHorizontal: spacing.sm,
                 paddingVertical: spacing.xs,
-                flexDirection: "row",
-                alignItems: "center",
-              }}
-            >
-              <Ionicons name="images" size={16} color="#fff" />
-              <Text style={{ color: "#fff", fontSize: 12, marginLeft: 4 }}>
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}>
+              <Ionicons name='images' size={16} color='#fff' />
+              <Text style={{ color: '#fff', fontSize: 12, marginLeft: 4 }}>
                 {item.imageUrls.length}
               </Text>
             </View>
@@ -100,39 +97,36 @@ export default function CardPost({ item }: { item: DepartmentPost }) {
       <View
         style={{
           width: POST_WIDTH,
-          justifyContent: "center",
+          justifyContent: 'center',
           padding: spacing.lg,
-        }}
-      >
+        }}>
         <Text
           style={{
             fontSize: 16,
             lineHeight: 24,
-            fontWeight: "500",
+            fontWeight: '500',
           }}
-          numberOfLines={6}
-        >
-          {item.content || "내용이 없습니다"}
+          numberOfLines={6}>
+          {item.content || '내용이 없습니다'}
         </Text>
       </View>
       <View
         style={{
-          flexDirection: "row",
-          alignItems: "center",
+          flexDirection: 'row',
+          alignItems: 'center',
           padding: spacing.md,
           borderTopWidth: 1,
           borderTopColor: colors.border,
-        }}
-      >
-        <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-          <Ionicons name="heart-outline" size={20} color={colors.text} />
+        }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+          <Ionicons name='heart-outline' size={20} color={colors.text} />
           <Text style={{ color: colors.subtext, fontSize: 12, marginLeft: 4 }}>
             {item.likes?.length || 0}
           </Text>
         </View>
 
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <Ionicons name="chatbubble-outline" size={20} color={colors.text} />
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Ionicons name='chatbubble-outline' size={20} color={colors.text} />
           <Text style={{ color: colors.subtext, fontSize: 12, marginLeft: 4 }}>
             {item.comments?.length || 0}
           </Text>

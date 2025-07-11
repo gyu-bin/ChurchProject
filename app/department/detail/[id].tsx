@@ -1,18 +1,11 @@
-import UserInitializer from "@/components/user/UserInitializer";
-import { User } from "@/constants/_types/user";
-import { useDesign } from "@/context/DesignSystem";
-import { db } from "@/firebase/config";
-import { Ionicons } from "@expo/vector-icons";
-import { router, useLocalSearchParams } from "expo-router";
-import {
-  arrayRemove,
-  arrayUnion,
-  doc,
-  getDoc,
-  Timestamp,
-  updateDoc,
-} from "firebase/firestore";
-import React, { useEffect, useState } from "react";
+import UserInitializer from '@/components/user/UserInitializer';
+import { User } from '@/constants/_types/user';
+import { useDesign } from '@/context/DesignSystem';
+import { db } from '@/firebase/config';
+import { Ionicons } from '@expo/vector-icons';
+import { router, useLocalSearchParams } from 'expo-router';
+import { arrayRemove, arrayUnion, doc, getDoc, Timestamp, updateDoc } from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -24,13 +17,13 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { DepartmentPost } from "../list/useGetDepartmentPost";
-import { formatFirebaseTimestamp } from "@/app/utils/formatFirebaseTimestamp";
-import { CAMPUS_ENUM, DEPARTMENT_ENUM } from "@/app/constants/CampusDivisions";
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DepartmentPost } from '../list/useGetDepartmentPost';
+import { formatFirebaseTimestamp } from '@/app/utils/formatFirebaseTimestamp';
+import { CAMPUS_ENUM, DEPARTMENT_ENUM } from '@/app/constants/CampusDivisions';
 
-const { width: screenWidth } = Dimensions.get("window");
+const { width: screenWidth } = Dimensions.get('window');
 
 interface Comment {
   id: string;
@@ -53,7 +46,7 @@ export default function DepartmentPostDetail() {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [comments, setComments] = useState<Comment[]>([]);
-  const [newComment, setNewComment] = useState("");
+  const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [userInfo, setUserInfo] = useState<User | null>(null);
@@ -67,7 +60,7 @@ export default function DepartmentPostDetail() {
   const fetchPost = async () => {
     try {
       setLoading(true);
-      const postDoc = await getDoc(doc(db, "department_posts", id));
+      const postDoc = await getDoc(doc(db, 'department_posts', id));
 
       if (postDoc.exists()) {
         const postData = {
@@ -83,11 +76,11 @@ export default function DepartmentPostDetail() {
           setLiked(postData.likes.includes(userInfo.email));
         }
       } else {
-        setError("게시물을 찾을 수 없습니다.");
+        setError('게시물을 찾을 수 없습니다.');
       }
     } catch (err) {
-      console.error("게시물 가져오기 실패:", err);
-      setError("게시물을 불러오는 중 오류가 발생했습니다.");
+      console.error('게시물 가져오기 실패:', err);
+      setError('게시물을 불러오는 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
@@ -106,7 +99,7 @@ export default function DepartmentPostDetail() {
     if (!post || !userInfo) return;
 
     try {
-      const postRef = doc(db, "department_posts", post.id);
+      const postRef = doc(db, 'department_posts', post.id);
 
       if (liked) {
         await updateDoc(postRef, {
@@ -122,8 +115,8 @@ export default function DepartmentPostDetail() {
 
       setLiked(!liked);
     } catch (err) {
-      console.error("좋아요 처리 실패:", err);
-      Alert.alert("오류", "좋아요 처리 중 오류가 발생했습니다.");
+      console.error('좋아요 처리 실패:', err);
+      Alert.alert('오류', '좋아요 처리 중 오류가 발생했습니다.');
     }
   };
 
@@ -142,16 +135,16 @@ export default function DepartmentPostDetail() {
         createdAt: Timestamp.now(),
       };
 
-      const postRef = doc(db, "department_posts", post.id);
+      const postRef = doc(db, 'department_posts', post.id);
       await updateDoc(postRef, {
         comments: arrayUnion(comment),
       });
 
       setComments((prev) => [comment, ...prev]);
-      setNewComment("");
+      setNewComment('');
     } catch (err) {
-      console.error("댓글 작성 실패:", err);
-      Alert.alert("오류", "댓글 작성 중 오류가 발생했습니다.");
+      console.error('댓글 작성 실패:', err);
+      Alert.alert('오류', '댓글 작성 중 오류가 발생했습니다.');
     } finally {
       setSubmittingComment(false);
     }
@@ -165,43 +158,40 @@ export default function DepartmentPostDetail() {
         height: screenWidth * 1.2,
         backgroundColor: colors.background,
       }}
-      resizeMode="cover"
+      resizeMode='cover'
     />
   );
 
   const renderComment = ({ item }: { item: Comment }) => (
     <View
       style={{
-        flexDirection: "row",
+        flexDirection: 'row',
         paddingVertical: spacing.sm,
         borderBottomWidth: 1,
         borderBottomColor: colors.border,
-      }}
-    >
+      }}>
       <View
         style={{
           width: 32,
           height: 32,
           borderRadius: 16,
           backgroundColor: colors.primary,
-          alignItems: "center",
-          justifyContent: "center",
+          alignItems: 'center',
+          justifyContent: 'center',
           marginRight: spacing.sm,
-        }}
-      >
-        <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 12 }}>
+        }}>
+        <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }}>
           {item.author.name.charAt(0)}
         </Text>
       </View>
       <View style={{ flex: 1 }}>
         <View
           style={{
-            flexDirection: "row",
-            alignItems: "center",
+            flexDirection: 'row',
+            alignItems: 'center',
             marginBottom: 4,
-          }}
-        >
-          <Text style={{ color: colors.text, fontWeight: "600", fontSize: 14 }}>
+          }}>
+          <Text style={{ color: colors.text, fontWeight: '600', fontSize: 14 }}>
             {item.author.name}
           </Text>
           <Text
@@ -209,22 +199,19 @@ export default function DepartmentPostDetail() {
               color: colors.subtext,
               fontSize: 12,
               marginLeft: spacing.sm,
-            }}
-          >
+            }}>
             {formatFirebaseTimestamp(item.createdAt)}
           </Text>
         </View>
-        <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20 }}>
-          {item.text}
-        </Text>
+        <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20 }}>{item.text}</Text>
       </View>
     </View>
   );
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size='large' color={colors.primary} />
       </View>
     );
   }
@@ -234,20 +221,13 @@ export default function DepartmentPostDetail() {
       <View
         style={{
           flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
+          justifyContent: 'center',
+          alignItems: 'center',
           padding: spacing.lg,
-        }}
-      >
-        <Ionicons
-          name="alert-circle-outline"
-          size={48}
-          color={colors.subtext}
-        />
-        <Text
-          style={{ color: colors.subtext, marginTop: spacing.md, fontSize: 16 }}
-        >
-          {error || "게시물을 찾을 수 없습니다."}
+        }}>
+        <Ionicons name='alert-circle-outline' size={48} color={colors.subtext} />
+        <Text style={{ color: colors.subtext, marginTop: spacing.md, fontSize: 16 }}>
+          {error || '게시물을 찾을 수 없습니다.'}
         </Text>
         <TouchableOpacity
           onPress={() => router.back()}
@@ -257,9 +237,8 @@ export default function DepartmentPostDetail() {
             paddingVertical: spacing.sm,
             backgroundColor: colors.primary,
             borderRadius: radius.md,
-          }}
-        >
-          <Text style={{ color: "#fff", fontWeight: "600" }}>돌아가기</Text>
+          }}>
+          <Text style={{ color: '#fff', fontWeight: '600' }}>돌아가기</Text>
         </TouchableOpacity>
       </View>
     );
@@ -272,27 +251,25 @@ export default function DepartmentPostDetail() {
       {/* Header */}
       <View
         style={{
-          flexDirection: "row",
-          alignItems: "center",
+          flexDirection: 'row',
+          alignItems: 'center',
           paddingHorizontal: spacing.md,
           paddingTop: insets.top + spacing.sm,
           paddingBottom: spacing.sm,
           backgroundColor: colors.card,
           borderBottomWidth: 1,
           borderBottomColor: colors.border,
-        }}
-      >
+        }}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={24} color={colors.text} />
+          <Ionicons name='chevron-back' size={24} color={colors.text} />
         </TouchableOpacity>
-        <View style={{ flex: 1, alignItems: "center" }}>
+        <View style={{ flex: 1, alignItems: 'center' }}>
           <Text
             style={{
               fontSize: font.title,
-              fontWeight: "bold",
+              fontWeight: 'bold',
               color: colors.text,
-            }}
-          >
+            }}>
             게시물
           </Text>
         </View>
@@ -301,33 +278,29 @@ export default function DepartmentPostDetail() {
         {/* Author Info */}
         <View
           style={{
-            flexDirection: "row",
-            alignItems: "center",
+            flexDirection: 'row',
+            alignItems: 'center',
             padding: spacing.md,
             backgroundColor: colors.card,
             borderBottomWidth: 1,
             borderBottomColor: colors.border,
-          }}
-        >
+          }}>
           <View
             style={{
               width: 48,
               height: 48,
               borderRadius: 24,
               backgroundColor: colors.primary,
-              alignItems: "center",
-              justifyContent: "center",
+              alignItems: 'center',
+              justifyContent: 'center',
               marginRight: spacing.md,
-            }}
-          >
-            <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 18 }}>
+            }}>
+            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 18 }}>
               {post.author.name.charAt(0)}
             </Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text
-              style={{ color: colors.text, fontWeight: "600", fontSize: 16 }}
-            >
+            <Text style={{ color: colors.text, fontWeight: '600', fontSize: 16 }}>
               {post.author.name}
             </Text>
             <Text style={{ color: colors.subtext, fontSize: 14 }}>
@@ -341,7 +314,7 @@ export default function DepartmentPostDetail() {
 
         {/* Images */}
         {post.imageUrls && post.imageUrls.length > 0 && (
-          <View style={{ position: "relative" }}>
+          <View style={{ position: 'relative' }}>
             <FlatList
               data={post.imageUrls}
               horizontal
@@ -350,9 +323,7 @@ export default function DepartmentPostDetail() {
               keyExtractor={(_, index) => index.toString()}
               renderItem={renderImage}
               onMomentumScrollEnd={(event) => {
-                const index = Math.round(
-                  event.nativeEvent.contentOffset.x / screenWidth
-                );
+                const index = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
                 setCurrentImageIndex(index);
               }}
             />
@@ -361,16 +332,15 @@ export default function DepartmentPostDetail() {
             {post.imageUrls.length > 1 && (
               <View
                 style={{
-                  position: "absolute",
+                  position: 'absolute',
                   top: spacing.md,
                   right: spacing.md,
-                  backgroundColor: "rgba(0, 0, 0, 0.7)",
+                  backgroundColor: 'rgba(0, 0, 0, 0.7)',
                   borderRadius: radius.sm,
                   paddingHorizontal: spacing.sm,
                   paddingVertical: spacing.xs,
-                }}
-              >
-                <Text style={{ color: "#fff", fontSize: 12 }}>
+                }}>
+                <Text style={{ color: '#fff', fontSize: 12 }}>
                   {currentImageIndex + 1} / {post.imageUrls.length}
                 </Text>
               </View>
@@ -380,51 +350,42 @@ export default function DepartmentPostDetail() {
 
         {/* Content */}
         <View style={{ padding: spacing.lg, backgroundColor: colors.card }}>
-          <Text style={{ color: colors.text, fontSize: 16, lineHeight: 24 }}>
-            {post.content}
-          </Text>
+          <Text style={{ color: colors.text, fontSize: 16, lineHeight: 24 }}>{post.content}</Text>
         </View>
 
         {/* Actions */}
         <View
           style={{
-            flexDirection: "row",
-            alignItems: "center",
+            flexDirection: 'row',
+            alignItems: 'center',
             padding: spacing.md,
             backgroundColor: colors.card,
             borderTopWidth: 1,
             borderTopColor: colors.border,
-          }}
-        >
+          }}>
           <TouchableOpacity
             onPress={handleLike}
             style={{
-              flexDirection: "row",
-              alignItems: "center",
+              flexDirection: 'row',
+              alignItems: 'center',
               marginRight: spacing.lg,
-            }}
-          >
+            }}>
             <Ionicons
-              name={liked ? "heart" : "heart-outline"}
+              name={liked ? 'heart' : 'heart-outline'}
               size={24}
-              color={liked ? "#ff4757" : colors.text}
+              color={liked ? '#ff4757' : colors.text}
             />
-            <Text style={{ color: colors.subtext, marginLeft: spacing.xs }}>
-              {likeCount}
-            </Text>
+            <Text style={{ color: colors.subtext, marginLeft: spacing.xs }}>{likeCount}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={{
-              flexDirection: "row",
-              alignItems: "center",
+              flexDirection: 'row',
+              alignItems: 'center',
               marginRight: spacing.lg,
-            }}
-          >
-            <Ionicons name="chatbubble-outline" size={24} color={colors.text} />
-            <Text style={{ color: colors.subtext, marginLeft: spacing.xs }}>
-              {comments.length}
-            </Text>
+            }}>
+            <Ionicons name='chatbubble-outline' size={24} color={colors.text} />
+            <Text style={{ color: colors.subtext, marginLeft: spacing.xs }}>{comments.length}</Text>
           </TouchableOpacity>
 
           {/* // 공유 기능 추후 구현 */}
@@ -442,11 +403,8 @@ export default function DepartmentPostDetail() {
               padding: spacing.md,
               borderBottomWidth: 1,
               borderBottomColor: colors.border,
-            }}
-          >
-            <Text
-              style={{ color: colors.text, fontWeight: "600", fontSize: 16 }}
-            >
+            }}>
+            <Text style={{ color: colors.text, fontWeight: '600', fontSize: 16 }}>
               댓글 ({comments.length})
             </Text>
           </View>
@@ -459,10 +417,8 @@ export default function DepartmentPostDetail() {
               scrollEnabled={false}
             />
           ) : (
-            <View style={{ padding: spacing.lg, alignItems: "center" }}>
-              <Text style={{ color: colors.subtext, fontSize: 14 }}>
-                아직 댓글이 없습니다.
-              </Text>
+            <View style={{ padding: spacing.lg, alignItems: 'center' }}>
+              <Text style={{ color: colors.subtext, fontSize: 14 }}>아직 댓글이 없습니다.</Text>
             </View>
           )}
         </View>
@@ -470,18 +426,17 @@ export default function DepartmentPostDetail() {
 
       <View
         style={{
-          flexDirection: "row",
-          alignItems: "center",
+          flexDirection: 'row',
+          alignItems: 'center',
           padding: spacing.md,
           backgroundColor: colors.card,
           borderTopWidth: 1,
           borderTopColor: colors.border,
-        }}
-      >
+        }}>
         <TextInput
           value={newComment}
           onChangeText={setNewComment}
-          placeholder="댓글을 입력하세요..."
+          placeholder='댓글을 입력하세요...'
           style={{
             flex: 1,
             backgroundColor: colors.background,
@@ -501,12 +456,11 @@ export default function DepartmentPostDetail() {
             borderRadius: radius.md,
             paddingHorizontal: spacing.md,
             paddingVertical: spacing.sm,
-          }}
-        >
+          }}>
           {submittingComment ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size='small' color='#fff' />
           ) : (
-            <Text style={{ color: "#fff", fontWeight: "600" }}>전송</Text>
+            <Text style={{ color: '#fff', fontWeight: '600' }}>전송</Text>
           )}
         </TouchableOpacity>
       </View>

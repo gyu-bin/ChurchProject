@@ -1,10 +1,10 @@
-import { Campus, Department } from "@/app/constants/CampusDivisions";
-import { useState } from "react";
+import { Campus, Department } from '@/app/constants/CampusDivisions';
+import { useState } from 'react';
 
 export default function useDepartmentFilter() {
   const [isOpenFilter, setIsOpenFilter] = useState(false);
-  const [selectedCampus, setSelectedCampus] = useState<Campus | "ALL">("ALL");
-  const [selectedDept, setSelectedDept] = useState<Department | "ALL">("ALL");
+  const [selectedCampus, setSelectedCampus] = useState<Campus | 'ALL'>('ALL');
+  const [selectedDept, setSelectedDept] = useState<Department | 'ALL'>('ALL');
 
   const openFilter = () => {
     setIsOpenFilter(true);
@@ -14,8 +14,8 @@ export default function useDepartmentFilter() {
     tempCampus,
     tempDept,
   }: {
-    tempCampus: Campus | "ALL";
-    tempDept: Department | "ALL";
+    tempCampus: Campus | 'ALL';
+    tempDept: Department | 'ALL';
   }) => {
     setSelectedCampus(tempCampus);
     setSelectedDept(tempDept);
@@ -23,8 +23,8 @@ export default function useDepartmentFilter() {
     setIsOpenFilter(false);
   };
   const resetFilter = () => {
-    setSelectedCampus("ALL");
-    setSelectedDept("ALL");
+    setSelectedCampus('ALL');
+    setSelectedDept('ALL');
   };
 
   return {
