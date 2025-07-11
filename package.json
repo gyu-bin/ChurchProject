@@ -113,7 +113,6 @@
     "@types/react-native-snap-carousel": "^3.8.11",
     "@types/react-navigation": "^3.4.0",
     "@types/styled-components": "^5.1.34",
-    "@types/styled-components-react-native": "^5.2.5",
     "react-native-performance": "^1.0.0",
     "react-native-fps-counter": "^0.1.0",
     "babel-plugin-styled-components": "^2.1.4",
