@@ -7,27 +7,16 @@ import { useDesign } from '@/context/DesignSystem';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, FlatList } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import styled from 'styled-components/native';
 import usePickImage from './uesPickImage';
 import useUploadDepartmentPost from './useUploadDepartmentPost';
 
 export default function DepartmentPostCreate() {
-  const { colors, spacing, font } = useDesign();
+  const { colors } = useDesign();
   const insets = useSafeAreaInsets();
 
-  // TODO 사용자 캠퍼스로 초기 셋팅하기
   const [selectedCampus, setSelectedCampus] = useState<CampusWithAll | null>(null);
   const [selectedDivision, setSelectedDivision] = useState<DepartmentWithAll | null>(null);
 
@@ -47,38 +36,17 @@ export default function DepartmentPostCreate() {
   });
 
   return (
-    <ScrollView
-      style={{
-        flex: 1,
-        backgroundColor: colors.background,
-        paddingTop: insets.top,
-      }}
-      contentContainerStyle={{ padding: spacing.md }}>
+    <Container insets={insets}>
       <UserInitializer setUserInfo={setUserInfo} />
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          marginBottom: spacing.lg,
-        }}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name='chevron-back' size={24} color={colors.text} />
-        </TouchableOpacity>
-        <View style={{ flex: 1, alignItems: 'center' }}>
-          <Text
-            style={{
-              fontSize: font.title,
-              fontWeight: 'bold',
-              color: colors.text,
-            }}>
-            게시글 생성
-          </Text>
-        </View>
-        <View style={{ width: 24 }} />
-      </View>
 
-      {/* 캠퍼스 드롭다운 */}
+      <HeaderContainer>
+        <BackButton onPress={() => router.back()}>
+          <Ionicons name='chevron-back' size={24} color={colors.text} />
+        </BackButton>
+        <HeaderTitle>게시글 생성</HeaderTitle>
+        <Spacer />
+      </HeaderContainer>
+
       <SelectWrapper>
         <CampusDivisionSelect selectedCampus={selectedCampus} onCampusChange={setSelectedCampus} />
         <DepartmentSelect
@@ -87,32 +55,19 @@ export default function DepartmentPostCreate() {
           onDepartmentChange={setSelectedDivision}
         />
       </SelectWrapper>
-      <TouchableOpacity
-        style={{
-          backgroundColor: '#f3f4f6',
-          borderWidth: 1,
-          borderColor: '#d1d5db',
-          padding: spacing.md,
-          borderRadius: 12,
-          alignItems: 'center',
-          flexDirection: 'row',
-          justifyContent: 'center',
-          gap: 6,
-          marginBottom: spacing.md,
-        }}
-        onPress={pickImage}>
+
+      <ImagePickerButton onPress={pickImage}>
         <Ionicons name='camera-outline' size={20} color='#3b82f6' />
-        <Text style={{ color: '#3b82f6', fontWeight: '600' }}>사진 선택 (최대 5장)</Text>
-      </TouchableOpacity>
+        <ImagePickerText>사진 선택 (최대 5장)</ImagePickerText>
+      </ImagePickerButton>
 
       <FlatList
         data={imageURLs}
         keyExtractor={(item) => item.uri}
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={{ marginBottom: spacing.md }}
         renderItem={({ item }) => (
-          <TouchableOpacity
+          <ImageItem
             onLongPress={() =>
               Alert.alert('사진 삭제', '이 사진을 삭제하시겠습니까?', [
                 { text: '취소', style: 'cancel' },
@@ -123,62 +78,113 @@ export default function DepartmentPostCreate() {
                 },
               ])
             }>
-            <Image
-              source={{ uri: item.uri }}
-              style={{
-                width: 80,
-                height: 80,
-                borderRadius: 12,
-                marginRight: 10,
-              }}
-            />
-          </TouchableOpacity>
+            <SelectedImage source={{ uri: item.uri }} />
+          </ImageItem>
         )}
       />
 
-      <TextInput
+      <ContentInput
         placeholder='내용을 입력해주세요...'
         value={content}
         onChangeText={setContent}
         multiline
-        style={{
-          backgroundColor: '#f9fafb',
-          borderRadius: 12,
-          padding: spacing.md,
-          fontSize: 15,
-          minHeight: 120,
-          textAlignVertical: 'top',
-          marginBottom: spacing.lg,
-        }}
       />
 
-      <TouchableOpacity
-        onPress={uploadPost}
-        disabled={uploading}
-        style={{
-          backgroundColor: uploading ? '#ccc' : '#2563eb',
-          paddingVertical: 14,
-          borderRadius: 12,
-          alignItems: 'center',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          elevation: 3,
-        }}>
+      <SubmitButton onPress={uploadPost} disabled={uploading}>
         {uploading ? (
           <ActivityIndicator color='#fff' />
         ) : (
-          <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold' }}>🚀 등록하기</Text>
+          <SubmitButtonText>🚀 등록하기</SubmitButtonText>
         )}
-      </TouchableOpacity>
-    </ScrollView>
+      </SubmitButton>
+    </Container>
   );
 }
+
+const Container = styled.ScrollView<{ insets: any }>`
+  flex: 1;
+  background-color: ${({ theme }) => theme.colors.background};
+  padding-top: ${({ insets }) => insets.top}px;
+`;
+
+const HeaderContainer = styled.View`
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: ${({ theme }) => theme.spacing.lg}px;
+`;
+
+const BackButton = styled.TouchableOpacity``;
+
+const HeaderTitle = styled.Text`
+  flex: 1;
+  text-align: center;
+  font-size: ${({ theme }) => theme.font.title}px;
+  font-weight: bold;
+  color: ${({ theme }) => theme.colors.text};
+`;
+
+const Spacer = styled.View`
+  width: 24px;
+`;
 
 const SelectWrapper = styled.View`
   display: flex;
   flex-direction: row;
   gap: 12px;
   margin-bottom: 12px;
+`;
+
+const ImagePickerButton = styled.TouchableOpacity`
+  background-color: #f3f4f6;
+  border-width: 1px;
+  border-color: #d1d5db;
+  padding: ${({ theme }) => theme.spacing.md}px;
+  border-radius: 12px;
+  align-items: center;
+  flex-direction: row;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: ${({ theme }) => theme.spacing.md}px;
+`;
+
+const ImagePickerText = styled.Text`
+  color: #3b82f6;
+  font-weight: 600;
+`;
+
+const ImageItem = styled.TouchableOpacity``;
+
+const SelectedImage = styled.Image`
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  margin-right: 10px;
+`;
+
+const ContentInput = styled.TextInput`
+  background-color: #f9fafb;
+  border-radius: 12px;
+  padding: ${({ theme }) => theme.spacing.md}px;
+  font-size: 15px;
+  min-height: 120px;
+  text-align-vertical: top;
+  margin-bottom: ${({ theme }) => theme.spacing.lg}px;
+`;
+
+const SubmitButton = styled.TouchableOpacity<{ disabled: boolean }>`
+  background-color: ${({ disabled }) => (disabled ? '#ccc' : '#2563eb')};
+  padding-vertical: 14px;
+  border-radius: 12px;
+  align-items: center;
+  shadow-color: #000;
+  shadow-offset: 0px 2px;
+  shadow-opacity: 0.1;
+  shadow-radius: 4px;
+  elevation: 3;
+`;
+
+const SubmitButtonText = styled.Text`
+  color: #fff;
+  font-size: 16px;
+  font-weight: bold;
 `;

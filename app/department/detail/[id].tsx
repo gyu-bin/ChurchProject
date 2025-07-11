@@ -1,3 +1,5 @@
+import { CAMPUS_ENUM, DEPARTMENT_ENUM } from '@/app/constants/CampusDivisions';
+import { formatFirebaseTimestamp } from '@/app/utils/formatFirebaseTimestamp';
 import UserInitializer from '@/components/user/UserInitializer';
 import { User } from '@/constants/_types/user';
 import { useDesign } from '@/context/DesignSystem';
@@ -6,22 +8,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { arrayRemove, arrayUnion, doc, getDoc, Timestamp, updateDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  FlatList,
-  Image,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, FlatList, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import styled from 'styled-components/native';
 import { DepartmentPost } from '../list/useGetDepartmentPost';
-import { formatFirebaseTimestamp } from '@/app/utils/formatFirebaseTimestamp';
-import { CAMPUS_ENUM, DEPARTMENT_ENUM } from '@/app/constants/CampusDivisions';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -35,10 +25,12 @@ interface Comment {
   createdAt: Timestamp;
 }
 
+/**
+ * @page 부서 게시물 상세 페이지
+ */
 export default function DepartmentPostDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { colors, spacing, font, radius } = useDesign();
-  const insets = useSafeAreaInsets();
+  const { colors } = useDesign();
 
   const [post, setPost] = useState<DepartmentPost | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,7 +63,6 @@ export default function DepartmentPostDetail() {
         setLikeCount(postData.likes?.length || 0);
         setComments(postData.comments || []);
 
-        // Check if current user liked the post
         if (userInfo && postData.likes) {
           setLiked(postData.likes.includes(userInfo.email));
         }
@@ -86,7 +77,6 @@ export default function DepartmentPostDetail() {
     }
   };
 
-  // Refetch post when user info changes
   useEffect(() => {
     if (userInfo && post) {
       if (post.likes) {
@@ -151,170 +141,64 @@ export default function DepartmentPostDetail() {
   };
 
   const renderImage = ({ item, index }: { item: string; index: number }) => (
-    <Image
-      source={{ uri: item }}
-      style={{
-        width: screenWidth,
-        height: screenWidth * 1.2,
-        backgroundColor: colors.background,
-      }}
-      resizeMode='cover'
-    />
+    <PostImage source={{ uri: item }} resizeMode='cover' />
   );
 
   const renderComment = ({ item }: { item: Comment }) => (
-    <View
-      style={{
-        flexDirection: 'row',
-        paddingVertical: spacing.sm,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-      }}>
-      <View
-        style={{
-          width: 32,
-          height: 32,
-          borderRadius: 16,
-          backgroundColor: colors.primary,
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginRight: spacing.sm,
-        }}>
-        <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }}>
-          {item.author.name.charAt(0)}
-        </Text>
-      </View>
-      <View style={{ flex: 1 }}>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginBottom: 4,
-          }}>
-          <Text style={{ color: colors.text, fontWeight: '600', fontSize: 14 }}>
-            {item.author.name}
-          </Text>
-          <Text
-            style={{
-              color: colors.subtext,
-              fontSize: 12,
-              marginLeft: spacing.sm,
-            }}>
-            {formatFirebaseTimestamp(item.createdAt)}
-          </Text>
-        </View>
-        <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20 }}>{item.text}</Text>
-      </View>
-    </View>
+    <CommentContainer>
+      <CommentAvatar>
+        <CommentAvatarText>{item.author.name.charAt(0)}</CommentAvatarText>
+      </CommentAvatar>
+      <CommentContent>
+        <CommentHeader>
+          <CommentAuthorName>{item.author.name}</CommentAuthorName>
+          <CommentTimestamp>{formatFirebaseTimestamp(item.createdAt)}</CommentTimestamp>
+        </CommentHeader>
+        <CommentText>{item.text}</CommentText>
+      </CommentContent>
+    </CommentContainer>
   );
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <LoadingContainer>
         <ActivityIndicator size='large' color={colors.primary} />
-      </View>
+      </LoadingContainer>
     );
   }
 
   if (error || !post) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          padding: spacing.lg,
-        }}>
+      <ErrorContainer>
         <Ionicons name='alert-circle-outline' size={48} color={colors.subtext} />
-        <Text style={{ color: colors.subtext, marginTop: spacing.md, fontSize: 16 }}>
-          {error || '게시물을 찾을 수 없습니다.'}
-        </Text>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={{
-            marginTop: spacing.lg,
-            paddingHorizontal: spacing.lg,
-            paddingVertical: spacing.sm,
-            backgroundColor: colors.primary,
-            borderRadius: radius.md,
-          }}>
-          <Text style={{ color: '#fff', fontWeight: '600' }}>돌아가기</Text>
-        </TouchableOpacity>
-      </View>
+        <ErrorText>{error || '게시물을 찾을 수 없습니다.'}</ErrorText>
+        <BackButton onPress={() => router.back()}>
+          <BackButtonText>돌아가기</BackButtonText>
+        </BackButton>
+      </ErrorContainer>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <Container>
       <UserInitializer setUserInfo={setUserInfo} />
 
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: spacing.md,
-          paddingTop: insets.top + spacing.sm,
-          paddingBottom: spacing.sm,
-          backgroundColor: colors.card,
-          borderBottomWidth: 1,
-          borderBottomColor: colors.border,
-        }}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name='chevron-back' size={24} color={colors.text} />
-        </TouchableOpacity>
-        <View style={{ flex: 1, alignItems: 'center' }}>
-          <Text
-            style={{
-              fontSize: font.title,
-              fontWeight: 'bold',
-              color: colors.text,
-            }}>
-            게시물
-          </Text>
-        </View>
-      </View>
       <ScrollView style={{ flex: 1 }}>
-        {/* Author Info */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            padding: spacing.md,
-            backgroundColor: colors.card,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border,
-          }}>
-          <View
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 24,
-              backgroundColor: colors.primary,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: spacing.md,
-            }}>
-            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 18 }}>
-              {post.author.name.charAt(0)}
-            </Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.text, fontWeight: '600', fontSize: 16 }}>
-              {post.author.name}
-            </Text>
-            <Text style={{ color: colors.subtext, fontSize: 14 }}>
+        <AuthorContainer>
+          <AuthorAvatar>
+            <AuthorAvatarText>{post.author.name.charAt(0)}</AuthorAvatarText>
+          </AuthorAvatar>
+          <AuthorInfo>
+            <AuthorName>{post.author.name}</AuthorName>
+            <AuthorMeta>
               {CAMPUS_ENUM[post.campus]} • {DEPARTMENT_ENUM[post.division]}
-            </Text>
-            <Text style={{ color: colors.subtext, fontSize: 12 }}>
-              {formatFirebaseTimestamp(post.createdAt)}
-            </Text>
-          </View>
-        </View>
+            </AuthorMeta>
+            <AuthorTimestamp>{formatFirebaseTimestamp(post.createdAt)}</AuthorTimestamp>
+          </AuthorInfo>
+        </AuthorContainer>
 
-        {/* Images */}
         {post.imageUrls && post.imageUrls.length > 0 && (
-          <View style={{ position: 'relative' }}>
+          <ImageContainer>
             <FlatList
               data={post.imageUrls}
               horizontal
@@ -328,86 +212,40 @@ export default function DepartmentPostDetail() {
               }}
             />
 
-            {/* Image indicator */}
             {post.imageUrls.length > 1 && (
-              <View
-                style={{
-                  position: 'absolute',
-                  top: spacing.md,
-                  right: spacing.md,
-                  backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                  borderRadius: radius.sm,
-                  paddingHorizontal: spacing.sm,
-                  paddingVertical: spacing.xs,
-                }}>
-                <Text style={{ color: '#fff', fontSize: 12 }}>
+              <ImageIndicator>
+                <ImageIndicatorText>
                   {currentImageIndex + 1} / {post.imageUrls.length}
-                </Text>
-              </View>
+                </ImageIndicatorText>
+              </ImageIndicator>
             )}
-          </View>
+          </ImageContainer>
         )}
 
-        {/* Content */}
-        <View style={{ padding: spacing.lg, backgroundColor: colors.card }}>
-          <Text style={{ color: colors.text, fontSize: 16, lineHeight: 24 }}>{post.content}</Text>
-        </View>
+        <ContentContainer>
+          <ContentText>{post.content}</ContentText>
+        </ContentContainer>
 
-        {/* Actions */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            padding: spacing.md,
-            backgroundColor: colors.card,
-            borderTopWidth: 1,
-            borderTopColor: colors.border,
-          }}>
-          <TouchableOpacity
-            onPress={handleLike}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              marginRight: spacing.lg,
-            }}>
+        <ActionsContainer>
+          <ActionButton onPress={handleLike}>
             <Ionicons
               name={liked ? 'heart' : 'heart-outline'}
               size={24}
               color={liked ? '#ff4757' : colors.text}
             />
-            <Text style={{ color: colors.subtext, marginLeft: spacing.xs }}>{likeCount}</Text>
-          </TouchableOpacity>
+            <ActionText>{likeCount}</ActionText>
+          </ActionButton>
 
-          <TouchableOpacity
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              marginRight: spacing.lg,
-            }}>
+          <ActionButton>
             <Ionicons name='chatbubble-outline' size={24} color={colors.text} />
-            <Text style={{ color: colors.subtext, marginLeft: spacing.xs }}>{comments.length}</Text>
-          </TouchableOpacity>
+            <ActionText>{comments.length}</ActionText>
+          </ActionButton>
+        </ActionsContainer>
 
-          {/* // 공유 기능 추후 구현 */}
-          {/* <TouchableOpacity
-            style={{ flexDirection: "row", alignItems: "center" }}
-          >
-            <Ionicons name="share-outline" size={24} color={colors.text} />
-          </TouchableOpacity> */}
-        </View>
-
-        {/* Comments */}
-        <View style={{ backgroundColor: colors.card, marginTop: spacing.sm }}>
-          <View
-            style={{
-              padding: spacing.md,
-              borderBottomWidth: 1,
-              borderBottomColor: colors.border,
-            }}>
-            <Text style={{ color: colors.text, fontWeight: '600', fontSize: 16 }}>
-              댓글 ({comments.length})
-            </Text>
-          </View>
+        <CommentsContainer>
+          <CommentsHeader>
+            <CommentsTitle>댓글 ({comments.length})</CommentsTitle>
+          </CommentsHeader>
 
           {comments.length > 0 ? (
             <FlatList
@@ -417,53 +255,272 @@ export default function DepartmentPostDetail() {
               scrollEnabled={false}
             />
           ) : (
-            <View style={{ padding: spacing.lg, alignItems: 'center' }}>
-              <Text style={{ color: colors.subtext, fontSize: 14 }}>아직 댓글이 없습니다.</Text>
-            </View>
+            <EmptyCommentsContainer>
+              <EmptyCommentsText>아직 댓글이 없습니다.</EmptyCommentsText>
+            </EmptyCommentsContainer>
           )}
-        </View>
+        </CommentsContainer>
       </ScrollView>
 
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          padding: spacing.md,
-          backgroundColor: colors.card,
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
-        }}>
-        <TextInput
+      <CommentInputContainer>
+        <CommentInput
           value={newComment}
           onChangeText={setNewComment}
           placeholder='댓글을 입력하세요...'
-          style={{
-            flex: 1,
-            backgroundColor: colors.background,
-            borderRadius: radius.md,
-            paddingHorizontal: spacing.md,
-            paddingVertical: spacing.sm,
-            marginRight: spacing.sm,
-            color: colors.text,
-          }}
           multiline
         />
-        <TouchableOpacity
-          onPress={handleComment}
-          disabled={!newComment.trim() || submittingComment}
-          style={{
-            backgroundColor: newComment.trim() ? colors.primary : colors.border,
-            borderRadius: radius.md,
-            paddingHorizontal: spacing.md,
-            paddingVertical: spacing.sm,
-          }}>
+        <SubmitButton onPress={handleComment} disabled={!newComment.trim() || submittingComment}>
           {submittingComment ? (
             <ActivityIndicator size='small' color='#fff' />
           ) : (
-            <Text style={{ color: '#fff', fontWeight: '600' }}>전송</Text>
+            <SubmitButtonText>전송</SubmitButtonText>
           )}
-        </TouchableOpacity>
-      </View>
-    </View>
+        </SubmitButton>
+      </CommentInputContainer>
+    </Container>
   );
 }
+
+const Container = styled.View`
+  flex: 1;
+  background-color: ${({ theme }) => theme.colors.background};
+`;
+
+const LoadingContainer = styled.View`
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+`;
+
+const ErrorContainer = styled.View`
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+  padding: ${({ theme }) => theme.spacing.lg}px;
+`;
+
+const ErrorText = styled.Text`
+  color: ${({ theme }) => theme.colors.subtext};
+  margin-top: ${({ theme }) => theme.spacing.md}px;
+  font-size: 16px;
+`;
+
+const BackButton = styled.TouchableOpacity`
+  margin-top: ${({ theme }) => theme.spacing.lg}px;
+  padding: ${({ theme }) => theme.spacing.sm}px ${({ theme }) => theme.spacing.lg}px;
+  background-color: ${({ theme }) => theme.colors.primary};
+  border-radius: ${({ theme }) => theme.radius.md}px;
+`;
+
+const BackButtonText = styled.Text`
+  color: #fff;
+  font-weight: 600;
+`;
+
+const AuthorContainer = styled.View`
+  flex-direction: row;
+  align-items: center;
+  padding: ${({ theme }) => theme.spacing.md}px;
+  background-color: ${({ theme }) => theme.colors.card};
+  border-bottom-width: 1px;
+  border-bottom-color: ${({ theme }) => theme.colors.border};
+`;
+
+const AuthorAvatar = styled.View`
+  width: 48px;
+  height: 48px;
+  border-radius: 24px;
+  background-color: ${({ theme }) => theme.colors.primary};
+  align-items: center;
+  justify-content: center;
+  margin-right: ${({ theme }) => theme.spacing.md}px;
+`;
+
+const AuthorAvatarText = styled.Text`
+  color: #fff;
+  font-weight: bold;
+  font-size: 18px;
+`;
+
+const AuthorInfo = styled.View`
+  flex: 1;
+`;
+
+const AuthorName = styled.Text`
+  color: ${({ theme }) => theme.colors.text};
+  font-weight: 600;
+  font-size: 16px;
+`;
+
+const AuthorMeta = styled.Text`
+  color: ${({ theme }) => theme.colors.subtext};
+  font-size: 14px;
+`;
+
+const AuthorTimestamp = styled.Text`
+  color: ${({ theme }) => theme.colors.subtext};
+  font-size: 12px;
+`;
+
+const ImageContainer = styled.View`
+  position: relative;
+`;
+
+const PostImage = styled.Image`
+  width: ${screenWidth}px;
+  height: ${screenWidth * 1.2}px;
+  background-color: ${({ theme }) => theme.colors.background};
+`;
+
+const ImageIndicator = styled.View`
+  position: absolute;
+  top: ${({ theme }) => theme.spacing.md}px;
+  right: ${({ theme }) => theme.spacing.md}px;
+  background-color: rgba(0, 0, 0, 0.7);
+  border-radius: ${({ theme }) => theme.radius.sm}px;
+  padding: ${({ theme }) => theme.spacing.sm}px ${({ theme }) => theme.spacing.sm}px;
+`;
+
+const ImageIndicatorText = styled.Text`
+  color: #fff;
+  font-size: 12px;
+`;
+
+const ContentContainer = styled.View`
+  padding: ${({ theme }) => theme.spacing.lg}px;
+  background-color: ${({ theme }) => theme.colors.card};
+`;
+
+const ContentText = styled.Text`
+  color: ${({ theme }) => theme.colors.text};
+  font-size: 16px;
+  line-height: 24px;
+`;
+
+const ActionsContainer = styled.View`
+  flex-direction: row;
+  align-items: center;
+  padding: ${({ theme }) => theme.spacing.md}px;
+  background-color: ${({ theme }) => theme.colors.card};
+  border-top-width: 1px;
+  border-top-color: ${({ theme }) => theme.colors.border};
+`;
+
+const ActionButton = styled.TouchableOpacity`
+  flex-direction: row;
+  align-items: center;
+  margin-right: ${({ theme }) => theme.spacing.lg}px;
+`;
+
+const ActionText = styled.Text`
+  color: ${({ theme }) => theme.colors.subtext};
+  margin-left: ${({ theme }) => theme.spacing.sm}px;
+`;
+
+const CommentsContainer = styled.View`
+  background-color: ${({ theme }) => theme.colors.card};
+  margin-top: ${({ theme }) => theme.spacing.sm}px;
+`;
+
+const CommentsHeader = styled.View`
+  padding: ${({ theme }) => theme.spacing.md}px;
+  border-bottom-width: 1px;
+  border-bottom-color: ${({ theme }) => theme.colors.border};
+`;
+
+const CommentsTitle = styled.Text`
+  color: ${({ theme }) => theme.colors.text};
+  font-weight: 600;
+  font-size: 16px;
+`;
+
+const CommentContainer = styled.View`
+  flex-direction: row;
+  padding-vertical: ${({ theme }) => theme.spacing.sm}px;
+  border-bottom-width: 1px;
+  border-bottom-color: ${({ theme }) => theme.colors.border};
+`;
+
+const CommentAvatar = styled.View`
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  background-color: ${({ theme }) => theme.colors.primary};
+  align-items: center;
+  justify-content: center;
+  margin-right: ${({ theme }) => theme.spacing.sm}px;
+`;
+
+const CommentAvatarText = styled.Text`
+  color: #fff;
+  font-weight: bold;
+  font-size: 12px;
+`;
+
+const CommentContent = styled.View`
+  flex: 1;
+`;
+
+const CommentHeader = styled.View`
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 4px;
+`;
+
+const CommentAuthorName = styled.Text`
+  color: ${({ theme }) => theme.colors.text};
+  font-weight: 600;
+  font-size: 14px;
+`;
+
+const CommentTimestamp = styled.Text`
+  color: ${({ theme }) => theme.colors.subtext};
+  font-size: 12px;
+  margin-left: ${({ theme }) => theme.spacing.sm}px;
+`;
+
+const CommentText = styled.Text`
+  color: ${({ theme }) => theme.colors.text};
+  font-size: 14px;
+  line-height: 20px;
+`;
+
+const EmptyCommentsContainer = styled.View`
+  padding: ${({ theme }) => theme.spacing.lg}px;
+  align-items: center;
+`;
+
+const EmptyCommentsText = styled.Text`
+  color: ${({ theme }) => theme.colors.subtext};
+  font-size: 14px;
+`;
+
+const CommentInputContainer = styled.View`
+  flex-direction: row;
+  align-items: center;
+  padding: ${({ theme }) => theme.spacing.md}px;
+  background-color: ${({ theme }) => theme.colors.card};
+  border-top-width: 1px;
+  border-top-color: ${({ theme }) => theme.colors.border};
+`;
+
+const CommentInput = styled.TextInput`
+  flex: 1;
+  background-color: ${({ theme }) => theme.colors.background};
+  border-radius: ${({ theme }) => theme.radius.md}px;
+  padding: ${({ theme }) => theme.spacing.sm}px ${({ theme }) => theme.spacing.md}px;
+  margin-right: ${({ theme }) => theme.spacing.sm}px;
+  color: ${({ theme }) => theme.colors.text};
+`;
+
+const SubmitButton = styled.TouchableOpacity<{ disabled: boolean }>`
+  background-color: ${({ theme, disabled }) =>
+    disabled ? theme.colors.border : theme.colors.primary};
+  border-radius: ${({ theme }) => theme.radius.md}px;
+  padding: ${({ theme }) => theme.spacing.sm}px ${({ theme }) => theme.spacing.md}px;
+`;
+
+const SubmitButtonText = styled.Text`
+  color: #fff;
+  font-weight: 600;
+`;
