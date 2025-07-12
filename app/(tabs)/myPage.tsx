@@ -7,12 +7,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { doc, updateDoc } from 'firebase/firestore';
 import React, { useEffect, useRef, useState } from 'react';
-import { Modal, Platform, ScrollView, Text, TouchableOpacity, UIManager, View } from 'react-native';
+import { Platform, ScrollView, TouchableOpacity, UIManager, View } from 'react-native';
 import Toast from 'react-native-root-toast';
 
-import MyScreenContainer from '@/components/my/_common/ScreenContainer';
-import ScreenHeader from '@/components/my/_common/ScreenHeader';
-import SettingCard from '@/components/my/_common/SettingCard';
+import ScreenContainer from '@/components/_common/ScreenContainer';
+import ScreenHeader from '@/components/_common/ScreenHeader';
+import SettingCard from '@/components/my/SettingCard';
 import { ProfileCard } from '@/components/my/ProfileCard';
 import { User } from '@/constants/_types/user';
 import { useDesign } from '@/context/DesignSystem';
@@ -65,7 +65,7 @@ export default function MyScreen() {
   };
 
   return (
-    <MyScreenContainer scrollRef={scrollRef}>
+    <ScreenContainer scrollRef={scrollRef}>
       <ScreenHeader title='마이페이지'>
         <TouchableOpacity onPress={() => router.push('/myPage/setting')}>
           <Ionicons name='settings-outline' size={24} color={colors.text} />
@@ -156,7 +156,7 @@ export default function MyScreen() {
           onPress={() => router.push('/myPage/feedback')}
         />
       </View>
-    </MyScreenContainer>
+    </ScreenContainer>
   );
 }
 

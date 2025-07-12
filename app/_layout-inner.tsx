@@ -19,11 +19,11 @@ Notifications.setNotificationHandler({
 
 function handleRedirect(user, pathname) {
   if (!user && !pathname.startsWith('/intro') && !pathname.startsWith('/auth')) {
-    return <Redirect href="/intro" />;
+    return <Redirect href='/intro' />;
   }
 
   if (user && pathname.startsWith('/auth')) {
-    return <Redirect href="/(tabs)/home" />;
+    return <Redirect href='/(tabs)/home' />;
   }
 
   return null;
@@ -40,9 +40,9 @@ export default function RootLayoutInner() {
 
   if (!fontsLoaded || loading) {
     return (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#2563eb" />
-        </View>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size='large' color='#2563eb' />
+      </View>
     );
   }
 
@@ -50,44 +50,50 @@ export default function RootLayoutInner() {
   if (redirectComponent) return redirectComponent;
 
   return (
-      <ThemeProvider value={mode === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="auth/login" options={{ headerShown: false }} />
-          <Stack.Screen name="auth/register" options={{ headerShown: false }} />
-          <Stack.Screen name="auth/ForgotPassword" options={{ headerShown: false }} />
-          <Stack.Screen name="intro" options={{ headerShown: false }} />
-          <Stack.Screen name="teams" options={{ headerShown: false }} />
-          <Stack.Screen name="home/notifications" options={{ headerShown: false }} />
-          <Stack.Screen name="home/QuickMenuButton/AiChatPage" options={{ headerShown: false }} />
-          <Stack.Screen name="myPage/videoManager" options={{ headerShown: false }} />
-          <Stack.Screen name="myPage/joinTeams" options={{ headerShown: false }} />
-          <Stack.Screen name="myPage/setting" options={{ headerShown: false }} />
-          <Stack.Screen name="myPage/noticeManager" options={{ headerShown: false }} />
-          <Stack.Screen name="myPage/feedback" options={{ headerShown: false }} />
-          <Stack.Screen name="myPage/ForgotPassword" options={{ headerShown: false }} />
-          <Stack.Screen name="home/QuickMenuButton/catechism" options={{ headerShown: false }} />
-          <Stack.Screen name="home/QuickMenuButton/todayVerse" options={{ headerShown: false }} />
-          <Stack.Screen name="home/BannerDetail/event" options={{ headerShown: false }} />
-          <Stack.Screen name="share/allPrayer" options={{ headerShown: false }} />
-          <Stack.Screen name="share/prayerModal" options={{ headerShown: false }} />
-          <Stack.Screen name="home/active" options={{ headerShown: false }} />
-          <Stack.Screen name="share/DailyBible" options={{ headerShown: false }} />
-          <Stack.Screen name="home/QuickMenuButton/counseling" options={{ headerShown: false }} />
-          <Stack.Screen name="home/notice/allNotice" options={{ headerShown: false }} />
-          <Stack.Screen name="home/QuickMenuButton/churchNewsPage" options={{ headerShown: false }} />
-          <Stack.Screen name="share/thank" options={{ headerShown: false }} />
-          <Stack.Screen name="share/forest/index" options={{ headerShown: false }} />
-          <Stack.Screen name="share/forest/[id]" options={{ headerShown: false }} />
-          <Stack.Screen name="share/SermonTabs" options={{ headerShown: false }} />
-          <Stack.Screen name="share/sermon/sermonQustionDeatil" options={{ headerShown: false }} />
-          <Stack.Screen name="home/QuickMenuButton/BulletinListPage" options={{ headerShown: false }} />
-          <Stack.Screen name="home/QuickMenuButton/calendar" options={{ headerShown: false }} />
-          <Stack.Screen name="home/calendarDetail/alarmList" options={{ headerShown: false }} />
-          <Stack.Screen name="department/create/createDep" options={{ headerShown: false }} />
-          <Stack.Screen name="department/detail/[id]" options={{ headerShown: false }} />
-        </Stack>
-        <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
-      </ThemeProvider>
+    <ThemeProvider value={mode === 'dark' ? DarkTheme : DefaultTheme}>
+      <Stack>
+        <Stack.Screen name='(tabs)' options={{ headerShown: false }} />
+        <Stack.Screen name='auth/login' options={{ headerShown: false }} />
+        <Stack.Screen name='auth/register' options={{ headerShown: false }} />
+        <Stack.Screen name='auth/ForgotPassword' options={{ headerShown: false }} />
+        <Stack.Screen name='intro' options={{ headerShown: false }} />
+        <Stack.Screen name='teams' options={{ headerShown: false }} />
+        <Stack.Screen name='home/notifications' options={{ headerShown: false }} />
+        <Stack.Screen name='home/QuickMenuButton/AiChatPage' options={{ headerShown: false }} />
+        <Stack.Screen name='myPage/videoManager' options={{ headerShown: false }} />
+        <Stack.Screen name='myPage/joinTeams' options={{ headerShown: false }} />
+        <Stack.Screen name='myPage/setting' options={{ headerShown: false }} />
+        <Stack.Screen name='myPage/noticeManager' options={{ headerShown: false }} />
+        <Stack.Screen name='myPage/feedback' options={{ headerShown: false }} />
+        <Stack.Screen name='myPage/ForgotPassword' options={{ headerShown: false }} />
+        <Stack.Screen name='home/QuickMenuButton/catechism' options={{ headerShown: false }} />
+        <Stack.Screen name='home/QuickMenuButton/todayVerse' options={{ headerShown: false }} />
+        <Stack.Screen name='home/BannerDetail/event' options={{ headerShown: false }} />
+        <Stack.Screen name='share/allPrayer' options={{ headerShown: false }} />
+        <Stack.Screen name='share/prayerModal' options={{ headerShown: false }} />
+        <Stack.Screen name='home/active' options={{ headerShown: false }} />
+        <Stack.Screen name='share/DailyBible' options={{ headerShown: false }} />
+        <Stack.Screen name='home/QuickMenuButton/counseling' options={{ headerShown: false }} />
+        <Stack.Screen name='home/notice/allNotice' options={{ headerShown: false }} />
+        <Stack.Screen name='home/QuickMenuButton/churchNewsPage' options={{ headerShown: false }} />
+        <Stack.Screen name='share/thank' options={{ headerShown: false }} />
+        <Stack.Screen name='share/forest/index' options={{ headerShown: false }} />
+        <Stack.Screen name='share/forest/[id]' options={{ headerShown: false }} />
+        <Stack.Screen name='share/SermonTabs' options={{ headerShown: false }} />
+        <Stack.Screen name='share/sermon/sermonQustionDeatil' options={{ headerShown: false }} />
+        <Stack.Screen
+          name='home/QuickMenuButton/BulletinListPage'
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen name='home/QuickMenuButton/calendar' options={{ headerShown: false }} />
+        <Stack.Screen name='home/calendarDetail/alarmList' options={{ headerShown: false }} />
+        <Stack.Screen
+          name='department/create/CreateDepartmentPostPage'
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen name='department/detail/[id]' options={{ headerShown: false }} />
+      </Stack>
+      <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
+    </ThemeProvider>
   );
 }

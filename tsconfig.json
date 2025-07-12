@@ -5,7 +5,9 @@
     "moduleResolution": "node",
     "paths": {
       "@/*": ["./*"],
-      "@constants/*": ["./app/constants/*"]
+      "@constants/*": ["./app/constants/*"],
+      "@components/*": ["./components/*"],
+      "@utils/*": ["./utils/*"]
     },
     "typeRoots": ["./node_modules/@types", "./types/env.d.ts", "./types"]
   },

@@ -3,10 +3,12 @@ import { User } from '@/constants/_types/user';
 import { db, storage } from '@/firebase/config';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { ImagePickerAsset } from 'expo-image-picker';
-import { doc, setDoc, Timestamp } from 'firebase/firestore';
+import { router } from 'expo-router';
+import { doc, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { useState } from 'react';
 import { Alert } from 'react-native';
+import Toast from 'react-native-root-toast';
 import uuid from 'react-native-uuid';
 
 type UseUploadDepartmentPostProps = {
@@ -17,6 +19,8 @@ type UseUploadDepartmentPostProps = {
   userInfo: User | null;
   content: string;
   setContent: (content: string) => void;
+  isEditMode?: boolean;
+  postId?: string;
 };
 
 export default function useUploadDepartmentPost({
@@ -27,6 +31,8 @@ export default function useUploadDepartmentPost({
   userInfo,
   content,
   setContent,
+  isEditMode = false,
+  postId,
 }: UseUploadDepartmentPostProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,9 +104,16 @@ export default function useUploadDepartmentPost({
     try {
       const downloadUrls: string[] = [];
 
-      // 이미지 업로드
+      // 이미지 업로드 (새로 추가된 이미지만)
       for (let i = 0; i < imageURLs.length; i++) {
         const image = imageURLs[i];
+
+        // 이미 URL인 경우 (기존 이미지) 그대로 사용
+        if (image.uri.startsWith('http')) {
+          downloadUrls.push(image.uri);
+          continue;
+        }
+
         console.log(`🔥 이미지 ${i + 1}/${imageURLs.length} 업로드 중...`);
 
         try {
@@ -115,16 +128,11 @@ export default function useUploadDepartmentPost({
         }
       }
 
-      // Firestore에 게시물 저장
-      const postId = uuid.v4().toString();
-
       const postData = {
-        id: postId,
         content,
         campus: selectedCampus,
         division: selectedDivision,
         imageUrls: downloadUrls,
-        createdAt: Timestamp.now(),
         author: {
           id: userInfo.email,
           name: userInfo.name,
@@ -133,9 +141,33 @@ export default function useUploadDepartmentPost({
         },
       };
 
-      await setDoc(doc(db, 'department_posts', postId), postData);
+      if (isEditMode && postId) {
+        // Update existing post
+        await updateDoc(doc(db, 'department_posts', postId), {
+          ...postData,
+          updatedAt: Timestamp.now(),
+        });
 
-      Alert.alert('성공', '게시물이 등록되었습니다.');
+        Toast.show('게시물이 수정되었습니다.', {
+          duration: Toast.durations.SHORT,
+          position: Toast.positions.BOTTOM,
+        });
+
+        router.back();
+      } else {
+        // Create new post
+        const newPostId = uuid.v4().toString();
+        await setDoc(doc(db, 'department_posts', newPostId), {
+          id: newPostId,
+          ...postData,
+          createdAt: Timestamp.now(),
+        });
+        Toast.show('게시물이 등록되었습니다.', {
+          duration: Toast.durations.SHORT,
+          position: Toast.positions.BOTTOM,
+        });
+        router.back();
+      }
 
       // 상태 초기화
       setContent('');

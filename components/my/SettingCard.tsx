@@ -1,7 +1,7 @@
-import { useDesign } from "@/context/DesignSystem";
-import { Ionicons } from "@expo/vector-icons";
-import { PropsWithChildren } from "react";
-import styled from "styled-components/native";
+import { useDesign } from '@/context/DesignSystem';
+import { Ionicons } from '@expo/vector-icons';
+import { PropsWithChildren } from 'react';
+import styled from 'styled-components/native';
 
 type SettingIconProps = {
   name: keyof typeof Ionicons.glyphMap;
@@ -23,17 +23,14 @@ const SettingCard = ({ title, icon, onPress, children }: SettingCardProps) => {
     <CardContainer
       onPress={onPress}
       backgroundColor={colors.surface}
-      style={{ shadowOffset: { width: 0, height: 2 } }}
-    >
+      style={{ shadowOffset: { width: 0, height: 2 } }}>
       <SettingTitleSection>
         <SettingIconWrapper backgroundColor={backgroundColor}>
           <Ionicons name={name} size={20} color={color} />
         </SettingIconWrapper>
         <SettingTitle>{title}</SettingTitle>
       </SettingTitleSection>
-      {children || (
-        <Ionicons name="chevron-forward" size={20} color={colors.subtext} />
-      )}
+      {children || <Ionicons name='chevron-forward' size={20} color={colors.subtext} />}
     </CardContainer>
   );
 };
@@ -45,18 +42,12 @@ type CardContainerProps = {
 };
 
 const CardContainer = styled.TouchableOpacity<CardContainerProps>`
-  background-color: ${({ backgroundColor }: CardContainerProps) =>
-    backgroundColor};
+  background-color: ${({ backgroundColor }: CardContainerProps) => backgroundColor};
   padding: 20px;
   border-radius: 16px;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-
-  shadow-color: #000;
-  shadow-opacity: 0.06;
-  shadow-radius: 6;
-  elevation: 2;
 `;
 
 const SettingTitleSection = styled.View`
@@ -73,13 +64,12 @@ const SettingIconWrapper = styled.View<SettingIconWrapperProps>`
   width: 40px;
   height: 40px;
   border-radius: 20px;
-  background-color: ${({ backgroundColor }: SettingIconWrapperProps) =>
-    backgroundColor};
+  background-color: ${({ backgroundColor }: SettingIconWrapperProps) => backgroundColor};
   align-items: center;
   justify-content: center;
 `;
 
 const SettingTitle = styled.Text`
   font-size: 16px;
-  color: ${({ theme }: { theme: any }) => theme.text};
+  color: ${({ theme }) => theme.colors.text};
 `;

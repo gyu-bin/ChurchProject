@@ -6,9 +6,8 @@ import {
   DEPARTMENT_WITH_ALL,
   DepartmentWithAll,
 } from '@/app/constants/CampusDivisions';
-import { useDesign } from '@/context/DesignSystem';
 import { useState } from 'react';
-import { Modal } from 'react-native';
+import { Modal, TouchableWithoutFeedback } from 'react-native';
 import styled from 'styled-components/native';
 
 type DepartmentFilterModalProps = {
@@ -37,8 +36,6 @@ export default function DepartmentFilterModal({
   const [tempCampus, setTempCampus] = useState(selectedCampus);
   const [tempDept, setTempDept] = useState(selectedDept);
 
-  const { colors } = useDesign();
-
   const closeModal = () => {
     setIsOpen(false);
   };
@@ -50,43 +47,49 @@ export default function DepartmentFilterModal({
       transparent
       onDismiss={closeModal}
       onRequestClose={closeModal}>
-      <Container>
-        <ModalContent>
-          <Title>필터</Title>
-          <SectionTitle>교회</SectionTitle>
-          <CampusContainer>
-            {CAMPUS_WITH_ALL.map((c) => (
-              <CampusButton
-                key={c + 'campus'}
-                onPress={() => setTempCampus(c as CampusWithAll)}
-                isSelected={tempCampus === c}>
-                <CampusButtonText isSelected={tempCampus === c}>{CAMPUS_ENUM[c]}</CampusButtonText>
-              </CampusButton>
-            ))}
-          </CampusContainer>
-          <SectionTitle>부서</SectionTitle>
-          <DepartmentContainer>
-            {DEPARTMENT_WITH_ALL.map((d) => (
-              <DepartmentButton
-                key={d + 'dept'}
-                onPress={() => setTempDept(d as DepartmentWithAll)}
-                isSelected={tempDept === d}>
-                <DepartmentButtonText isSelected={tempDept === d}>
-                  {DEPARTMENT_ENUM[d]}
-                </DepartmentButtonText>
-              </DepartmentButton>
-            ))}
-          </DepartmentContainer>
-          <ButtonContainer>
-            <ResetButton onPress={resetFilter}>
-              <ResetButtonText>초기화</ResetButtonText>
-            </ResetButton>
-            <ApplyButton onPress={() => applyFilter({ tempCampus, tempDept })}>
-              <ApplyButtonText>적용</ApplyButtonText>
-            </ApplyButton>
-          </ButtonContainer>
-        </ModalContent>
-      </Container>
+      <TouchableWithoutFeedback onPress={closeModal}>
+        <Container>
+          <TouchableWithoutFeedback onPress={() => {}}>
+            <ModalContent>
+              <Title>필터</Title>
+              <SectionTitle>교회</SectionTitle>
+              <CampusContainer>
+                {CAMPUS_WITH_ALL.map((c) => (
+                  <CampusButton
+                    key={c + 'campus'}
+                    onPress={() => setTempCampus(c as CampusWithAll)}
+                    isSelected={tempCampus === c}>
+                    <CampusButtonText isSelected={tempCampus === c}>
+                      {CAMPUS_ENUM[c]}
+                    </CampusButtonText>
+                  </CampusButton>
+                ))}
+              </CampusContainer>
+              <SectionTitle>부서</SectionTitle>
+              <DepartmentContainer>
+                {DEPARTMENT_WITH_ALL.map((d) => (
+                  <DepartmentButton
+                    key={d + 'dept'}
+                    onPress={() => setTempDept(d as DepartmentWithAll)}
+                    isSelected={tempDept === d}>
+                    <DepartmentButtonText isSelected={tempDept === d}>
+                      {DEPARTMENT_ENUM[d]}
+                    </DepartmentButtonText>
+                  </DepartmentButton>
+                ))}
+              </DepartmentContainer>
+              <ButtonContainer>
+                <ResetButton onPress={resetFilter}>
+                  <ResetButtonText>초기화</ResetButtonText>
+                </ResetButton>
+                <ApplyButton onPress={() => applyFilter({ tempCampus, tempDept })}>
+                  <ApplyButtonText>적용</ApplyButtonText>
+                </ApplyButton>
+              </ButtonContainer>
+            </ModalContent>
+          </TouchableWithoutFeedback>
+        </Container>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 }

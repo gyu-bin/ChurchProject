@@ -1,8 +1,8 @@
-import { useEditProfile } from "@/components/my/editProfileModal/useEditProfile";
-import { User } from "@/constants/_types/user";
-import { useDesign } from "@/context/DesignSystem";
-import { Modal, Platform } from "react-native";
-import styled from "styled-components/native";
+import { useEditProfile } from '@/components/my/editProfileModal/useEditProfile';
+import { User } from '@/constants/_types/user';
+import { useDesign } from '@/context/DesignSystem';
+import { Modal, Platform } from 'react-native';
+import styled from 'styled-components/native';
 
 type EditProfileModalProps = {
   show: boolean;
@@ -19,19 +19,22 @@ export const EditProfileModal = ({
 }: EditProfileModalProps) => {
   const { colors } = useDesign();
 
-  const { editValues, setEditValues, handleSaveProfile, handleCancelAndClose } =
-    useEditProfile({ onClose, user, handleUserUpdate });
+  const { editValues, setEditValues, handleSaveProfile, handleCancelAndClose } = useEditProfile({
+    onClose,
+    user,
+    handleUserUpdate,
+  });
 
   return (
-    <Modal visible={show} transparent animationType="fade">
+    <Modal visible={show} transparent animationType='fade'>
       <ModalOverlay>
         <ModalContainer>
           <ModalTitle>프로필 수정</ModalTitle>
           {[
-            { label: "이름", key: "name" },
-            { label: "이메일", key: "email", disabled: true },
-            { label: "부서", key: "division" },
-            { label: "캠퍼스", key: "campus" },
+            { label: '이름', key: 'name' },
+            { label: '이메일', key: 'email', disabled: true },
+            { label: '부서', key: 'division' },
+            { label: '캠퍼스', key: 'campus' },
           ].map(({ label, key, disabled }) => (
             <InputContainer key={key}>
               <InputLabel>{label}</InputLabel>
@@ -39,9 +42,7 @@ export const EditProfileModal = ({
                 placeholder={`${label} 입력`}
                 value={editValues[key]}
                 editable={!disabled}
-                onChangeText={(text: string) =>
-                  setEditValues((prev) => ({ ...prev, [key]: text }))
-                }
+                onChangeText={(text: string) => setEditValues((prev) => ({ ...prev, [key]: text }))}
                 placeholderTextColor={colors.subtext}
                 disabled={disabled}
               />
@@ -68,7 +69,7 @@ const ModalOverlay = styled.View`
 
 const ModalContainer = styled.View`
   width: 90%;
-  background-color: ${({ theme }: { theme: any }) => theme.surface};
+  background-color: ${({ theme }) => theme.colors.surface};
   border-radius: 24px;
   padding: 24px;
   shadow-color: #000;
@@ -81,7 +82,7 @@ const ModalContainer = styled.View`
 const ModalTitle = styled.Text`
   font-size: 24px;
   font-weight: 700;
-  color: ${({ theme }: { theme: any }) => theme.text};
+  color: ${({ theme }) => theme.colors.text};
   margin-bottom: 24px;
   text-align: center;
 `;
@@ -92,7 +93,7 @@ const InputContainer = styled.View`
 
 const InputLabel = styled.Text`
   font-size: 15px;
-  color: ${({ theme }: { theme: any }) => theme.subtext};
+  color: ${({ theme }) => theme.colors.subtext};
   font-weight: 600;
   margin-bottom: 8px;
 `;
@@ -103,23 +104,17 @@ interface StyledTextInputProps {
 
 const StyledTextInput = styled.TextInput<StyledTextInputProps>`
   border-width: 1px;
-  border-color: ${({ theme }: { theme: any }) => theme.border};
+  border-color: ${({ theme }) => theme.colors.border};
   border-radius: 16px;
-  padding-horizontal: 16px;
-  padding-vertical: ${Platform.OS === "ios" ? "16px" : "12px"};
-  color: ${({ theme }: { theme: any }) => theme.text};
-  background-color: ${({
-    theme,
-    disabled,
-  }: {
-    theme: any;
-    disabled?: boolean;
-  }) => (disabled ? theme.card : theme.surface)};
+  padding: ${Platform.OS === 'ios' ? '16px' : '12px'};
+  color: ${({ theme }) => theme.colors.text};
+  background-color: ${({ theme, disabled }: { theme: any; disabled?: boolean }) =>
+    disabled ? theme.card : theme.surface};
   font-size: 16px;
 `;
 
 const SaveButton = styled.TouchableOpacity`
-  background-color: ${({ theme }: { theme: any }) => theme.primary};
+  background-color: ${({ theme }) => theme.colors.primary};
   padding: 16px;
   border-radius: 16px;
   align-items: center;
@@ -138,6 +133,6 @@ const CancelButton = styled.TouchableOpacity`
 `;
 
 const CancelButtonText = styled.Text`
-  color: ${({ theme }: { theme: any }) => theme.subtext};
+  color: ${({ theme }) => theme.colors.subtext};
   font-size: 16px;
 `;

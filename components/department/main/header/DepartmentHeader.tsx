@@ -1,9 +1,9 @@
 import { Campus, CAMPUS_ENUM, Department, DEPARTMENT_ENUM } from '@/app/constants/CampusDivisions';
 import { useDesign } from '@/context/DesignSystem';
 import { Ionicons } from '@expo/vector-icons';
+import { isAll } from '@utils/isAll';
 import { useRouter } from 'expo-router';
 import styled from 'styled-components/native';
-import { isAll } from '../../utils/isAll';
 
 type DepartmentHeaderProps = {
   selectedCampus: Campus | 'ALL';
@@ -28,7 +28,7 @@ export default function DepartmentHeader({
             <Ionicons name='filter' size={18} color={colors.primary} />
             <FilterButtonText>필터</FilterButtonText>
           </FilterButton>
-          <AddButton onPress={() => router.push('/department/create/createDep')}>
+          <AddButton onPress={() => router.push('/department/create/CreateDepartmentPostPage')}>
             <Ionicons name='add' size={24} color='#fff' />
           </AddButton>
         </ButtonGroup>
