@@ -21,7 +21,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
-import SettingCard from '@/components/my/_common/SettingCard';
+import SettingCard from '@/components/my/SettingCard';
 
 type Prayer = {
   id: string;

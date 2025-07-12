@@ -1,7 +1,7 @@
-import { EditProfileModal } from "@/components/my/editProfileModal/EditProfileModal";
-import { User } from "@/constants/_types/user";
-import React, { useState } from "react";
-import styled from "styled-components/native";
+import { EditProfileModal } from '@/components/my/editProfileModal/EditProfileModal';
+import { User } from '@/constants/_types/user';
+import React, { useState } from 'react';
+import styled from 'styled-components/native';
 
 type ProfileCardProps = {
   user: User;
@@ -19,8 +19,8 @@ export const ProfileCard = ({ user, handleUserUpdate }: ProfileCardProps) => {
     <CardContainer>
       <TopRow>
         <UserInfo>
-          <UserName>{user?.name ?? "이름"}</UserName>
-          <UserEmail>{user?.email ?? "이메일"}</UserEmail>
+          <UserName>{user?.name ?? '이름'}</UserName>
+          <UserEmail>{user?.email ?? '이메일'}</UserEmail>
         </UserInfo>
         <EditButton onPress={handleEditToggle}>
           <EditButtonText>프로필 수정</EditButtonText>
@@ -28,18 +28,18 @@ export const ProfileCard = ({ user, handleUserUpdate }: ProfileCardProps) => {
       </TopRow>
       <BadgeRow>
         {user?.division && (
-          <Badge background="#E3F2FD">
-            <BadgeText color="#1976D2">{user.division}</BadgeText>
+          <Badge background='#E3F2FD'>
+            <BadgeText color='#1976D2'>{user.division}</BadgeText>
           </Badge>
         )}
         {user?.role && (
-          <Badge background="#E8F5E9">
-            <BadgeText color="#2E7D32">{user.role}</BadgeText>
+          <Badge background='#E8F5E9'>
+            <BadgeText color='#2E7D32'>{user.role}</BadgeText>
           </Badge>
         )}
         {user?.campus && (
-          <Badge background="#FDECEC">
-            <BadgeText color="#ff9191">{user.campus}</BadgeText>
+          <Badge background='#FDECEC'>
+            <BadgeText color='#ff9191'>{user.campus}</BadgeText>
           </Badge>
         )}
       </BadgeRow>
@@ -55,7 +55,7 @@ export const ProfileCard = ({ user, handleUserUpdate }: ProfileCardProps) => {
 
 // --- Styled Components ---
 const CardContainer = styled.View`
-  background-color: ${({ theme }) => theme.surface};
+  background-color: ${({ theme }) => theme.colors.surface};
   border-radius: 24px;
   padding: 20px;
   margin-bottom: 32px;
@@ -78,23 +78,23 @@ const UserInfo = styled.View``;
 const UserName = styled.Text`
   font-size: 24px;
   font-weight: 700;
-  color: ${({ theme }) => theme.text};
+  color: ${({ theme }) => theme.colors.text};
   margin-bottom: 4px;
 `;
 
 const UserEmail = styled.Text`
   font-size: 15px;
-  color: ${({ theme }) => theme.subtext};
+  color: ${({ theme }) => theme.colors.subtext};
 `;
 
 const EditButton = styled.TouchableOpacity`
-  background-color: ${({ theme }) => theme.primary + "15"};
+  background-color: ${({ theme }) => theme.colors.primary + '15'};
   padding: 8px 12px;
   border-radius: 12px;
 `;
 
 const EditButtonText = styled.Text`
-  color: ${({ theme }) => theme.primary};
+  color: ${({ theme }) => theme.colors.primary};
   font-size: 14px;
   font-weight: 600;
 `;

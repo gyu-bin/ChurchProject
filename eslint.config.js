@@ -10,6 +10,8 @@ module.exports = defineConfig([
   {
     rules: {
       'import/no-named-as-default': 'off',
+      '@typescript-eslint/no-unused-vars': 'warn',
+      'no-unused-vars': 'warn',
     },
   },
 ]);

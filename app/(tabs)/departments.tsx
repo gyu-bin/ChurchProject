@@ -1,21 +1,17 @@
-import { useDesign } from "@/context/DesignSystem";
-import React, { useEffect, useRef, useState } from "react";
-import { FlatList, Platform, SafeAreaView } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { setScrollCallback } from "@/utils/scrollRefManager";
-import DepartmentHeader from "../department/header/DepartmentHeader";
-import useDepartmentFilter from "../department/_hooks/useDepartmentFilter";
-import DepartmentFilterModal from "../department/filterModal/DepartmentFilterModal";
-import DepartmentPostList from "../department/list/DepartmentPostList";
+import ScreenContainer from '@/components/_common/ScreenContainer';
+import { setScrollCallback } from '@/utils/scrollRefManager';
+import useDepartmentFilter from '@components/department/main/_hooks/useDepartmentFilter';
+import DepartmentFilterModal from '@components/department/main/filterModal/DepartmentFilterModal';
+import DepartmentHeader from '@components/department/main/header/DepartmentHeader';
+import DepartmentPostList from '@components/department/main/list/DepartmentPostList';
+import React, { useEffect, useRef } from 'react';
+import { FlatList } from 'react-native';
 
 export default function DepartmentsScreen() {
-  const { colors } = useDesign();
-
-  const insets = useSafeAreaInsets();
   const mainListRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    setScrollCallback("departments", () => {
+    setScrollCallback('departments', () => {
       mainListRef.current?.scrollToOffset({ offset: 0, animated: true });
     });
   }, []);
@@ -29,21 +25,16 @@ export default function DepartmentsScreen() {
     resetFilter,
     setIsOpenFilter,
   } = useDepartmentFilter();
+
   return (
-    <SafeAreaView
-      style={{
-        flex: 1,
-        backgroundColor: colors.background,
-        paddingTop: Platform.OS === "android" ? insets.top : 0,
-      }}
-    >
+    <ScreenContainer paddingHorizontal={0} paddingBottom={0}>
       <DepartmentHeader
         selectedCampus={selectedCampus}
         selectedDept={selectedDept}
         openFilter={openFilter}
       />
-      <DepartmentPostList
-        selectedCampus={selectedCampus}
+      <DepartmentPostList 
+        selectedCampus={selectedCampus} 
         selectedDivision={selectedDept}
       />
       <DepartmentFilterModal
@@ -54,6 +45,6 @@ export default function DepartmentsScreen() {
         selectedCampus={selectedCampus}
         selectedDept={selectedDept}
       />
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }

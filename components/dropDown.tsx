@@ -1,6 +1,8 @@
+import { useDesign } from '@/context/DesignSystem';
 import React from 'react';
 import { ViewStyle, TextStyle } from 'react-native';
 import { Dropdown } from 'react-native-element-dropdown';
+import styled from 'styled-components/native';
 
 type DropdownOption = {
   label: string;
@@ -31,15 +33,13 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
   maxHeight = 200,
   dropdownPosition = 'auto', // ✅ 추가
 }) => {
+  const { colors } = useDesign();
   return (
     <Dropdown
       style={{
         height: 48,
-        borderColor: '#FFA726',
-        borderWidth: 1,
         borderRadius: 12,
         paddingHorizontal: 16,
-        backgroundColor: '#fff',
         ...containerStyle,
       }}
       placeholderStyle={{
@@ -54,6 +54,15 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
       itemTextStyle={{
         fontSize: 14,
         paddingVertical: 10,
+        color: colors.text,
+      }}
+      itemContainerStyle={{
+        backgroundColor: colors.card,
+      }}
+      containerStyle={{
+        borderRadius: 24,
+        borderWidth: 0,
+        backgroundColor: colors.card,
       }}
       data={data}
       maxHeight={maxHeight}
