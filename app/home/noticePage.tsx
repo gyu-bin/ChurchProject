@@ -6,7 +6,6 @@ import { Dimensions, Platform, StyleSheet, Text, TouchableOpacity, View } from '
 import FlexibleCarousel from '@/components/FlexibleCarousel';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import CalendarModal from '../home/QuickMenuButton/calendar';
 import { useSafeAreaFrame } from 'react-native-safe-area-context';
 
 type Notice = {
@@ -52,7 +51,7 @@ export default function HomeNotices() {
           borderColor: '#ddd',
           padding: spacing.md,
           marginBottom: spacing.xs,
-          marginTop: spacing.md,
+          marginTop: spacing.sm,
           marginLeft: spacing.xs,
           shadowColor: '#000',
           shadowOpacity: 0.05,
@@ -94,6 +93,10 @@ export default function HomeNotices() {
             </Text>
           )}
 
+          <Text style={{ fontSize: 15, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>
+            {item.title}
+          </Text>
+
           {/* 날짜 */}
           <Text style={{ fontSize: 12, color: colors.subtext }}>
             {item.date?.seconds
@@ -102,16 +105,13 @@ export default function HomeNotices() {
           </Text>
         </View>
 
-        <Text style={{ fontSize: 15, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>
-          {item.title}
-        </Text>
         <Text
           style={{ fontSize: 14, color: colors.subtext }}
-          numberOfLines={10} // ✅ 최대 10줄 표시
+          numberOfLines={2} // ✅ 최대 10줄 표시
           ellipsizeMode='tail' // ✅ 말줄임표 처리
         >
-          {item.content?.slice(0, 210)}
-          {item.content?.length > 210 ? '...' : ''}
+          {item.content?.slice(0, 150)}
+          {item.content?.length > 150 ? '...' : ''}
         </Text>
       </View>
     );

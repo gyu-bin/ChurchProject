@@ -393,6 +393,44 @@ const EditTeamModal = ({
                   </TouchableOpacity>
                 )}
 
+                {/* 인원수 입력 */}
+                <View style={{ marginBottom: spacing.md }}>
+                  <Text style={{ color: colors.text, marginBottom: 4 }}>모임 최대 인원</Text>
+                  <TextInput
+                    value={editCapacity}
+                    onChangeText={setEditCapacity}
+                    placeholder='최대 인원 입력'
+                    placeholderTextColor={colors.subtext}
+                    keyboardType='number-pad'
+                    editable={!isUnlimited} // 제한 없으면 비활성화
+                    style={{
+                      borderColor: colors.border,
+                      borderWidth: 1,
+                      borderRadius: radius.sm,
+                      padding: spacing.md,
+                      backgroundColor: isUnlimited ? '#e0e0e0' : '#f9f9f9',
+                      color: colors.text,
+                    }}
+                  />
+                </View>
+
+                {/* 인원 제한 없음 스위치 */}
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: spacing.md,
+                  }}>
+                  <Text style={{ color: colors.text }}>인원 제한 없음</Text>
+                  <Switch
+                    value={isUnlimited}
+                    onValueChange={setIsUnlimited}
+                    trackColor={{ false: '#ccc', true: colors.primary + '88' }}
+                    thumbColor={isUnlimited ? colors.primary : '#f4f3f4'}
+                  />
+                </View>
+
                 {/* 모임 마감 */}
                 <View
                   style={{
@@ -419,6 +457,7 @@ const EditTeamModal = ({
                     borderRadius: radius.sm,
                     alignItems: 'center',
                     marginTop: spacing.sm,
+                    marginBottom: insets.bottom + spacing.lg,
                   }}>
                   <Text style={{ color: '#fff', fontWeight: 'bold' }}>저장</Text>
                 </TouchableOpacity>

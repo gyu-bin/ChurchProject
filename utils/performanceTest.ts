@@ -8,7 +8,7 @@ export class PerformanceTest {
   private startTimes: Record<string, number> = {};
 
   startTest(testName: string) {
-    console.log(`🚀 Starting performance test: ${testName}`);
+    // console.log(`🚀 Starting performance test: ${testName}`);
     this.startTimes[testName] = Date.now();
     console.time(testName);
   }
@@ -17,12 +17,12 @@ export class PerformanceTest {
     console.timeEnd(testName);
     const startTime = this.startTimes[testName];
     const duration = startTime ? Date.now() - startTime : 0;
-    console.log(`✅ Performance test completed: ${testName}`);
-    console.log(`⏱️ Duration: ${duration}ms`);
+    // console.log(`✅ Performance test completed: ${testName}`);
+    // console.log(`⏱️ Duration: ${duration}ms`);
 
     // FPS는 측정 불가
     const fps: number | undefined = undefined;
-    console.log(`🎯 FPS: ${fps ?? 'N/A'}`);
+    // console.log(`🎯 FPS: ${fps ?? 'N/A'}`);
 
     return { duration, fps };
   }
@@ -34,7 +34,7 @@ export class PerformanceTest {
   }
 
   measureMemoryUsage(): MemoryInfo | null {
-    console.log(`💾 Memory usage: Not supported in Expo Managed Workflow`);
+    // console.log(`💾 Memory usage: Not supported in Expo Managed Workflow`);
     return null;
   }
 }
