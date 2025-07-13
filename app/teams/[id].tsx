@@ -10,6 +10,7 @@ import LoadingModal from '@/components/lottieModal';
 import { useDesign } from '@/context/DesignSystem';
 import { useAppTheme } from '@/context/ThemeContext';
 import { db, storage } from '@/firebase/config';
+import { useTeam } from '@/hooks/useTeams';
 import { getCurrentUser } from '@/services/authService';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
 import { showToast } from '@/utils/toast'; // ✅ 추가
@@ -20,35 +21,34 @@ import * as ImagePicker from 'expo-image-picker';
 import { ImagePickerAsset } from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-    arrayRemove,
-    collection,
-    deleteDoc,
-    doc,
-    getDoc,
-    getDocs,
-    increment,
-    onSnapshot,
-    query,
-    setDoc,
-    Timestamp,
-    updateDoc,
-    where,
-    writeBatch,
+  arrayRemove,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  increment,
+  onSnapshot,
+  query,
+  setDoc,
+  Timestamp,
+  updateDoc,
+  where,
+  writeBatch,
 } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Platform,
-    RefreshControl,
-    Image as RNImage,
-    SafeAreaView,
-    ScrollView,
-    Share,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Platform,
+  RefreshControl,
+  Image as RNImage,
+  SafeAreaView,
+  ScrollView,
+  Share,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import Toast from 'react-native-root-toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -101,9 +101,11 @@ type Schedule = {
 
 export default function TeamDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [team, setTeam] = useState<Team | null>(null);
+  
+  // TanStack Query 훅 사용
+  const { data: team = null, isLoading: loading, refetch: refetchTeam } = useTeam(id || '');
+  
   const [memberUsers, setMemberUsers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const router = useRouter();
   const { colors, font, spacing, radius } = useDesign();
@@ -183,13 +185,13 @@ export default function TeamDetail() {
       setEditCategory(team.category || '');
     }
     getCurrentUser().then(setCurrentUser);
-    const fetchData = async () => {
-      const q = query(collection(db, 'teams'), where('id', '==', id));
-      const snapshot = await getDocs(q);
-      // Process snapshot data here
-    };
+    // const fetchData = async () => {
+    //   const q = query(collection(db, 'teams'), where('id', '==', id));
+    //   const snapshot = await getDocs(q);
+    //   // Process snapshot data here
+    // };
 
-    fetchData();
+    // fetchData();
   }, []);
 
   useEffect(() => {
@@ -265,7 +267,7 @@ export default function TeamDetail() {
       if (!docSnap.exists()) return;
 
       const teamData = { id: docSnap.id, ...docSnap.data() } as Team;
-      setTeam(teamData);
+      // setTeam(teamData); // TanStack Query가 자동으로 관리
 
       // isClosed 상태 업데이트
       setIsClosed(teamData.isClosed === true);
@@ -289,7 +291,7 @@ export default function TeamDetail() {
       } catch (e) {
         console.error('❌ 사용자/멤버 정보 로딩 실패:', e);
       } finally {
-        setLoading(false); // ✅ 로딩 완료 처리
+        // setLoading(false); // TanStack Query가 자동으로 관리
         setRefreshing(false); // ✅ 리프레시 완료 처리
       }
     });
@@ -517,16 +519,16 @@ export default function TeamDetail() {
       const teamRef = doc(db, 'teams', team.id);
       await updateDoc(teamRef, updateData);
 
-      setTeam(
-        (prev) =>
-          prev && {
-            ...prev,
-            ...updateData,
-          }
-      );
+      // setTeam( // TanStack Query가 자동으로 관리
+      //   (prev) =>
+      //     prev && {
+      //       ...prev,
+      //       ...updateData,
+      //     }
+      // );
 
       Toast.show('✅ 수정 완료', { duration: 1500 });
-      await fetchTeam();
+      await refetchTeam(); // TanStack Query의 refetch 사용
 
       // ✨ 푸시 알림 보내기
       if (editCategory === '✨ 반짝소모임') {
@@ -590,25 +592,25 @@ export default function TeamDetail() {
               members: increment(-1),
             });
 
-            const updatedSnap = await getDoc(teamRef);
-            if (updatedSnap.exists()) {
-              const updatedData = updatedSnap.data();
-              setTeam({
-                id: updatedSnap.id,
-                name: updatedData.name,
-                leader: updatedData.leader,
-                leaderEmail: updatedData.leaderEmail,
-                members: updatedData.members,
-                capacity: updatedData.capacity,
-                membersList: updatedData.membersList,
-                openCantact: updatedData.openContact,
-                isClosed: updatedData.isClosed,
-                ...updatedData, // 기타 필드
-              });
-            }
+            // const updatedSnap = await getDoc(teamRef); // TanStack Query가 자동으로 관리
+            // if (updatedSnap.exists()) {
+            //   const updatedData = updatedSnap.data();
+            //   setTeam({
+            //     id: updatedSnap.id,
+            //     name: updatedData.name,
+            //     leader: updatedData.leader,
+            //     leaderEmail: updatedData.leaderEmail,
+            //     members: updatedData.members,
+            //     capacity: updatedData.capacity,
+            //     membersList: updatedData.membersList,
+            //     openCantact: updatedData.openContact,
+            //     isClosed: updatedData.isClosed,
+            //     ...updatedData, // 기타 필드
+            //   });
+            // }
 
             setMemberUsers((prev) => prev.filter((m) => m.email !== email));
-            fetchTeam(); // ✅ 추가된 부분
+            refetchTeam(); // TanStack Query의 refetch 사용
             Alert.alert('강퇴 완료', `${displayName}님이 강퇴되었습니다.`);
           } catch (e) {
             console.error('❌ 강퇴 실패:', e);
@@ -628,7 +630,7 @@ export default function TeamDetail() {
         onPress: async () => {
           try {
             await deleteDoc(doc(db, 'teams', id));
-            setTeam(null); // ❗단일 객체니까 이렇게 처리
+            // setTeam(null); // ❗단일 객체니까 이렇게 처리
             showToast('✅삭제 완료: 소모임이 삭제되었습니다.');
             router.replace('/teams'); // 삭제 후 소모임 목록으로 이동
           } catch (e) {
@@ -691,7 +693,7 @@ export default function TeamDetail() {
       // 4. 모임원들에게 알림 전송
       if (!team.membersList) return;
 
-      const emails = team.membersList.filter((email) => email !== team.leaderEmail);
+      const emails = team.membersList.filter((email: string) => email !== team.leaderEmail);
       if (emails.length > 0) {
         const tokenQueryBatches = [];
         const emailClone = [...emails];
@@ -714,7 +716,7 @@ export default function TeamDetail() {
           });
         }
 
-        const notificationPromises = emails.map((email) =>
+        const notificationPromises = emails.map((email: string) =>
           sendNotification({
             to: email,
             message: `${team.name} 모임의 일정이 ${newDate}로 정해졌습니다.`,
@@ -843,13 +845,13 @@ export default function TeamDetail() {
         location: location,
       });
 
-      setTeam(
-        (prev) =>
-          prev && {
-            ...prev,
-            location: location,
-          }
-      );
+      // setTeam( // TanStack Query가 자동으로 관리
+      //   (prev) =>
+      //     prev && {
+      //       ...prev,
+      //       location: location,
+      //     }
+      // );
 
       setLocationModalVisible(false);
       setLocationInput('');
@@ -1753,9 +1755,9 @@ export default function TeamDetail() {
                           try {
                             // 1. 모든 멤버에게 알림 보내기
                             const memberEmails = team.membersList.filter(
-                              (email) => email !== user.email
+                              (email: string) => email !== user.email
                             );
-                            const notificationPromises = memberEmails.map((email) =>
+                            const notificationPromises = memberEmails.map((email: string) =>
                               sendNotification({
                                 to: email,
                                 message: `"${team.name}" 모임이 모임장의 탈퇴로 인해 삭제되었습니다.`,

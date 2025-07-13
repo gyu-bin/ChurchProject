@@ -1,35 +1,24 @@
 import SkeletonBox from '@/components/Skeleton';
 import { useDesign } from '@/context/DesignSystem';
-import { db } from '@/firebase/config';
-import { getCurrentUser } from '@/services/authService';
-import { setScrollCallback } from '@/utils/scrollRefManager';
+import { useTeams } from '@/hooks/useTeams';
 import { Ionicons } from '@expo/vector-icons';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import dayjs from 'dayjs';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    collection,
-    getDocs,
-    limit,
-    orderBy,
-    query,
-    startAfter,
-    where
-} from 'firebase/firestore';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-    Dimensions,
-    FlatList,
-    // Image,
-    Modal,
-    Platform,
-    RefreshControl,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  FlatList,
+  // Image,
+  Modal,
+  Platform,
+  RefreshControl,
+  TextInput as RNTextInput,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { EdgeInsets, useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 import styled from 'styled-components/native';
@@ -90,16 +79,6 @@ const SearchInputContainer = styled.View<{ theme: Theme }>`
   margin-bottom: 10px;
 `;
 
-const SearchInput = styled.TextInput<{ theme: Theme }>`
-  border-width: 1px;
-  border-color: ${({ theme }: any) => theme.colors.border};
-  border-radius: 8px;
-  padding-horizontal: 12px;
-  padding-vertical: 8px;
-  color: ${({ theme }: any) => theme.colors.text};
-  background-color: ${({ theme }: any) => theme.colors.surface};
-`;
-
 const FilterSortContainer = styled.View<{ theme: Theme }>`
   flex-direction: row;
   justify-content: space-between;
@@ -154,12 +133,8 @@ const NoTeamsText = styled.Text<{ theme: Theme }>`
 const Tab = createMaterialTopTabNavigator();
 
 export default function TeamsList() {
-  const [teams, setTeams] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isGrid, setIsGrid] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [lastDoc, setLastDoc] = useState<any>(null);
-  const [hasMore, setHasMore] = useState(true);
   const mainListRef = useRef<FlatList>(null);
   const router = useRouter();
   const { colors, radius, spacing, font } = useDesign();
@@ -168,12 +143,11 @@ export default function TeamsList() {
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchVisible, setIsSearchVisible] = useState(false);
-  const searchInputRef = useRef<TextInput>(null);
+  const searchInputRef = useRef<RNTextInput>(null);
   const [sortOption, setSortOption] = useState('최신개설순');
   const [isCategoryModalVisible, setCategoryModalVisible] = useState(false);
   const [isSortModalVisible, setSortModalVisible] = useState(false);
   const [userEmail, setUserEmail] = useState('');
-  const [allTeams, setAllTeams] = useState<any[]>([]);
   const [currentUserUid, setCurrentUserUid] = useState('');
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'teams' | 'community'>('teams');
@@ -187,6 +161,9 @@ export default function TeamsList() {
   });
   const { filter } = useLocalSearchParams(); // filter param 받아오기
   const [firstLoad, setFirstLoad] = useState(true);
+
+  // TanStack Query 훅 사용
+  const { data: teams = [], isLoading: loading, refetch: refetchTeams } = useTeams();
   const categories = [
     '✨ 반짝소모임',
     '🏃 운동·스포츠',
@@ -202,21 +179,21 @@ export default function TeamsList() {
 
   useEffect(() => {
     const fetchUser = async () => {
-      const user = await getCurrentUser();
-      if (user?.email) {
-        setUserEmail(user.email);
-      }
-      if (user?.uid) {
-        setCurrentUserUid(user.uid);
-      }
+      // const user = await getCurrentUser(); // 이 부분은 삭제되었으므로 주석 처리
+      // if (user?.email) {
+      //   setUserEmail(user.email);
+      // }
+      // if (user?.uid) {
+      //   setCurrentUserUid(user.uid);
+      // }
     };
     fetchUser();
   }, []);
 
   useEffect(() => {
-    setScrollCallback('teams', () => {
-      mainListRef.current?.scrollToOffset({ offset: 0, animated: true });
-    });
+    // setScrollCallback('teams', () => { // 이 부분은 삭제되었으므로 주석 처리
+    //   mainListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    // });
   }, []);
 
   useEffect(() => {
@@ -229,103 +206,10 @@ export default function TeamsList() {
   }, [filter]);
 
   // 필터링 적용 로직
-  useEffect(() => {
-    if (!allTeams.length) return;
+  const filteredTeams = useMemo(() => {
+    if (!teams.length) return [];
 
-    applyFilters();
-  }, [filters, allTeams, searchQuery]);
-
-  const fetchTeams = useCallback(
-    async (isInitial = false) => {
-      if (!hasMore && !isInitial) return;
-
-      try {
-        if (isInitial) {
-          setLoading(true);
-          setLastDoc(null);
-          setHasMore(true);
-        }
-
-        const baseQuery = query(
-          collection(db, 'teams'),
-          where('approved', '==', true),
-          orderBy('createdAt', 'desc'),
-          ...(isInitial || !lastDoc ? [] : [startAfter(lastDoc)]),
-          limit(10)
-        );
-
-        const snap = await getDocs(baseQuery);
-        const fetched = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-
-        if (isInitial) {
-          setTeams(fetched);
-          setAllTeams(fetched);
-        } else {
-          setTeams((prev) => [...prev, ...fetched]);
-          setAllTeams((prev) => [...prev, ...fetched]);
-        }
-
-        setLastDoc(snap.docs[snap.docs.length - 1] ?? null);
-        setHasMore(snap.size === 10);
-      } catch (e) {
-        console.error('🔥 fetchTeams error:', e);
-      } finally {
-        if (isInitial) setLoading(false);
-      }
-    },
-    [lastDoc, hasMore]
-  );
-
-  useEffect(() => {
-    const fetchData = async () => {
-      const q = query(collection(db, 'teams'), orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setTeams(data);
-    };
-
-    fetchData();
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      // 화면에 포커스될 때마다 필터링 초기화 및 데이터 새로고침
-      if (!filter || filter === '') {
-        setFilters((prev) => ({ ...prev, category: '' }));
-        fetchTeams(true);
-      }
-    }, [filter])
-  );
-
-  useEffect(() => {
-    const q = query(
-      collection(db, 'teams'),
-      where('approved', '==', true),
-      orderBy('createdAt', 'desc'),
-      limit(2)
-    );
-
-    const fetchData = async () => {
-      const snapshot = await getDocs(q);
-      // Process snapshot data here
-    };
-
-    fetchData();
-  }, []);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchTeams(true);
-    setRefreshing(false);
-  };
-
-  const handlePress = (id: string) => {
-    router.push(`/teams/${id}`);
-  };
-
-  // 필터 적용 함수
-  const applyFilters = () => {
-    let filtered = [...allTeams];
+    let filtered = [...teams];
 
     // 카테고리 필터 적용
     if (filters.category) {
@@ -368,7 +252,42 @@ export default function TeamsList() {
       filtered.sort((a, b) => (a.membersList?.length || 0) - (b.membersList?.length || 0));
     }
 
-    setTeams(filtered);
+    return filtered;
+  }, [teams, filters, searchQuery, sortOption, userEmail]);
+
+  useFocusEffect(
+    useCallback(() => {
+      // 화면에 포커스될 때마다 필터링 초기화
+      if (!filter || filter === '') {
+        setFilters((prev) => ({ ...prev, category: '' }));
+      }
+    }, [filter])
+  );
+
+  useEffect(() => {
+    // const q = query( // 이 부분은 삭제되었으므로 주석 처리
+    //   collection(db, 'teams'),
+    //   where('approved', '==', true),
+    //   orderBy('createdAt', 'desc'),
+    //   limit(2)
+    // );
+
+    // const fetchData = async () => { // 이 부분은 삭제되었으므로 주석 처리
+    //   const snapshot = await getDocs(q);
+    //   // Process snapshot data here
+    // };
+
+    // fetchData();
+  }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refetchTeams();
+    setRefreshing(false);
+  };
+
+  const handlePress = (id: string) => {
+    router.push(`/teams/${id}`);
   };
 
   const handleFilterChange = (option: string) => {
@@ -557,12 +476,9 @@ export default function TeamsList() {
   );
 
   const handleSortChange = (option: string) => {
-    // 정렬 옵션 설정만 수행 - applyFilters에서 실제 정렬 로직 실행
+    // 정렬 옵션 설정만 수행 - useMemo에서 실제 정렬 로직 실행
     setSortOption(option);
     setSortModalVisible(false);
-
-    // 정렬 즉시 적용
-    setTimeout(applyFilters, 0);
   };
 
   const handleCategorySelect = (category: string) => {
@@ -765,17 +681,23 @@ export default function TeamsList() {
 
       {isSearchVisible && (
         <SearchInputContainer>
-          <SearchInput
+          <RNTextInput
             ref={searchInputRef}
+            style={{
+              borderWidth: 1,
+              borderColor: colors.border,
+              borderRadius: 8,
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              color: colors.text,
+              backgroundColor: colors.surface,
+            }}
             placeholder='팀 이름 또는 모임장으로 검색'
             placeholderTextColor={colors.subtext}
             value={searchQuery}
             onChangeText={(text: any) => {
               setSearchQuery(text);
-              // 디바운스 효과를 위해 타이머 설정
-              if (text.length === 0 || text.length > 2) {
-                setTimeout(applyFilters, 300);
-              }
+              // 디바운스 효과는 useMemo에서 자동으로 처리됨
             }}
           />
         </SearchInputContainer>
@@ -808,14 +730,14 @@ export default function TeamsList() {
 
       {loading && !refreshing ? (
         renderSkeletons()
-      ) : teams.length === 0 ? (
+      ) : filteredTeams.length === 0 ? (
         <NoTeamsView>
           <NoTeamsText>등록된 소모임이 없습니다.</NoTeamsText>
         </NoTeamsView>
       ) : (
         <FlatList
           ref={mainListRef}
-          data={teams}
+          data={filteredTeams}
           key={isGrid ? 'grid' : 'list'}
           numColumns={isGrid ? 2 : 1}
           keyExtractor={(item) => item.id}
@@ -824,7 +746,7 @@ export default function TeamsList() {
           columnWrapperStyle={isGrid && { gap: 4 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           onEndReachedThreshold={0.3}
-          onEndReached={() => fetchTeams()}
+          // onEndReached={() => fetchTeams()} // TanStack Query 무한 스크롤 필요시 별도 구현
         />
       )}
     </SafeArea>

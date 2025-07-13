@@ -1,57 +1,40 @@
 // pages/gratitude/index.tsx
+import { useDesign } from '@/context/DesignSystem';
+import { useAppTheme } from '@/context/ThemeContext';
+import { useAddGratitude, useDeleteGratitude, useGratitudes, useUpdateGratitude } from '@/hooks/useGratitudes';
+import { getCurrentUser } from '@/services/authService';
+import { Ionicons } from '@expo/vector-icons';
+import { format } from 'date-fns';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  TextInput,
-  Modal,
-  KeyboardAvoidingView,
-  Platform,
-  Keyboard,
-  TouchableWithoutFeedback,
-  Dimensions,
-  PanResponder,
-  Alert,
+    Alert,
+    Dimensions,
+    Keyboard,
+    KeyboardAvoidingView,
+    Modal,
+    PanResponder,
+    Platform,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { format } from 'date-fns';
-import DateTimePickerModal from 'react-native-modal-datetime-picker';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  collection,
-  addDoc,
-  onSnapshot,
-  query,
-  orderBy,
-  updateDoc,
-  doc,
-  serverTimestamp,
-  deleteDoc,
-} from 'firebase/firestore';
-import { db } from '@/firebase/config';
-import { getCurrentUser } from '@/services/authService';
-import { useAppTheme } from '@/context/ThemeContext';
-import { useDesign } from '@/context/DesignSystem';
 
 const { height } = Dimensions.get('window');
 
 type Gratitude = {
-  authorEmail: string;
   id: string;
   content: string;
-  authorId?: string;
+  authorEmail: string;
   authorName?: string;
-  createdAt: {
-    seconds: number;
-    nanoseconds: number;
-  };
+  createdAt: { seconds: number; nanoseconds: number };
 };
 
 export default function ThanksPage() {
-  const [gratitudes, setGratitudes] = useState<Gratitude[]>([]);
   const [filterDate, setFilterDate] = useState<Date>(new Date());
   const [content, setContent] = useState('');
   const [writeModalVisible, setWriteModalVisible] = useState(false);
@@ -87,34 +70,26 @@ export default function ThanksPage() {
     })
   ).current;
 
+  const { data: gratitudes = [], isLoading } = useGratitudes();
+  const addGratitude = useAddGratitude();
+  const updateGratitude = useUpdateGratitude();
+  const deleteGratitude = useDeleteGratitude();
+
   useEffect(() => {
     getCurrentUser().then(setUser);
   }, []);
 
   useEffect(() => {
-    const q = query(collection(db, 'gratitudes'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Gratitude);
-      const start = new Date(filterDate);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(filterDate);
-      end.setHours(23, 59, 59, 999);
-      const filtered = data.filter((item) => {
-        const createdAt = new Date(item.createdAt?.seconds * 1000);
-        return createdAt >= start && createdAt <= end;
-      });
-      setGratitudes(filtered);
-    });
-    return () => unsubscribe();
+    // setGratitudes는 TanStack Query가 관리하므로 제거
   }, [filterDate]);
 
   const handleSubmit = async () => {
     if (!content.trim() || !user) return;
     try {
-      await addDoc(collection(db, 'gratitudes'), {
+      await addGratitude.mutateAsync({
         content,
-        createdAt: serverTimestamp(),
-        authorEmail: user.email, // ✅ 이메일 저장
+        createdAt: new Date(),
+        authorEmail: user.email,
         authorName: user.name ?? '익명',
       });
       setContent('');
@@ -126,9 +101,12 @@ export default function ThanksPage() {
 
   const handleUpdate = async (id: string) => {
     try {
-      await updateDoc(doc(db, 'gratitudes', id), {
-        content: editContent,
-        updatedAt: serverTimestamp(),
+      await updateGratitude.mutateAsync({
+        id,
+        data: {
+          content: editContent,
+          updatedAt: new Date(),
+        },
       });
       setEditingId(null);
     } catch (e) {
@@ -149,7 +127,7 @@ export default function ThanksPage() {
         style: 'destructive',
         onPress: async () => {
           try {
-            await deleteDoc(doc(db, 'gratitudes', id));
+            await deleteGratitude.mutateAsync(id);
           } catch (e) {
             console.error('삭제 실패:', e);
             Alert.alert('삭제 실패', '글 삭제 중 오류가 발생했습니다.');

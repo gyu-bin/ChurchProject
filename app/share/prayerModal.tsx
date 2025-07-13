@@ -1,9 +1,8 @@
 import { useDesign } from '@/context/DesignSystem';
 import { useAppTheme } from '@/context/ThemeContext';
-import { db } from '@/firebase/config';
+import { useAddPrayer } from '@/hooks/usePrayers';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import {addDoc, collection, getDocs, serverTimestamp} from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
     Keyboard,
@@ -16,10 +15,8 @@ import {
     TouchableWithoutFeedback,
     View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Notifications from 'expo-notifications';
-import {sendPushNotification} from "@/services/notificationService";
 import Toast from "react-native-root-toast";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function PrayerSubmitPage() {
     const { colors, spacing, font, radius } = useDesign();
@@ -48,62 +45,40 @@ export default function PrayerSubmitPage() {
 
     const sendUrgentPrayerNotification = async () => {
         try {
-            const snapshot = await getDocs(collection(db, 'users'));
-            const sentTokens = new Set<string>();
-            const pushPromises: Promise<void>[] = [];
-
-            snapshot.docs.forEach((docSnap) => {
-                const user = docSnap.data();
-                const tokens: string[] = user.expoPushTokens || [];
-
-                tokens.forEach(token => {
-                    if (
-                        typeof token === 'string' &&
-                        token.startsWith('ExponentPushToken') &&
-                        !sentTokens.has(token)
-                    ) {
-                        sentTokens.add(token);
-
-                        pushPromises.push(sendPushNotification({
-                            to: token,
-                            title: '🙏 긴급 기도제목 요청',
-                            body: '지금 함께 기도해주세요.',
-                            data: { screen: 'prayer' },
-                        }));
-                    }
-                });
-            });
-
-            await Promise.all(pushPromises);
-            console.log(`✅ 긴급 기도제목 푸시 ${sentTokens.size}명에게 전송 완료`);
+            // This function is no longer needed as useAddPrayer handles notifications
+            // Keeping it for now as it might be used elsewhere or for context,
+            // but it will be removed once useAddPrayer is fully integrated.
+            console.log('sendUrgentPrayerNotification is deprecated and will be removed.');
         } catch (err) {
             console.error('❌ 긴급 기도제목 푸시 전송 실패:', err);
         }
     };
 
-    const handleSubmit = async () => {
+    const { mutate: addPrayer } = useAddPrayer();
+
+    const handleSubmit = () => {
         if (!title.trim() || !content.trim()) return;
 
-        try {
-            await addDoc(collection(db, 'prayer_requests'), {
+        addPrayer(
+            {
                 title,
                 content,
                 name: currentUser?.name,
                 email: user?.email ?? '',
-                createdAt: serverTimestamp(),
                 anonymous: isAnonymous ? 'Y' : 'N',
                 urgent: isUrgent ? 'Y' : 'N',
-            });
-
-            if (isUrgent) {
-                await sendUrgentPrayerNotification();
+            },
+            {
+                onSuccess: () => {
+                    Toast.show('✅ 제출되었습니다');
+                    router.back();
+                },
+                onError: (error: any) => {
+                    console.error('기도제목 등록 오류:', error);
+                    Toast.show('❌ 제출에 실패했습니다');
+                },
             }
-
-            Toast.show('✅ 제출되었습니다')
-            router.back();
-        } catch (error) {
-            console.error('기도제목 등록 오류:', error);
-        }
+        );
     };
 
     return (

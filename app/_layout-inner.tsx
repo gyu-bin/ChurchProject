@@ -17,7 +17,7 @@ Notifications.setNotificationHandler({
   }),
 });
 
-function handleRedirect(user, pathname) {
+function handleRedirect(user: any, pathname: any) {
   if (!user && !pathname.startsWith('/intro') && !pathname.startsWith('/auth')) {
     return <Redirect href='/intro' />;
   }

@@ -1,7 +1,15 @@
+import { useDesign } from '@/context/DesignSystem';
 import { db, storage } from '@/firebase/config';
+import { useAddTeam } from '@/hooks/useTeams';
+import { sendPushNotification } from '@/services/notificationService';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
+import { ImagePickerAsset } from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { addDoc, collection, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
@@ -16,22 +24,15 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { sendNotification, sendPushNotification } from '@/services/notificationService';
-import { useDesign } from '@/context/DesignSystem';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as ImagePicker from 'expo-image-picker';
-import { ImagePickerAsset } from 'expo-image-picker';
-import * as ImageManipulator from 'expo-image-manipulator';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { Calendar } from 'react-native-calendars';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // import LottieView from "lottie-react-native";
-import loading1 from '@/assets/lottie/Animation - 1747201461030.json';
-import loading2 from '@/assets/lottie/Animation - 1747201431992.json';
-import loading3 from '@/assets/lottie/Animation - 1747201413764.json';
 import loading4 from '@/assets/lottie/Animation - 1747201330128.json';
-import Toast from 'react-native-root-toast';
+import loading3 from '@/assets/lottie/Animation - 1747201413764.json';
+import loading2 from '@/assets/lottie/Animation - 1747201431992.json';
+import loading1 from '@/assets/lottie/Animation - 1747201461030.json';
 import LoadingModal from '@/components/lottieModal';
+import Toast from 'react-native-root-toast';
 
 export default function CreateTeam() {
   const [name, setName] = useState('');
@@ -58,6 +59,9 @@ export default function CreateTeam() {
   // 상태 정의
   const [openContact, setOpenContact] = useState('');
   const loadingAnimations = [loading1, loading2, loading3, loading4];
+
+  // TanStack Query mutation 훅 사용
+  const addTeamMutation = useAddTeam();
 
   // yyyy-mm-dd 형식으로 포맷하는 함수
   const formatDate = (date: Date) => {
@@ -180,16 +184,11 @@ export default function CreateTeam() {
         thumbnail: downloadUrls[0],
       };
 
-      const teamRef = await addDoc(collection(db, 'teams'), {
+      const teamRef = await addTeamMutation.mutateAsync({
         ...baseData,
         approved: true,
         id: '',
         teamId: '',
-      });
-
-      await updateDoc(teamRef, {
-        id: teamRef.id,
-        teamId: teamRef.id,
       });
 
       // ✅ '✨ 반짝소모임'일 경우: 삭제 예약 + 푸시 알림

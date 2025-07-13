@@ -1,6 +1,7 @@
 // app/_layout.tsx
 // import PromoModal from "@/app/PromoModal";
 import { DesignSystemProvider } from '@/context/DesignSystem';
+import { QueryProvider } from '@/context/QueryClient';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { UserProvider } from '@/context/UserContext';
 import { db } from '@/firebase/config';
@@ -177,15 +178,17 @@ export default function RootLayout() {
     <Provider store={store}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <RootSiblingParent>
-          <ThemeProvider>
-            <DesignSystemProvider>
-              <UserProvider>
-                <SafeAreaProvider>
-                  <RootLayoutInner />
-                </SafeAreaProvider>
-              </UserProvider>
-            </DesignSystemProvider>
-          </ThemeProvider>
+          <QueryProvider>
+            <ThemeProvider>
+              <DesignSystemProvider>
+                <UserProvider>
+                  <SafeAreaProvider>
+                    <RootLayoutInner />
+                  </SafeAreaProvider>
+                </UserProvider>
+              </DesignSystemProvider>
+            </ThemeProvider>
+          </QueryProvider>
         </RootSiblingParent>
       </GestureHandlerRootView>
     </Provider>

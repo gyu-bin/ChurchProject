@@ -2,16 +2,11 @@
 import { useDesign } from '@/context/DesignSystem';
 import { useAppTheme } from '@/context/ThemeContext';
 import { db } from '@/firebase/config';
+import { useAddVideo, useDeleteVideo, useVideos } from '@/hooks/useVideos';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import {
-    addDoc,
-    collection,
-    deleteDoc, doc,
-    getDocs,
-    updateDoc
-} from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
+import { doc, updateDoc } from 'firebase/firestore';
+import React, { useState } from 'react';
 import {
     Alert,
     Image,
@@ -36,7 +31,6 @@ type VideoItem = {
 };
 
 export default function VideoManager() {
-    const [videos, setVideos] = useState<VideoItem[]>([]);
     const [newUrl, setNewUrl] = useState('');
     const { colors, spacing, font } = useDesign();
     const { mode } = useAppTheme();
@@ -44,15 +38,10 @@ export default function VideoManager() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
 
-    const fetchVideos = async () => {
-        const snapshot = await getDocs(collection(db, 'videos'));
-        const list: VideoItem[] = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...(doc.data() as Omit<VideoItem, 'id'>),
-        }));
-        list.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-        setVideos(list);
-    };
+    // TanStack Query 훅 사용
+    const { data: videos = [], isLoading, refetch: refetchVideos } = useVideos();
+    const addVideoMutation = useAddVideo();
+    const deleteVideoMutation = useDeleteVideo();
 
     const addVideo = async () => {
         Keyboard.dismiss();
@@ -60,16 +49,14 @@ export default function VideoManager() {
         const match = newUrl.match(/v=([^&]+)/);
         const id = match ? match[1] : '';
         try {
-            const snapshot = await getDocs(collection(db, 'videos'));
-            const currentCount = snapshot.size;
-            await addDoc(collection(db, 'videos'), {
+            const currentCount = videos.length;
+            await addVideoMutation.mutateAsync({
                 url: newUrl.trim(),
                 thumbnail: `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
                 createdAt: new Date(),
                 order: currentCount,
             });
             setNewUrl('');
-            fetchVideos();
             Toast.show('✅ 영상이 추가되었습니다', { duration: 1500 });
         } catch (err) {
             Alert.alert('오류', '영상 추가에 실패했습니다.');
@@ -78,8 +65,7 @@ export default function VideoManager() {
 
     const deleteVideo = async (id: string) => {
         try {
-            await deleteDoc(doc(db, 'videos', id));
-            fetchVideos();
+            await deleteVideoMutation.mutateAsync(id);
             Toast.show('🗑 삭제 완료', { duration: 1500 });
         } catch (err) {
             Alert.alert('삭제 실패', '영상을 삭제할 수 없습니다.');
@@ -101,10 +87,6 @@ export default function VideoManager() {
         router.replace('/myPage');
     };
 
-    useEffect(() => {
-        fetchVideos();
-    }, []);
-
     const thread = new Thread('./path/to/thread.js');
 
     thread.onmessage = (message: any) => {
@@ -112,6 +94,16 @@ export default function VideoManager() {
     };
 
     thread.postMessage('Start processing');
+
+    if (isLoading) {
+        return (
+            <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? insets.top + 20 : 0 }}>
+                <View style={{ padding: spacing.md, justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={{ color: colors.text }}>로딩 중...</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, paddingTop: Platform.OS === 'android' ? insets.top + 20 : 0 }}>
@@ -143,22 +135,27 @@ export default function VideoManager() {
                         />
                         <TouchableOpacity
                             onPress={addVideo}
+                            disabled={addVideoMutation.isPending}
                             style={{
                                 marginLeft: spacing.sm,
-                                backgroundColor: '#2563eb',
+                                backgroundColor: addVideoMutation.isPending ? '#9ca3af' : '#2563eb',
                                 paddingHorizontal: 16,
                                 paddingVertical: 10,
                                 borderRadius: 8,
                             }}
                         >
-                            <Text style={{ color: '#fff', fontWeight: 'bold' }}>추가</Text>
+                            <Text style={{ color: '#fff', fontWeight: 'bold' }}>
+                                {addVideoMutation.isPending ? '추가 중...' : '추가'}
+                            </Text>
                         </TouchableOpacity>
                     </View>
 
                     <DraggableFlatList<VideoItem>
                         data={videos}
                         keyExtractor={(item) => item.id}
-                        onDragEnd={({ data }) => setVideos(data)}
+                        onDragEnd={({ data }) => {
+                            // 데이터 업데이트는 TanStack Query에서 처리
+                        }}
                         contentContainerStyle={{ paddingBottom: 100 }}
                         renderItem={(params: RenderItemParams<VideoItem>) => {
                             const { item, drag } = params;
@@ -196,8 +193,16 @@ export default function VideoManager() {
                                     <Text numberOfLines={1} style={{ flex: 1, color: isDark ? '#f3f4f6' : '#111827' }}>
                                         {item.url}
                                     </Text>
-                                    <TouchableOpacity onPress={() => deleteVideo(item.id)} style={{ marginLeft: 8 }}>
-                                        <Ionicons name="trash" size={20} color={colors.error} />
+                                    <TouchableOpacity 
+                                        onPress={() => deleteVideo(item.id)} 
+                                        disabled={deleteVideoMutation.isPending}
+                                        style={{ marginLeft: 8 }}
+                                    >
+                                        <Ionicons 
+                                            name="trash" 
+                                            size={20} 
+                                            color={deleteVideoMutation.isPending ? '#9ca3af' : colors.error} 
+                                        />
                                     </TouchableOpacity>
                                 </TouchableOpacity>
                             );
@@ -207,17 +212,14 @@ export default function VideoManager() {
                     <TouchableOpacity
                         onPress={handleSave}
                         style={{
-                            position: 'absolute',
-                            bottom: insets.bottom + 16,
-                            left: spacing.md,
-                            right: spacing.md,
-                            backgroundColor: '#10b981',
-                            borderRadius: 12,
-                            paddingVertical: 14,
+                            backgroundColor: '#2563eb',
+                            paddingVertical: 12,
+                            borderRadius: 8,
                             alignItems: 'center',
+                            marginTop: spacing.md,
                         }}
                     >
-                        <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>💾 순서 저장</Text>
+                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>순서 저장</Text>
                     </TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>

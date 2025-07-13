@@ -1,6 +1,8 @@
 import { useDesign } from '@/context/DesignSystem';
 import { useAppTheme } from '@/context/ThemeContext';
 import { db } from '@/firebase/config';
+import { useNotifications } from '@/hooks/useNotifications';
+import { useUpdateTeam } from '@/hooks/useTeams';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
 import { showToast } from "@/utils/toast";
 import { Ionicons } from '@expo/vector-icons';
@@ -13,9 +15,8 @@ import {
     deleteDoc,
     doc,
     getDocs,
-    increment, onSnapshot,
+    increment,
     query,
-    updateDoc,
     where
 } from 'firebase/firestore';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -51,7 +52,6 @@ interface NotificationItem {
 
 export default function NotificationsScreen() {
     const [user, setUser] = useState<any>(null);
-    const [notifications, setNotifications] = useState<NotificationItem[]>([]);
     const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
@@ -61,6 +61,10 @@ export default function NotificationsScreen() {
     const { mode } = useAppTheme();
     const horizontalPadding = 20;
 
+    // TanStack Query 훅 사용
+    const { data: notifications = [], isLoading, refetch: refetchNotifications } = useNotifications(user?.email || '');
+    const updateTeamMutation = useUpdateTeam();
+
     useEffect(() => {
         const loadUser = async () => {
             const raw = await AsyncStorage.getItem('currentUser');
@@ -69,29 +73,12 @@ export default function NotificationsScreen() {
         loadUser();
     }, []);
 
-    useEffect(() => {
-        if (!user) return;
-        const q = query(collection(db, 'notifications'), where('to', '==', user.email));
-        const unsubscribe = onSnapshot(q, (snap) => {
-            const list: NotificationItem[] = snap.docs
-                .map(doc => ({ id: doc.id, ...doc.data() } as NotificationItem))
-                .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
-            setNotifications(list);
-        });
-        return () => unsubscribe();
-    }, [user]);
-
     const onRefresh = useCallback(async () => {
         if (!user) return;
         setRefreshing(true);
-        const q = query(collection(db, 'notifications'), where('to', '==', user.email));
-        const snap = await getDocs(q);
-        const list: NotificationItem[] = snap.docs
-            .map(doc => ({ id: doc.id, ...doc.data() } as NotificationItem))
-            .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
-        setNotifications(list);
+        await refetchNotifications();
         setRefreshing(false);
-    }, [user]);
+    }, [user, refetchNotifications]);
 
     const handleNotificationPress = async (notification: NotificationItem) => {
         try {
@@ -128,10 +115,12 @@ export default function NotificationsScreen() {
         }
         try {
             if (approve) {
-                const teamRef = doc(db, 'teams', selectedNotification.teamId);
-                await updateDoc(teamRef, {
-                    membersList: arrayUnion(selectedNotification.applicantEmail),
-                    members: increment(1),
+                await updateTeamMutation.mutateAsync({
+                    id: selectedNotification.teamId,
+                    data: {
+                        membersList: arrayUnion(selectedNotification.applicantEmail),
+                        members: increment(1),
+                    }
                 });
 
                 await sendNotification({

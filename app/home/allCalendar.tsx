@@ -1,27 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { FlatList, Text, View, StyleSheet } from 'react-native';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { db } from '@/firebase/config';
-import dayjs from 'dayjs';
 import { useDesign } from '@/context/DesignSystem';
+import { useEvents } from '@/hooks/useEvents';
+import dayjs from 'dayjs';
+import React from 'react';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 export default function AllEventsScreen() {
     const { colors, spacing, font } = useDesign();
-    const [events, setEvents] = useState<any[]>([]);
-
-    useEffect(() => {
-        const q = query(collection(db, 'notice'), where('type', '==', 'event'));
-        const unsubscribe = onSnapshot(q, snapshot => {
-            const list = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-            }));
-            const sorted = list.sort((a:any, b:any) => (a.startDate?.seconds || 0) - (b.startDate?.seconds || 0));
-            setEvents(sorted);
-        });
-
-        return () => unsubscribe();
-    }, []);
+    const { data: events = [], isLoading, error } = useEvents();
 
     const renderItem = ({ item }: { item: any }) => {
         const start = dayjs(item.startDate?.seconds * 1000).format('YYYY-MM-DD');
@@ -38,6 +23,22 @@ export default function AllEventsScreen() {
             </View>
         );
     };
+
+    if (isLoading) {
+        return (
+            <View style={styles.container}>
+                <Text style={styles.noData}>로딩 중...</Text>
+            </View>
+        );
+    }
+
+    if (error) {
+        return (
+            <View style={styles.container}>
+                <Text style={styles.noData}>데이터를 불러오는 중 오류가 발생했습니다.</Text>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>

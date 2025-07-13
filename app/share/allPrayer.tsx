@@ -2,44 +2,37 @@ import OptimizedFlatList from '@/components/OptimizedFlatList';
 import { useDesign } from '@/context/DesignSystem';
 import { useAppTheme } from '@/context/ThemeContext';
 import { db } from '@/firebase/config';
+import { usePrayers } from '@/hooks/usePrayers';
 import { showToast } from '@/utils/toast';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import {
-    collection,
-    deleteDoc,
-    doc,
-    getDocs,
-    limit,
-    orderBy,
-    query,
-    startAfter,
+  deleteDoc,
+  doc
 } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Platform,
-    RefreshControl,
-    SafeAreaView,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Platform,
+  RefreshControl,
+  SafeAreaView,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-interface PrayerItem {
+type Prayer = {
   id: string;
   title: string;
   content: string;
   name?: string;
   email?: string;
-  createdAt?: {
-    toDate?: () => Date;
-  };
+  createdAt?: { toDate?: () => Date };
   anonymous?: 'Y' | 'N';
   urgent?: 'Y' | 'N';
-}
+};
 
 const PAGE_SIZE = 7;
 
@@ -50,7 +43,6 @@ export default function PrayerListScreen() {
   const screenWidth = frame.width;
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
-  const [prayers, setPrayers] = useState<PrayerItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [lastVisible, setLastVisible] = useState<any>(null);
@@ -68,53 +60,11 @@ export default function PrayerListScreen() {
       }
     };
     loadUser();
-    fetchInitialPrayers();
   }, []);
-
-  const fetchInitialPrayers = async () => {
-    setLoading(true);
-    const q = query(
-      collection(db, 'prayer_requests'),
-      orderBy('createdAt', 'desc'),
-      limit(PAGE_SIZE)
-    );
-    const snapshot = await getDocs(q);
-    const data: PrayerItem[] = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...(doc.data() as Omit<PrayerItem, 'id'>),
-    }));
-    setPrayers(data);
-    setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
-    setHasMore(snapshot.docs.length === PAGE_SIZE);
-    setLoading(false);
-  };
-
-  const fetchMorePrayers = async () => {
-    if (!hasMore || loadingMore) return;
-
-    setLoadingMore(true);
-    const q = query(
-      collection(db, 'prayer_requests'),
-      orderBy('createdAt', 'desc'),
-      startAfter(lastVisible),
-      limit(PAGE_SIZE)
-    );
-    const snapshot = await getDocs(q);
-    const data: PrayerItem[] = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...(doc.data() as Omit<PrayerItem, 'id'>),
-    }));
-
-    setPrayers((prev) => [...prev, ...data]);
-    setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
-    setHasMore(snapshot.docs.length === PAGE_SIZE);
-    setLoadingMore(false);
-  };
 
   const handleDelete = async (id: string) => {
     try {
       await deleteDoc(doc(db, 'prayer_requests', id));
-      setPrayers((prev) => prev.filter((p) => p.id !== id));
       showToast('🙏 기도제목이 삭제되었습니다.');
     } catch (error) {
       console.error('🔥 기도제목 삭제 실패:', error);
@@ -123,11 +73,11 @@ export default function PrayerListScreen() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchInitialPrayers();
+    // The usePrayers hook will handle fetching and updating the prayers state
     setRefreshing(false);
   };
 
-  const renderItem = ({ item }: { item: PrayerItem }) => {
+  const renderItem = ({ item }: { item: Prayer }) => {
     const isUrgent = item.urgent === 'Y';
 
     return (
@@ -234,7 +184,7 @@ export default function PrayerListScreen() {
 
       {/* 무한 스크롤 리스트 */}
       <OptimizedFlatList
-        data={prayers}
+        data={(usePrayers().data as Prayer[]) || []}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={{ paddingBottom: 40 }}
@@ -245,7 +195,9 @@ export default function PrayerListScreen() {
             tintColor={theme.colors.primary}
           />
         }
-        onEndReached={fetchMorePrayers}
+        onEndReached={() => {
+          // The usePrayers hook will handle fetching more data
+        }}
         onEndReachedThreshold={0.1}
         ListFooterComponent={
           loadingMore ? (

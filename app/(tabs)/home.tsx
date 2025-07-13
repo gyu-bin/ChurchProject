@@ -7,15 +7,16 @@ import PromoModal from '@/app/PromoModal';
 import { verses } from '@/assets/verses';
 import { useDesign } from '@/context/DesignSystem';
 import { useAppTheme } from '@/context/ThemeContext';
-import { db } from '@/firebase/config';
+import { useBanners, useEvents } from '@/hooks/useEvents';
+import { useNotifications } from '@/hooks/useNotifications';
+import { usePrayers } from '@/hooks/usePrayers';
 import { useAppDispatch } from '@/hooks/useRedux';
 import { setScrollCallback } from '@/utils/scrollRefManager';
 import { AntDesign, Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { collection, getDocs, onSnapshot, query, where } from 'firebase/firestore';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   Modal,
@@ -187,32 +188,29 @@ export default function HomeScreen() {
   const router = useRouter();
   const { mode } = useAppTheme();
   const theme = useDesign();
-  // const insets = useSafeAreaInsets();
+  const insets = useSafeAreaInsets();
   const [verse, setVerse] = useState(verses[0]);
   const [refreshing, setRefreshing] = useState(false);
-  const [prayers, setPrayers] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
-  const [notifications, setNotifications] = useState<any[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const flatListRef = useRef<FlatList>(null);
   const dispatch = useAppDispatch();
 
   const mainListRef = useRef<FlatList>(null);
+
+  // TanStack Query 훅 사용
+  const { data: prayers = [], isLoading: prayersLoading, refetch: refetchPrayers } = usePrayers('all');
+  const { data: banners = [], isLoading: bannersLoading } = useBanners();
+  const { data: events = [], isLoading: eventsLoading } = useEvents();
+  const { data: notifications = [], isLoading: notificationsLoading } = useNotifications(currentUser?.email || '');
   const [quickModal, setQuickModal] = useState<null | 'verse' | 'calendar' | 'catechism' | 'ai'>(
     null
   );
 
-  // 일정(이벤트) 데이터 상태 추가
-  const [banners, setBanners] = useState<EventNotice[]>([]);
   // 달력 마킹용
-  const [markedDates, setMarkedDates] = useState<any>({});
-  // 일정 상세 모달
-
-  const [events, setEvents] = useState<EventNotice[]>([]);
   const [calendarVisible, setCalendarVisible] = useState(false);
 
   const frame = useSafeAreaFrame();
-  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     setScrollCallback('home', () => {
@@ -231,56 +229,47 @@ export default function HomeScreen() {
     loadUser();
   }, []);
 
-  useEffect(() => {
-    const subscribe = async () => {
-      const raw = await AsyncStorage.getItem('currentUser');
-      if (!raw) return;
-      const currentUser = JSON.parse(raw);
-      const q = query(collection(db, 'notifications'), where('to', '==', currentUser.email));
-      return onSnapshot(q, (snapshot) => {
-        const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setNotifications(list);
-      });
-    };
-
-    let unsubscribe: (() => void) | undefined;
-
-    subscribe().then((unsub) => {
-      unsubscribe = unsub;
+  // TanStack Query 데이터로 마킹 데이터 생성
+  const markedDates = useMemo(() => {
+    const marks: any = {};
+    
+    // banners 데이터로 마킹 생성
+    banners.forEach((ev) => {
+      const start = ev.startDate?.seconds ? new Date(ev.startDate.seconds * 1000) : null;
+      const end = ev.endDate?.seconds ? new Date(ev.endDate.seconds * 1000) : start;
+      if (start) {
+        let d = new Date(start);
+        while (d <= (end || start)) {
+          const key = d.toISOString().split('T')[0];
+          marks[key] = marks[key] || { marked: true, dots: [{ color: '#2563eb' }] };
+          d.setDate(d.getDate() + 1);
+        }
+      }
     });
 
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    fetchPrayers();
-  }, []);
-
-  const fetchPrayers = async () => {
-    const q = query(collection(db, 'prayer_requests'), where('visibility', '==', 'all'));
-    const snapshot = await getDocs(q);
-    const list: Prayer[] = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...(doc.data() as Omit<Prayer, 'id'>),
-    }));
-
-    list.sort((a, b) => {
-      const aDate = a.createdAt?.toDate?.() ?? new Date(0);
-      const bDate = b.createdAt?.toDate?.() ?? new Date(0);
-      return bDate.getTime() - aDate.getTime();
+    // events 데이터로 마킹 생성
+    events.forEach((ev) => {
+      const start = ev.startDate?.seconds ? new Date(ev.startDate.seconds * 1000) : null;
+      const end = ev.endDate?.seconds ? new Date(ev.endDate.seconds * 1000) : start;
+      if (start) {
+        let d = new Date(start);
+        while (d <= (end || start)) {
+          const key = d.toISOString().split('T')[0];
+          marks[key] = marks[key] || { marked: true, dots: [{ color: '#2563eb' }] };
+          d.setDate(d.getDate() + 1);
+        }
+      }
     });
 
-    setPrayers(list);
-  };
+    return marks;
+  }, [banners, events]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     setVerse(verses[Math.floor(Math.random() * verses.length)]);
-    await fetchPrayers();
+    await refetchPrayers();
     setRefreshing(false);
-  }, []); // ✅ 의존성 추가
+  }, [refetchPrayers]);
 
   const goToEvent = (id: string) => {
     router.push({
@@ -288,65 +277,6 @@ export default function HomeScreen() {
       params: { id },
     });
   };
-
-  // 일정 데이터 실시간 구독
-  useEffect(() => {
-    const noticeQ = query(collection(db, 'notice'), where('type', '==', 'banner'));
-    const unsub = onSnapshot(noticeQ, (snapshot) => {
-      const noticeList = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as EventNotice[];
-      if (JSON.stringify(noticeList) !== JSON.stringify(banners)) {
-        setBanners(noticeList);
-        // 마킹 데이터 생성
-        const marks: any = {};
-        noticeList.forEach((ev) => {
-          // startDate ~ endDate 지원
-          const start = ev.startDate?.seconds ? new Date(ev.startDate.seconds * 1000) : null;
-          const end = ev.endDate?.seconds ? new Date(ev.endDate.seconds * 1000) : start;
-          if (start) {
-            let d = new Date(start);
-            while (d <= (end || start)) {
-              const key = d.toISOString().split('T')[0];
-              marks[key] = marks[key] || { marked: true, dots: [{ color: '#2563eb' }] };
-              d.setDate(d.getDate() + 1);
-            }
-          }
-        });
-        setMarkedDates(marks);
-      }
-    });
-    return () => unsub();
-  }, [banners]);
-
-  useEffect(() => {
-    const eventQ = query(collection(db, 'notice'), where('type', '==', 'event'));
-    const unsubEvent = onSnapshot(eventQ, (snapshot) => {
-      const eventList = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as EventNotice[];
-      setEvents(eventList);
-
-      // 마킹 처리
-      const marks: any = {};
-      eventList.forEach((ev) => {
-        const start = ev.startDate?.seconds ? new Date(ev.startDate.seconds * 1000) : null;
-        const end = ev.endDate?.seconds ? new Date(ev.endDate.seconds * 1000) : start;
-        if (start) {
-          let d = new Date(start);
-          while (d <= (end || start)) {
-            const key = d.toISOString().split('T')[0];
-            marks[key] = marks[key] || { marked: true, dots: [{ color: '#2563eb' }] };
-            d.setDate(d.getDate() + 1);
-          }
-        }
-      });
-      setMarkedDates(marks);
-    });
-    return () => unsubEvent();
-  }, []);
 
   return (
     <SafeArea style={{ paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>
