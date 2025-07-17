@@ -1,16 +1,16 @@
 import { verses } from '@/assets/verses';
+import * as MediaLibrary from 'expo-media-library';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useRef } from 'react';
 import {
-  Dimensions,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  Share,
-  ImageBackground,
+    ImageBackground,
+    Share,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    useWindowDimensions,
+    View
 } from 'react-native';
-import * as MediaLibrary from 'expo-media-library';
 import ViewShot from 'react-native-view-shot';
 
 const BG_COLORS = [
@@ -55,6 +55,9 @@ export default function TodayVerse() {
     alert('📸 이미지가 갤러리에 저장되었습니다.');
   };
 
+  const frame = useWindowDimensions();
+  const width = frame.width;
+
   return (
       <View style={styles.container}>
         <TouchableOpacity style={styles.closeBtn} onPress={() => router.back()}>
@@ -86,7 +89,6 @@ export default function TodayVerse() {
   );
 }
 
-const { width } = Dimensions.get('window');
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -106,7 +108,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   card: {
-    width: width * 0.85,
+    width: '85%', // 카드 너비 크게
     height: 600, // 카드 높이 크게
     borderRadius: 28,
     padding: 40, // 여유 있게 padding

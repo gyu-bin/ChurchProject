@@ -7,7 +7,7 @@ import {
 import { queryKeys } from './useQueryKeys';
 
 // 기도 목록 조회
-export const usePrayers = () => {
+export const usePrayers = (p0: string) => {
   return useFirestoreCollection<Prayer>('prayer_requests', queryKeys.prayers.list(), {
     orderBy: [['createdAt', 'desc']],
     staleTime: 2 * 60 * 1000,

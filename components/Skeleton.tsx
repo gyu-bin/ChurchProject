@@ -1,6 +1,6 @@
 import { useDesign } from '@/context/DesignSystem';
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, ViewStyle, Dimensions } from 'react-native';
+import { Animated, useWindowDimensions, ViewStyle } from 'react-native';
 interface SkeletonBoxProps {
   width?: number;
   height?: number;
@@ -8,12 +8,14 @@ interface SkeletonBoxProps {
 }
 
 export default function SkeletonBox({
-  width = Dimensions.get('window').width - 40, // default 값은 화면 너비
+  width,
   height = 16,
   borderRadius = 8,
 }: SkeletonBoxProps) {
   const opacity = useRef(new Animated.Value(0.4)).current;
   const { colors } = useDesign();
+  const frame = useWindowDimensions();
+  const computedWidth = width ?? frame.width - 40;
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -36,7 +38,7 @@ export default function SkeletonBox({
   }, []);
 
   const animatedStyle: Animated.WithAnimatedObject<ViewStyle> = {
-    width,
+    width: computedWidth,
     height,
     borderRadius,
     opacity,

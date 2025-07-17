@@ -199,10 +199,16 @@ export default function HomeScreen() {
   const mainListRef = useRef<FlatList>(null);
 
   // TanStack Query 훅 사용
-  const { data: prayers = [], isLoading: prayersLoading, refetch: refetchPrayers } = usePrayers('all');
+  const {
+    data: prayers = [],
+    isLoading: prayersLoading,
+    refetch: refetchPrayers,
+  } = usePrayers('all');
   const { data: banners = [], isLoading: bannersLoading } = useBanners();
   const { data: events = [], isLoading: eventsLoading } = useEvents();
-  const { data: notifications = [], isLoading: notificationsLoading } = useNotifications(currentUser?.email || '');
+  const { data: notifications = [], isLoading: notificationsLoading } = useNotifications(
+    currentUser?.email || ''
+  );
   const [quickModal, setQuickModal] = useState<null | 'verse' | 'calendar' | 'catechism' | 'ai'>(
     null
   );
@@ -232,7 +238,7 @@ export default function HomeScreen() {
   // TanStack Query 데이터로 마킹 데이터 생성
   const markedDates = useMemo(() => {
     const marks: any = {};
-    
+
     // banners 데이터로 마킹 생성
     banners.forEach((ev) => {
       const start = ev.startDate?.seconds ? new Date(ev.startDate.seconds * 1000) : null;

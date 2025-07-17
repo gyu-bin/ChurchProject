@@ -77,8 +77,6 @@ export default function RootLayoutInner() {
         <Stack.Screen name='home/notice/allNotice' options={{ headerShown: false }} />
         <Stack.Screen name='home/QuickMenuButton/churchNewsPage' options={{ headerShown: false }} />
         <Stack.Screen name='share/thank' options={{ headerShown: false }} />
-        <Stack.Screen name='share/forest/index' options={{ headerShown: false }} />
-        <Stack.Screen name='share/forest/[id]' options={{ headerShown: false }} />
         <Stack.Screen name='share/SermonTabs' options={{ headerShown: false }} />
         <Stack.Screen name='share/sermon/sermonQustionDeatil' options={{ headerShown: false }} />
         <Stack.Screen

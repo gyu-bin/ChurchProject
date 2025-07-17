@@ -1,13 +1,13 @@
-import React, { useRef, useState } from 'react';
-import { Dimensions, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
-import Carousel from 'react-native-reanimated-carousel';
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ko';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import weekday from 'dayjs/plugin/weekday';
+import { Image } from 'expo-image';
+import React, { useRef, useState } from 'react';
+import { Dimensions, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import AnimatedDotsCarousel from 'react-native-animated-dots-carousel';
+import Carousel from 'react-native-reanimated-carousel';
 
 dayjs.extend(weekday);
 dayjs.extend(localizedFormat);
@@ -15,7 +15,9 @@ dayjs.locale('ko');
 
 export default function EventBannerCarousel({ events = [], goToEvent, theme }: any) {
   const frame = useWindowDimensions();
-  const SCREEN_WIDTH = frame.width;
+  // const SCREEN_WIDTH = frame.width;
+  const windowWidth = Dimensions.get('window').width;
+  const SCREEN_WIDTH = frame.width > 0 ? frame.width : windowWidth > 0 ? windowWidth : 390;
   const [currentIndex, setCurrentIndex] = useState(0);
   const carouselRef = useRef<any>(null);
 

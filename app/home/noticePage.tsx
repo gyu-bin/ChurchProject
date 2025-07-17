@@ -62,19 +62,19 @@ export default function HomeNotices() {
         }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
           {/* ✅ 공지사항 뱃지 */}
-          <Text
-            style={{
-              backgroundColor: '#E3F2FD',
-              color: '#1976D2',
-              fontSize: 11,
-              fontWeight: 'bold',
-              paddingHorizontal: 6,
-              paddingVertical: 2,
-              borderRadius: 4,
-              marginRight: 6,
-            }}>
-            광고
-          </Text>
+          {/*<Text*/}
+          {/*  style={{*/}
+          {/*    backgroundColor: '#E3F2FD',*/}
+          {/*    color: '#1976D2',*/}
+          {/*    fontSize: 11,*/}
+          {/*    fontWeight: 'bold',*/}
+          {/*    paddingHorizontal: 6,*/}
+          {/*    paddingVertical: 2,*/}
+          {/*    borderRadius: 4,*/}
+          {/*    marginRight: 6,*/}
+          {/*  }}>*/}
+          {/*  광고*/}
+          {/*</Text>*/}
 
           {/* ✅ 캠퍼스 뱃지 */}
           {item.campus && (
@@ -93,9 +93,7 @@ export default function HomeNotices() {
             </Text>
           )}
 
-          <Text style={{ fontSize: 15, fontWeight: 'bold', color: colors.text, marginBottom: 4 }}>
-            {item.title}
-          </Text>
+          <Text style={{ fontSize: 15, fontWeight: 'bold', color: colors.text }}>{item.title}</Text>
 
           {/* 날짜 */}
           <Text style={{ fontSize: 12, color: colors.subtext }}>
@@ -107,11 +105,10 @@ export default function HomeNotices() {
 
         <Text
           style={{ fontSize: 14, color: colors.subtext }}
-          numberOfLines={2} // ✅ 최대 10줄 표시
-          ellipsizeMode='tail' // ✅ 말줄임표 처리
+          numberOfLines={2} // 최대 2줄 표시
+          ellipsizeMode='tail' // 두 줄 넘어가면 ... 처리
         >
-          {item.content?.slice(0, 150)}
-          {item.content?.length > 150 ? '...' : ''}
+          {item.content}
         </Text>
       </View>
     );

@@ -2,7 +2,7 @@ import OptimizedFlatList from '@/components/OptimizedFlatList';
 import { useDesign } from '@/context/DesignSystem';
 import { useFirestoreDeleteDoc, useFirestoreUpdateDoc } from '@/hooks/useFirestoreQuery';
 import { queryKeys } from '@/hooks/useQueryKeys';
-import { useAddSermonQuestion, useSermonQuestions } from '@/hooks/useSermons';
+import { useAddSermonQuestion, useInfiniteSermonQuestions } from '@/hooks/useSermons';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -31,12 +31,20 @@ export default function SermonQuestionPage() {
   const insets = useSafeAreaInsets();
   const PAGE_SIZE = 10;
 
-  // TanStack Query 기반 질문 목록
-  const { data: questions = [], isLoading, refetch } = useSermonQuestions(PAGE_SIZE) as { data: any[], isLoading: boolean, refetch: () => void };
+  // TanStack Query 기반 무한스크롤 질문 목록
+  const {
+    data,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    refetch,
+  } = useInfiniteSermonQuestions(PAGE_SIZE);
+  const questions = data ? data.pages.flatMap((page) => page.items) : [];
   const addQuestion = useAddSermonQuestion();
   const updateQuestion = useFirestoreUpdateDoc('sermon_questions', [queryKeys.sermons.list() as unknown as unknown[]]);
   const deleteQuestion = useFirestoreDeleteDoc('sermon_questions', [queryKeys.sermons.list() as unknown as unknown[]]);
-  const [loadingMore, setLoadingMore] = useState(false); // 무한 스크롤 미지원(추후 구현)
+  // 무한 스크롤 로딩 상태는 isFetchingNextPage로 대체
 
   // fetchInitialQuestions = async () => { // 기존 코드 제거
   //   setLoading(true);
@@ -171,10 +179,12 @@ export default function SermonQuestionPage() {
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
-          // onEndReached={fetchMoreQuestions} // 무한 스크롤 미지원(추후 구현)
-          // onEndReachedThreshold={0.1}
+          onEndReached={() => {
+            if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+          }}
+          onEndReachedThreshold={0.1}
           ListFooterComponent={
-            loadingMore ? (
+            isFetchingNextPage ? (
               <ActivityIndicator color={colors.primary} style={{ marginVertical: spacing.md }} />
             ) : null
           }

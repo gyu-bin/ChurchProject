@@ -1,23 +1,41 @@
 import { db } from '@/firebase/config';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { addDoc, collection, deleteDoc, doc, getDocs, limit, orderBy, query, serverTimestamp, startAfter, updateDoc } from 'firebase/firestore';
 
-// 설교 나눔 목록 조회 (캐싱/최적화)
-export function useSermonShares() {
-  return useQuery({
+// 설교 나눔 무한스크롤 목록 조회
+export function useInfiniteSermonShares(pageSize: number = 10) {
+  return useInfiniteQuery<{ items: any[]; lastDoc: any }, Error>({
     queryKey: ['sermonShares'],
-    queryFn: async () => {
-      const sharesRef = collection(db, 'sermon_shares');
-      const q = query(sharesRef, orderBy('createdAt', 'desc'));
+    queryFn: async ({ pageParam }) => {
+      let q = query(
+        collection(db, 'sermon_shares'),
+        orderBy('createdAt', 'desc'),
+        limit(pageSize)
+      );
+      if (pageParam) {
+        q = query(
+          collection(db, 'sermon_shares'),
+          orderBy('createdAt', 'desc'),
+          startAfter(pageParam),
+          limit(pageSize)
+        );
+      }
       const snap = await getDocs(q);
-      return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const items = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const last = snap.docs[snap.docs.length - 1];
+      return { items, lastDoc: last };
     },
-    staleTime: 1000 * 60 * 5, // 5분간 fresh
-    gcTime: 1000 * 60 * 10, // v5: cacheTime -> gcTime
+    getNextPageParam: (lastPage) => {
+      if (!lastPage || !lastPage.items || lastPage.items.length === 0) return undefined;
+      return lastPage.lastDoc;
+    },
+    initialPageParam: null,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 }
 
-// 설교 나눔 추가
+// 설교 나눔 추가/수정/삭제는 기존과 동일하게 유지
 export function useAddSermonShare() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -33,7 +51,6 @@ export function useAddSermonShare() {
   });
 }
 
-// 설교 나눔 수정
 export function useUpdateSermonShare() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -49,7 +66,6 @@ export function useUpdateSermonShare() {
   });
 }
 
-// 설교 나눔 삭제
 export function useDeleteSermonShare() {
   const queryClient = useQueryClient();
   return useMutation({

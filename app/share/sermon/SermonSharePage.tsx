@@ -1,6 +1,11 @@
 import OptimizedFlatList from '@/components/OptimizedFlatList';
 import { useDesign } from '@/context/DesignSystem';
-import { useAddSermonShare, useDeleteSermonShare, useSermonShares, useUpdateSermonShare } from '@/hooks/useSermonShares';
+import {
+  useAddSermonShare,
+  useDeleteSermonShare,
+  useInfiniteSermonShares,
+  useUpdateSermonShare,
+} from '@/hooks/useSermonShares';
 import { getCurrentUser } from '@/services/authService';
 import { Ionicons } from '@expo/vector-icons';
 import { serverTimestamp } from 'firebase/firestore';
@@ -16,7 +21,7 @@ import {
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -36,7 +41,14 @@ export default function SermonSharePage() {
     getCurrentUser().then(setUser);
   }, []);
 
-  const { data: sermonShares = [], isLoading } = useSermonShares();
+  const {
+    data,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteSermonShares(10);
+  const sermonShares = data ? data.pages.flatMap((page) => page.items) : [];
   const { mutate: addSermonShare } = useAddSermonShare();
   const { mutate: updateSermonShare } = useUpdateSermonShare();
   const { mutate: deleteSermonShare } = useDeleteSermonShare();
@@ -147,6 +159,15 @@ export default function SermonSharePage() {
               )}
             </View>
           )}
+          onEndReached={() => {
+            if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+          }}
+          onEndReachedThreshold={0.1}
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <ActivityIndicator color={colors.primary} style={{ marginVertical: spacing.lg }} />
+            ) : null
+          }
         />
       )}
 

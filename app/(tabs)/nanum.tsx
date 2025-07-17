@@ -290,7 +290,7 @@ export default function NanumPage() {
                     padding: 8,
                     borderRadius: 20,
                   }}>
-                  <Ionicons name='chevron-back' size={20} color='#fff' />
+                  <Ionicons name='chevron-back' size={15} color='#fff' />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={goToNext}
@@ -303,7 +303,7 @@ export default function NanumPage() {
                     padding: 8,
                     borderRadius: 20,
                   }}>
-                  <Ionicons name='chevron-forward' size={20} color='#fff' />
+                  <Ionicons name='chevron-forward' size={15} color='#fff' />
                 </TouchableOpacity>
               </View>
               {/* 🔘 인디케이터 */}
