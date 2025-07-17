@@ -6,30 +6,30 @@ import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
-    addDoc,
-    collection,
-    deleteDoc,
-    doc,
-    getDocs,
-    orderBy,
-    query,
-    updateDoc,
-    where
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  orderBy,
+  query,
+  updateDoc,
+  where,
 } from 'firebase/firestore';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    Alert,
-    Keyboard,
-    KeyboardAvoidingView,
-    Modal,
-    PanResponder,
-    Platform,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  Alert,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  PanResponder,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
 } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import Toast from 'react-native-root-toast';
@@ -581,6 +581,31 @@ export default function DevotionPage() {
                   maxHeight: 400,
                 }}
               />
+              {/* 익명으로 작성 체크박스 */}
+              <TouchableOpacity
+                onPress={() => setAnonymous(!anonymous)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  marginTop: spacing.md,
+                  marginBottom: spacing.lg,
+                }}>
+                <View
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 6,
+                    borderWidth: 2,
+                    borderColor: anonymous ? '#007AFF' : '#e5e5ea',
+                    backgroundColor: anonymous ? '#007AFF' : 'transparent',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: spacing.sm,
+                  }}>
+                  {anonymous && <Ionicons name='checkmark' size={16} color='#fff' />}
+                </View>
+                <Text style={{ color: '#1c1c1e', fontSize: font.body }}>익명으로 작성</Text>
+              </TouchableOpacity>
               {/* 버튼 */}
               <View
                 style={{

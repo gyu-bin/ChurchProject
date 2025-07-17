@@ -48,6 +48,7 @@ export default function ThanksPage() {
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
+  const [anonymous, setAnonymous] = useState(false);
 
   const { colors, spacing, font, radius } = useDesign();
   const { mode } = useAppTheme();
@@ -95,7 +96,7 @@ export default function ThanksPage() {
         content,
         createdAt: new Date(),
         authorEmail: user.email,
-        authorName: user.name ?? '익명',
+        authorName: anonymous ? '익명' : (user?.name ?? '익명'),
       });
       setContent('');
       setWriteModalVisible(false);
@@ -111,6 +112,7 @@ export default function ThanksPage() {
         data: {
           content: editContent,
           updatedAt: new Date(),
+          authorName: anonymous ? '익명' : (user?.name ?? '익명'),
         },
       });
       setEditingId(null);
@@ -377,7 +379,31 @@ export default function ThanksPage() {
                   color: '#1c1c1e',
                 }}
               />
-
+              {/* 익명으로 작성 체크박스 */}
+              <TouchableOpacity
+                onPress={() => setAnonymous(!anonymous)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  marginTop: spacing.md,
+                  marginBottom: spacing.lg,
+                }}>
+                <View
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 6,
+                    borderWidth: 2,
+                    borderColor: anonymous ? '#007AFF' : '#e5e5ea',
+                    backgroundColor: anonymous ? '#007AFF' : 'transparent',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: spacing.sm,
+                  }}>
+                  {anonymous && <Ionicons name='checkmark' size={16} color='#fff' />}
+                </View>
+                <Text style={{ color: '#1c1c1e', fontSize: font.body }}>익명으로 작성</Text>
+              </TouchableOpacity>
               {/* 완료 버튼 */}
               <View
                 style={{
