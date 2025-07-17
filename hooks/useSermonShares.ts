@@ -1,18 +1,19 @@
 import { db } from '@/firebase/config';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { addDoc, collection, deleteDoc, doc, getDocs, limit, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
 
-// 설교 나눔 목록 조회 (페이지네이션)
-export function useSermonShares(pageSize: number = 10) {
+// 설교 나눔 목록 조회 (캐싱/최적화)
+export function useSermonShares() {
   return useQuery({
-    queryKey: ['sermonShares', pageSize],
+    queryKey: ['sermonShares'],
     queryFn: async () => {
       const sharesRef = collection(db, 'sermon_shares');
-      const q = query(sharesRef, orderBy('createdAt', 'desc'), limit(pageSize));
+      const q = query(sharesRef, orderBy('createdAt', 'desc'));
       const snap = await getDocs(q);
       return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     },
-    initialData: [],
+    staleTime: 1000 * 60 * 5, // 5분간 fresh
+    gcTime: 1000 * 60 * 10, // v5: cacheTime -> gcTime
   });
 }
 

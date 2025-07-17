@@ -1,16 +1,11 @@
 import OptimizedFlatList from '@/components/OptimizedFlatList';
 import { useDesign } from '@/context/DesignSystem';
 import { useAppTheme } from '@/context/ThemeContext';
-import { db } from '@/firebase/config';
-import { usePrayers } from '@/hooks/usePrayers';
+import { useDeletePrayer, usePrayers } from '@/hooks/usePrayers';
 import { showToast } from '@/utils/toast';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import {
-  deleteDoc,
-  doc
-} from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -19,9 +14,10 @@ import {
   SafeAreaView,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { format } from 'date-fns';
 
 type Prayer = {
   id: string;
@@ -29,24 +25,21 @@ type Prayer = {
   content: string;
   name?: string;
   email?: string;
-  createdAt?: { toDate?: () => Date };
+  createdAt?: { toDate?: () => Date } | string;
   anonymous?: 'Y' | 'N';
   urgent?: 'Y' | 'N';
 };
 
-const PAGE_SIZE = 7;
-
 export default function PrayerListScreen() {
+  const { data: prayers = [], isLoading, refetch } = usePrayers();
+  const { mutateAsync: deletePrayer } = useDeletePrayer();
+
   const { mode } = useAppTheme();
   const theme = useDesign();
   const frame = useSafeAreaFrame();
   const screenWidth = frame.width;
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [lastVisible, setLastVisible] = useState<any>(null);
-  const [hasMore, setHasMore] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const router = useRouter();
   const isDark = mode === 'dark';
@@ -64,21 +57,29 @@ export default function PrayerListScreen() {
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteDoc(doc(db, 'prayer_requests', id));
+      await deletePrayer(id);
       showToast('🙏 기도제목이 삭제되었습니다.');
+      refetch();
     } catch (error) {
       console.error('🔥 기도제목 삭제 실패:', error);
+      showToast('❌ 삭제에 실패했습니다.');
     }
   };
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    // The usePrayers hook will handle fetching and updating the prayers state
+    await refetch();
     setRefreshing(false);
   };
 
   const renderItem = ({ item }: { item: Prayer }) => {
     const isUrgent = item.urgent === 'Y';
+    const date =
+      typeof item.createdAt === 'string'
+        ? item.createdAt
+        : item.createdAt?.toDate
+          ? format(item.createdAt.toDate(), 'yyyy-MM-dd HH:mm')
+          : '';
 
     return (
       <View
@@ -120,11 +121,11 @@ export default function PrayerListScreen() {
 
         <Text
           style={{
-            fontSize: 13,
-            color: theme.colors.text,
+            fontSize: 12,
+            color: theme.colors.subtext,
             textAlign: 'right',
           }}>
-          - {item.anonymous === 'Y' ? '익명' : item.name}
+          {date} - {item.anonymous === 'Y' ? '익명' : item.name}
         </Text>
 
         {currentUser?.email === item.email && (
@@ -182,9 +183,9 @@ export default function PrayerListScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* 무한 스크롤 리스트 */}
+      {/* 리스트 */}
       <OptimizedFlatList
-        data={(usePrayers().data as Prayer[]) || []}
+        data={prayers as Prayer[]}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={{ paddingBottom: 40 }}
@@ -195,16 +196,19 @@ export default function PrayerListScreen() {
             tintColor={theme.colors.primary}
           />
         }
-        onEndReached={() => {
-          // The usePrayers hook will handle fetching more data
-        }}
-        onEndReachedThreshold={0.1}
+        ListEmptyComponent={
+          <View style={{ marginTop: 40 }}>
+            <Text style={{ textAlign: 'center', color: theme.colors.subtext }}>
+              등록된 기도제목이 없습니다.
+            </Text>
+          </View>
+        }
         ListFooterComponent={
-          loadingMore ? (
+          isLoading ? (
             <ActivityIndicator color={theme.colors.primary} style={{ marginVertical: 20 }} />
           ) : null
         }
-        removeClippedSubviews={true}
+        removeClippedSubviews
         initialNumToRender={10}
         windowSize={5}
       />

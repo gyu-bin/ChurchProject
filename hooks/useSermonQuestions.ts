@@ -1,19 +1,20 @@
 import { db } from '@/firebase/config';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
 
-// 설교 질문 조회
+// 설교 질문 단일 조회
 export function useSermonQuestion(id: string) {
   return useQuery({
     queryKey: ['sermonQuestion', id],
     queryFn: async () => {
-      const docRef = doc(db, 'sermon_questions', id);
       const docSnap = await getDocs(collection(db, 'sermon_questions'));
       const questionDoc = docSnap.docs.find(d => d.id === id);
       if (!questionDoc) throw new Error('Question not found');
       return { id: questionDoc.id, ...questionDoc.data() };
     },
     enabled: !!id,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
   });
 }
 
@@ -29,6 +30,8 @@ export function useSermonReplies(questionId: string) {
     },
     enabled: !!questionId,
     initialData: [],
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
   });
 }
 
@@ -54,12 +57,12 @@ export function useAddSermonReply() {
 export function useUpdateSermonReply() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, content }: { id: string; content: string }) => {
-      // 답글 수정 로직 구현 필요
-      console.log('Update reply:', id, content);
+    mutationFn: async ({ questionId, id, content }: { questionId: string; id: string; content: string }) => {
+      const replyRef = doc(db, 'sermon_questions', questionId, 'replies', id);
+      await updateDoc(replyRef, { content });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sermonReplies'] });
+    onSuccess: (_, { questionId }) => {
+      queryClient.invalidateQueries({ queryKey: ['sermonReplies', questionId] });
     },
   });
 }

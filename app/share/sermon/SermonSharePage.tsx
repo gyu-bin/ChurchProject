@@ -1,44 +1,27 @@
 import OptimizedFlatList from '@/components/OptimizedFlatList';
 import { useDesign } from '@/context/DesignSystem';
-import { db } from '@/firebase/config';
+import { useAddSermonShare, useDeleteSermonShare, useSermonShares, useUpdateSermonShare } from '@/hooks/useSermonShares';
 import { getCurrentUser } from '@/services/authService';
 import { Ionicons } from '@expo/vector-icons';
-import {
-    addDoc,
-    collection,
-    deleteDoc,
-    doc,
-    getDocs,
-    limit,
-    orderBy,
-    query,
-    serverTimestamp,
-    startAfter,
-    updateDoc
-} from 'firebase/firestore';
+import { serverTimestamp } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Keyboard,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  ActivityIndicator,
+  Alert,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SermonSharePage() {
   const { colors, spacing, font } = useDesign();
-  const [shares, setShares] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [lastVisible, setLastVisible] = useState<any>(null);
-  const [hasMore, setHasMore] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<any>(null);
@@ -48,98 +31,45 @@ export default function SermonSharePage() {
   const [user, setUser] = useState<any>(null);
   const [anonymous, setAnonymous] = useState(false);
   const insets = useSafeAreaInsets();
-  const PAGE_SIZE = 10;
 
   useEffect(() => {
     getCurrentUser().then(setUser);
-    fetchInitialShares();
   }, []);
 
-  const fetchInitialShares = async () => {
-    setLoading(true);
-    const q = query(
-      collection(db, 'sermon_shares'),
-      orderBy('createdAt', 'desc'),
-      limit(PAGE_SIZE)
-    );
-
-    const snapshot = await getDocs(q);
-    const data = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-
-    setShares(data);
-    setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
-    setHasMore(snapshot.docs.length === PAGE_SIZE);
-    setLoading(false);
-  };
-
-  const fetchMoreShares = async () => {
-    if (!hasMore || loadingMore) return;
-
-    setLoadingMore(true);
-    const q = query(
-      collection(db, 'sermon_shares'),
-      orderBy('createdAt', 'desc'),
-      startAfter(lastVisible),
-      limit(PAGE_SIZE)
-    );
-
-    const snapshot = await getDocs(q);
-    const data = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-
-    setShares((prev) => [...prev, ...data]);
-    setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
-    setHasMore(snapshot.docs.length === PAGE_SIZE);
-    setLoadingMore(false);
-  };
+  const { data: sermonShares = [], isLoading } = useSermonShares();
+  const { mutate: addSermonShare } = useAddSermonShare();
+  const { mutate: updateSermonShare } = useUpdateSermonShare();
+  const { mutate: deleteSermonShare } = useDeleteSermonShare();
 
   const handleAddShare = async () => {
     if (!title || !content || !preacher) {
       Alert.alert('입력 오류', '모든 항목을 입력하세요.');
       return;
     }
-
-    try {
-      await addDoc(collection(db, 'sermon_shares'), {
-        title,
-        preacher,
-        content,
-        anonymous,
-        userEmail: user?.email,
-        createdAt: serverTimestamp(),
-      });
-      resetForm();
-      setModalVisible(false);
-      fetchInitialShares(); // 새 글 등록 후 목록 새로고침
-    } catch (e) {
-      console.error('등록 실패:', e);
-      Alert.alert('등록 실패', '나눔 등록 중 오류가 발생했습니다.');
-    }
+    addSermonShare({
+      title,
+      preacher,
+      content,
+      anonymous,
+      userEmail: user?.email,
+      createdAt: serverTimestamp(),
+    });
+    resetForm();
+    setModalVisible(false);
   };
 
   const handleUpdateShare = async () => {
     if (!title || !content || !preacher || !selectedPost) return;
-
-    try {
-      await updateDoc(doc(db, 'sermon_shares', selectedPost.id), {
-        title,
-        preacher,
-        content,
-        anonymous,
-        updatedAt: serverTimestamp(),
-      });
-      resetForm();
-      setEditModalVisible(false);
-      fetchInitialShares(); // 수정 후 목록 새로고침
-    } catch (e) {
-      console.error('수정 실패:', e);
-      Alert.alert('수정 실패', '글 수정 중 오류가 발생했습니다.');
-    }
+    updateSermonShare({
+      id: selectedPost.id,
+      title,
+      preacher,
+      content,
+      anonymous,
+      updatedAt: serverTimestamp(),
+    });
+    resetForm();
+    setEditModalVisible(false);
   };
 
   const handleDeleteShare = async (id: string) => {
@@ -149,13 +79,7 @@ export default function SermonSharePage() {
         text: '삭제',
         style: 'destructive',
         onPress: async () => {
-          try {
-            await deleteDoc(doc(db, 'sermon_shares', id));
-            setShares((prev) => prev.filter((item) => item.id !== id));
-          } catch (e) {
-            console.error('삭제 실패:', e);
-            Alert.alert('삭제 실패', '글 삭제 중 오류가 발생했습니다.');
-          }
+          deleteSermonShare(id);
         },
       },
     ]);
@@ -173,11 +97,11 @@ export default function SermonSharePage() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      {loading ? (
+      {isLoading ? (
         <ActivityIndicator size='large' color={colors.primary} style={{ marginTop: spacing.lg }} />
       ) : (
         <OptimizedFlatList
-          data={shares}
+          data={sermonShares as any[]}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xl }}
           renderItem={({ item }) => (
@@ -223,13 +147,6 @@ export default function SermonSharePage() {
               )}
             </View>
           )}
-          onEndReached={fetchMoreShares}
-          onEndReachedThreshold={0.1}
-          ListFooterComponent={
-            loadingMore ? (
-              <ActivityIndicator color={colors.primary} style={{ marginVertical: spacing.md }} />
-            ) : null
-          }
         />
       )}
 
@@ -249,26 +166,6 @@ export default function SermonSharePage() {
         <Text style={{ color: '#fff', fontWeight: 'bold' }}>+ 나눔</Text>
       </TouchableOpacity>
 
-      {/* ➕ 플로팅 버튼 */}
-      <TouchableOpacity
-        onPress={() => setModalVisible(true)}
-        style={{
-          position: 'absolute',
-          bottom: insets.bottom + 20,
-          right: 24,
-          backgroundColor: colors.primary,
-          paddingVertical: 14,
-          paddingHorizontal: 20,
-          borderRadius: 32,
-          elevation: 4,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.3,
-          shadowRadius: 4,
-        }}>
-        <Text style={{ color: '#fff', fontWeight: 'bold' }}>+ 나눔</Text>
-      </TouchableOpacity>
-
       {/* 작성 모달 */}
       <CenteredModal
         visible={modalVisible}
@@ -284,8 +181,8 @@ export default function SermonSharePage() {
         content={content}
         setContent={setContent}
         heading='✍️ 나눔 작성'
-        anonymous={anonymous} // 🟢 추가
-        setAnonymous={setAnonymous} // 🟢 추가
+        anonymous={anonymous}
+        setAnonymous={setAnonymous}
       />
 
       {/* 수정 모달 */}
@@ -303,8 +200,8 @@ export default function SermonSharePage() {
         content={content}
         setContent={setContent}
         heading='✏️ 나눔 수정'
-        anonymous={anonymous} // 🟢 추가
-        setAnonymous={setAnonymous} // 🟢 추가
+        anonymous={anonymous}
+        setAnonymous={setAnonymous}
       />
     </View>
   );

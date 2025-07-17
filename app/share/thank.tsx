@@ -1,26 +1,31 @@
 // pages/gratitude/index.tsx
 import { useDesign } from '@/context/DesignSystem';
 import { useAppTheme } from '@/context/ThemeContext';
-import { useAddGratitude, useDeleteGratitude, useGratitudes, useUpdateGratitude } from '@/hooks/useGratitudes';
+import {
+  useAddGratitude,
+  useDeleteGratitude,
+  useGratitudes,
+  useUpdateGratitude,
+} from '@/hooks/useGratitudes';
 import { getCurrentUser } from '@/services/authService';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    Alert,
-    Dimensions,
-    Keyboard,
-    KeyboardAvoidingView,
-    Modal,
-    PanResponder,
-    Platform,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View,
+  Alert,
+  Dimensions,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  PanResponder,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -70,7 +75,7 @@ export default function ThanksPage() {
     })
   ).current;
 
-  const { data: gratitudes = [], isLoading } = useGratitudes();
+  const { data: gratitudes = [], isLoading } = useGratitudes(filterDate);
   const addGratitude = useAddGratitude();
   const updateGratitude = useUpdateGratitude();
   const deleteGratitude = useDeleteGratitude();

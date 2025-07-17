@@ -1,32 +1,20 @@
 import OptimizedFlatList from '@/components/OptimizedFlatList';
 import { useDesign } from '@/context/DesignSystem';
-import { db } from '@/firebase/config';
 import { useAuth } from '@/hooks/useAuth';
+import { useAddSermonReply, useDeleteSermonReply, useSermonQuestion, useSermonReplies, useUpdateSermonReply } from '@/hooks/useSermonQuestions';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useState } from 'react';
 import {
-    addDoc,
-    collection,
-    deleteDoc,
-    doc,
-    getDoc,
-    onSnapshot,
-    orderBy,
-    query,
-    serverTimestamp,
-    updateDoc,
-} from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
-import {
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -35,67 +23,45 @@ export default function SermonQuestionDetail() {
   const router = useRouter();
   const { colors, spacing } = useDesign();
   const { user } = useAuth();
-  const [question, setQuestion] = useState<any>(null);
-  const [replies, setReplies] = useState<any[]>([]);
   const [replyText, setReplyText] = useState('');
-  const [loading, setLoading] = useState(true);
   const [writeModalVisible, setWriteModalVisible] = useState(false);
   const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
-  useEffect(() => {
-    const fetchQuestion = async () => {
-      const docRef = doc(db, 'sermon_questions', id!);
-      const snap = await getDoc(docRef);
-      if (snap.exists()) setQuestion({ id: snap.id, ...snap.data() });
-      setLoading(false);
-    };
 
-    const q = query(
-      collection(db, 'sermon_questions', id!, 'replies'),
-      orderBy('createdAt', 'asc')
-    );
-    const unsubscribe = onSnapshot(q, (snap) => {
-      const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setReplies(data);
-    });
+  // TanStack Query 기반 데이터 패칭
+  const { data: question, isLoading: questionLoading } = useSermonQuestion(id!) as { data: any, isLoading: boolean };
+  const { data: replies = [], isLoading: repliesLoading } = useSermonReplies(id!) as { data: any[], isLoading: boolean };
 
-    fetchQuestion();
-    return unsubscribe;
-  }, [id]);
+  // 답글 mutation 훅
+  const addReply = useAddSermonReply();
+  const updateReply = useUpdateSermonReply();
+  const deleteReply = useDeleteSermonReply();
+
+  const loading = questionLoading || repliesLoading;
 
   const submitReply = async () => {
     setWriteModalVisible(false);
-
     if (!replyText.trim()) return;
-
-    const repliesRef = collection(db, 'sermon_questions', id!, 'replies');
-
     try {
       if (editingReplyId) {
-        // ✅ 수정
-        const replyDocRef = doc(repliesRef, editingReplyId);
-        await updateDoc(replyDocRef, {
-          content: replyText,
-          editedAt: serverTimestamp(), // 수정 시간 추가 (옵션)
-        });
+        await updateReply.mutateAsync({ questionId: id!, id: editingReplyId, content: replyText });
       } else {
-        // ✅ 새 답글 추가
-        await addDoc(repliesRef, {
-          content: replyText,
-          author: user?.name || '익명',
-          createdAt: serverTimestamp(),
-        });
+        await addReply.mutateAsync({ questionId: id!, content: replyText, author: user?.name || '익명' });
       }
     } catch (e) {
       console.error('답글 저장 오류', e);
     } finally {
       setReplyText('');
-      setEditingReplyId(null); // ✅ 수정 후 초기화
+      setEditingReplyId(null);
     }
   };
 
-  const deleteReply = async (replyId: string) => {
-    await deleteDoc(doc(db, 'sermon_questions', id!, 'replies', replyId));
+  const handleDeleteReply = async (replyId: string) => {
+    try {
+      await deleteReply.mutateAsync({ questionId: id!, replyId });
+    } catch (e) {
+      console.error('답글 삭제 오류', e);
+    }
   };
 
   return (
@@ -166,20 +132,20 @@ export default function SermonQuestionDetail() {
                   {user?.name === item.author && (
                     <View
                       style={{
-                        flexDirection: 'row', // 👉 가로 배치
+                        flexDirection: 'row',
                         alignItems: 'center',
-                        gap: spacing.sm, // 버튼 간격
+                        gap: spacing.sm,
                       }}>
                       <TouchableOpacity
                         onPress={() => {
-                          setReplyText(item.content); // 기존 내용 세팅
-                          setEditingReplyId(item.id); // 수정 중인 답글 ID 저장
+                          setReplyText(item.content);
+                          setEditingReplyId(item.id);
                           setWriteModalVisible(true);
                         }}>
                         <Text style={{ color: colors.primary, fontSize: 12 }}>✏️ 수정</Text>
                       </TouchableOpacity>
 
-                      <TouchableOpacity onPress={() => deleteReply(item.id)}>
+                      <TouchableOpacity onPress={() => handleDeleteReply(item.id)}>
                         <Text style={{ color: colors.error, fontSize: 14 }}>🗑 삭제</Text>
                       </TouchableOpacity>
                     </View>
