@@ -1,40 +1,40 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  ActivityIndicator,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Platform,
-  Modal,
-  Alert,
-  Keyboard,
-  TouchableWithoutFeedback,
-  KeyboardAvoidingView,
-  Linking,
-  Image,
-} from 'react-native';
-import { useRouter } from 'expo-router';
+import CustomDropdown from '@/components/dropDown';
+import { useDesign } from '@/context/DesignSystem';
+import { db } from '@/firebase/config';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import {
-  collection,
-  query,
-  where,
-  getDocs,
   addDoc,
-  updateDoc,
+  collection,
   deleteDoc,
   doc,
-  serverTimestamp,
+  getDocs,
   onSnapshot,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where,
 } from 'firebase/firestore';
-import { db } from '@/firebase/config';
-import { useDesign } from '@/context/DesignSystem';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import CustomDropdown from '@/components/dropDown';
 import { getLinkPreview } from 'link-preview-js';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface NoticeItem {
   id: string;
@@ -444,45 +444,81 @@ export default function NoticePage() {
       <Modal
         visible={modalVisible}
         animationType='slide'
-        transparent={false}
+        transparent
         onRequestClose={resetModal}>
         <KeyboardAvoidingView
-          style={{ flex: 1 }}
+          style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
+          keyboardVerticalOffset={0}
+        >
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  paddingHorizontal: spacing.lg,
-                  paddingVertical: spacing.md,
-                  borderBottomWidth: 1,
-                  borderBottomColor: colors.border,
-                }}>
-                <Text
+            <View
+              style={{
+                backgroundColor: colors.background,
+                borderTopLeftRadius: 20,
+                borderTopRightRadius: 20,
+                paddingBottom: insets.bottom || 16,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: -3 },
+                shadowOpacity: 0.1,
+                shadowRadius: 10,
+                elevation: 10,
+                minHeight: 320,
+                maxHeight: '90%',
+                paddingHorizontal: 20,
+              }}>
+              {/* 드래그바 */}
+              <View style={{ width: 40, height: 5, borderRadius: 2.5, backgroundColor: '#ccc', alignSelf: 'center', marginTop: 8, marginBottom: 16 }} />
+              <ScrollView
+                contentContainerStyle={{ paddingHorizontal: 0, paddingBottom: 24 }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                {/* 헤더 */}
+                <View
                   style={{
-                    fontSize: font.heading,
-                    fontWeight: 'bold',
-                    color: colors.text,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 20,
                   }}>
-                  {editMode ? '✏️ 공지사항 수정' : '📝 공지사항 작성'}
-                </Text>
-                <TouchableOpacity onPress={resetModal}>
-                  <Ionicons name='close' size={26} color={colors.text} />
-                </TouchableOpacity>
-              </View>
-
-              <View style={{ flex: 1, padding: spacing.lg }}>
-                <CustomDropdown
-                  data={campusOptions}
-                  value={campus}
-                  onChange={(item) => setCampus(item.value)}
-                  placeholder='캠퍼스 선택'
-                  containerStyle={{ marginBottom: spacing.md }}
-                />
+                  <Text
+                    style={{
+                      fontSize: font.heading,
+                      fontWeight: 'bold',
+                      color: colors.text,
+                    }}>
+                    {editMode ? '✏️ 공지사항 수정' : '📝 공지사항 작성'}
+                  </Text>
+                  <TouchableOpacity onPress={resetModal}>
+                    <Ionicons name='close' size={26} color={colors.text} />
+                  </TouchableOpacity>
+                </View>
+                <View onTouchStart={() => Keyboard.dismiss()}>
+                  <CustomDropdown
+                    data={campusOptions}
+                    value={campus}
+                    onChange={(item) => setCampus(item.value)}
+                    containerStyle={{
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                      borderWidth: 1,
+                      borderRadius: 10,
+                      marginBottom: spacing.md,
+                    }}
+                    dropdownStyle={{
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                      borderWidth: 1,
+                      borderRadius: 10,
+                    }}
+                    textStyle={{
+                      color: colors.text,
+                      fontSize: font.body,
+                    }}
+                    placeholder='캠퍼스 선택'
+                  />
+                </View>
                 <TextInput
                   placeholder='공지 제목을 입력하세요'
                   placeholderTextColor={colors.placeholder}
@@ -531,10 +567,10 @@ export default function NoticePage() {
                     fontSize: font.body,
                     backgroundColor: colors.surface,
                     color: colors.text,
+                    marginBottom: 20,
                   }}
                 />
-
-                {/* ✅ 미리보기 표시 */}
+                {/* 미리보기 표시 */}
                 {linkPreview && (
                   <View
                     style={{
@@ -563,9 +599,7 @@ export default function NoticePage() {
                     <Text style={{ color: colors.subtext }}>{linkPreview.description}</Text>
                   </View>
                 )}
-              </View>
-
-              <View style={{ padding: spacing.lg }}>
+                {/* 버튼 */}
                 <TouchableOpacity
                   onPress={handleSaveNotice}
                   style={{
@@ -573,12 +607,13 @@ export default function NoticePage() {
                     borderRadius: 10,
                     paddingVertical: spacing.md,
                     alignItems: 'center',
+                    marginTop: 24,
                   }}>
                   <Text style={{ color: '#fff', fontSize: font.body, fontWeight: 'bold' }}>
                     {editMode ? '수정 완료' : '작성 완료'}
                   </Text>
                 </TouchableOpacity>
-              </View>
+              </ScrollView>
             </View>
           </TouchableWithoutFeedback>
         </KeyboardAvoidingView>

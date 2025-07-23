@@ -8,7 +8,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { ImagePickerAsset } from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import React, { useEffect, useState } from 'react';
 import {
@@ -152,8 +152,8 @@ export default function CreateTeam() {
     let max: number | null = null;
     if (!isUnlimited) {
       max = parseInt(memberCount);
-      if (isNaN(max) || max < 2 || max > 99) {
-        Alert.alert('입력 오류', '참여 인원 수는 2명 이상 99명 이하로 설정해주세요.');
+      if (isNaN(max) || max < 2 || max > 500) {
+        Alert.alert('입력 오류', '참여 인원 수는 2명 이상 500명 이하로 설정해주세요.');
         setUpdateLoading(false);
         return;
       }
@@ -175,7 +175,7 @@ export default function CreateTeam() {
         leaderEmail: creatorEmail,
         description,
         membersList: [creatorEmail],
-        createdAt: new Date(),
+        createdAt: serverTimestamp(),
         openContact,
         maxMembers: max,
         category,
@@ -184,12 +184,19 @@ export default function CreateTeam() {
         thumbnail: downloadUrls[0],
       };
 
-      const teamRef = await addTeamMutation.mutateAsync({
+      // 1. 문서 추가 (id/teamId 없이)
+      const docRef = await addTeamMutation.mutateAsync({
         ...baseData,
         approved: true,
-        id: '',
-        teamId: '',
       });
+      // 2. id, teamId 필드에 문서 id를 update
+      if (docRef?.id) {
+        const teamDocRef = doc(db, 'teams', docRef.id);
+        await updateDoc(teamDocRef, {
+          id: docRef.id,
+          teamId: docRef.id,
+        });
+      }
 
       // ✅ '✨ 반짝소모임'일 경우: 삭제 예약 + 푸시 알림
       if (category === '✨ 반짝소모임' && expirationDate) {
@@ -200,7 +207,7 @@ export default function CreateTeam() {
 
         setTimeout(async () => {
           try {
-            await deleteDoc(doc(db, 'teams', teamRef.id));
+            await deleteDoc(doc(db, 'teams', docRef.id));
             console.log('✅ 반짝소모임 자동 삭제 완료');
           } catch (e) {
             console.error('❌ 삭제 실패:', e);
@@ -248,7 +255,11 @@ export default function CreateTeam() {
           setUpdateLoading(false); // 데이터 로드 후 로딩 상태 종료
         }, 500);
       }, 1500);
-      router.replace('/teams');
+      if (docRef?.id) {
+        router.replace(`/teams/${docRef.id}`);
+      } else {
+        router.replace('/teams');
+      }
     } catch (error: any) {
       Alert.alert('생성 실패', error.message);
     }

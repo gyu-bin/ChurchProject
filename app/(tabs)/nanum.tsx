@@ -1,3 +1,4 @@
+import SettingCard from '@/components/my/SettingCard';
 import { useDesign } from '@/context/DesignSystem';
 import { useAppTheme } from '@/context/ThemeContext';
 import { db } from '@/firebase/config';
@@ -10,7 +11,6 @@ import { addDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
-  Dimensions,
   FlatList,
   Image,
   Linking,
@@ -18,10 +18,9 @@ import {
   SafeAreaView,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
-import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
-import SettingCard from '@/components/my/SettingCard';
+import { useSafeAreaFrame } from 'react-native-safe-area-context';
 
 type Prayer = {
   id: string;

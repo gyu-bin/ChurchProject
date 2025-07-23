@@ -1,11 +1,10 @@
+import FlexibleCarousel from '@/components/FlexibleCarousel';
 import { useDesign } from '@/context/DesignSystem';
 import { db } from '@/firebase/config';
+import { router } from 'expo-router';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
-import { Dimensions, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import FlexibleCarousel from '@/components/FlexibleCarousel';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaFrame } from 'react-native-safe-area-context';
 
 type Notice = {
@@ -43,7 +42,9 @@ export default function HomeNotices() {
 
   const renderNoticeCard = (item: Notice) => {
     return (
-      <View
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={() => router.push(`/home/notice/allNotice?id=${item.id}`)}
         style={{
           backgroundColor: colors.surface,
           borderRadius: 12,
@@ -110,7 +111,7 @@ export default function HomeNotices() {
         >
           {item.content}
         </Text>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -118,15 +119,15 @@ export default function HomeNotices() {
     <View>
       {/* 📢 공동체 소식 */}
       <View style={{ marginBottom: spacing.sm }}>
-        <TouchableOpacity onPress={() => router.push('/home/notice/allNotice')}>
+        <View>
           <View
             style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text style={{ fontSize: font.title, fontWeight: 'bold', color: colors.text }}>
               📢 시광 광고
             </Text>
-            <Ionicons name='chevron-forward' size={20} color={colors.text} />
+            {/* <Ionicons name='chevron-forward' size={20} color={colors.text} /> */}
           </View>
-        </TouchableOpacity>
+        </View>
 
         {notices.length >= 1 && (
           <View>

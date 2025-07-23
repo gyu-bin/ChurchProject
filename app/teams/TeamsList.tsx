@@ -1,24 +1,26 @@
 import SkeletonBox from '@/components/Skeleton';
 import { useDesign } from '@/context/DesignSystem';
 import { useTeams } from '@/hooks/useTeams';
+import { setScrollCallback } from '@/utils/scrollRefManager';
 import { Ionicons } from '@expo/vector-icons';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import { useNavigation } from '@react-navigation/native';
 import dayjs from 'dayjs';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Dimensions,
-  FlatList,
-  // Image,
-  Modal,
-  Platform,
-  RefreshControl,
-  TextInput as RNTextInput,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    Dimensions,
+    FlatList,
+    // Image,
+    Modal,
+    Platform,
+    RefreshControl,
+    TextInput as RNTextInput,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { EdgeInsets, useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 import styled from 'styled-components/native';
@@ -161,6 +163,7 @@ export default function TeamsList() {
   });
   const { filter } = useLocalSearchParams(); // filter param 받아오기
   const [firstLoad, setFirstLoad] = useState(true);
+  const navigation = useNavigation();
 
   // TanStack Query 훅 사용
   const { data: teams = [], isLoading: loading, refetch: refetchTeams } = useTeams();
@@ -191,9 +194,9 @@ export default function TeamsList() {
   }, []);
 
   useEffect(() => {
-    // setScrollCallback('teams', () => { // 이 부분은 삭제되었으므로 주석 처리
-    //   mainListRef.current?.scrollToOffset({ offset: 0, animated: true });
-    // });
+    setScrollCallback('teams', () => {
+      mainListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    });
   }, []);
 
   useEffect(() => {
@@ -204,6 +207,14 @@ export default function TeamsList() {
       setFilters((prev) => ({ ...prev, category: '' }));
     }
   }, [filter]);
+
+  useEffect(() => {
+    // @ts-ignore: expo-router/native-stack tabPress 타입 오류 우회
+    const unsubscribe = navigation.addListener('tabPress' as any, (e: any) => {
+      mainListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   // 필터링 적용 로직
   const filteredTeams = useMemo(() => {

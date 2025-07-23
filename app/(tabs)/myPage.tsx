@@ -12,8 +12,8 @@ import Toast from 'react-native-root-toast';
 
 import ScreenContainer from '@/components/_common/ScreenContainer';
 import ScreenHeader from '@/components/_common/ScreenHeader';
-import SettingCard from '@/components/my/SettingCard';
 import { ProfileCard } from '@/components/my/ProfileCard';
+import SettingCard from '@/components/my/SettingCard';
 import { User } from '@/constants/_types/user';
 import { useDesign } from '@/context/DesignSystem';
 import { useAppTheme } from '@/context/ThemeContext';

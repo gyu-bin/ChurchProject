@@ -23,7 +23,7 @@ function TeamsTabInner() {
     const unsubscribeFocus = navigation.addListener('state', (e: any) => {
       const idx = e.data.state.index;
       const routeName = e.data.state.routeNames[idx];
-      setCurrentTab(routeName === '소모임 리스트' ? 'teams' : 'community');
+      setCurrentTab(routeName === '소모임 목록' ? 'teams' : 'community');
     });
     const unsubscribeTab = navigation.addListener('tabPress', () => {
       runScrollCallback(currentTab);
@@ -51,7 +51,7 @@ function TeamsTabInner() {
         animationEnabled: true,
         lazy: true,
       }}>
-      <Tab.Screen name='소모임 리스트' component={TeamsList} />
+      <Tab.Screen name='소모임 목록' component={TeamsList} />
       <Tab.Screen name='커뮤니티' component={Community} />
     </Tab.Navigator>
   );
@@ -63,4 +63,3 @@ export default function TeamsTabNavigator() {
     </ScrollCallbackProvider>
   );
 }
-

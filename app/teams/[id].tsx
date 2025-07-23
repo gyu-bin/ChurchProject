@@ -21,34 +21,34 @@ import * as ImagePicker from 'expo-image-picker';
 import { ImagePickerAsset } from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  arrayRemove,
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  increment,
-  onSnapshot,
-  query,
-  setDoc,
-  Timestamp,
-  updateDoc,
-  where,
-  writeBatch,
+    arrayRemove,
+    collection,
+    deleteDoc,
+    doc,
+    getDocs,
+    increment,
+    onSnapshot,
+    query,
+    setDoc,
+    Timestamp,
+    updateDoc,
+    where,
+    writeBatch,
 } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Platform,
-  RefreshControl,
-  Image as RNImage,
-  SafeAreaView,
-  ScrollView,
-  Share,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Platform,
+    RefreshControl,
+    Image as RNImage,
+    SafeAreaView,
+    ScrollView,
+    Share,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import Toast from 'react-native-root-toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -875,6 +875,13 @@ export default function TeamDetail() {
         <ActivityIndicator size='large' color={colors.primary} />
       </SafeAreaView>
     );
+  }
+
+  if (!id) {
+    return <Text>잘못된 접근입니다. (id 없음)</Text>;
+  }
+  if (!user) {
+    return <ActivityIndicator />;
   }
 
   if (!team) {

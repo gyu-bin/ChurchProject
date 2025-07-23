@@ -4,17 +4,17 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAddSermonReply, useDeleteSermonReply, useSermonQuestion, useSermonReplies, useUpdateSermonReply } from '@/hooks/useSermonQuestions';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -30,12 +30,17 @@ export default function SermonQuestionDetail() {
 
   // TanStack Query 기반 데이터 패칭
   const { data: question, isLoading: questionLoading } = useSermonQuestion(id!) as { data: any, isLoading: boolean };
-  const { data: replies = [], isLoading: repliesLoading } = useSermonReplies(id!) as { data: any[], isLoading: boolean };
+  const { data: replies = [], isLoading: repliesLoading, refetch: refetchReplies } = useSermonReplies(id!) as { data: any[], isLoading: boolean, refetch: () => void };
 
   // 답글 mutation 훅
   const addReply = useAddSermonReply();
   const updateReply = useUpdateSermonReply();
   const deleteReply = useDeleteSermonReply();
+
+  // 답글 항상 최신화: 화면 진입 시 refetch
+  useEffect(() => {
+    if (id) refetchReplies();
+  }, [id]);
 
   const loading = questionLoading || repliesLoading;
 

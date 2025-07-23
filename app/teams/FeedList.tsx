@@ -1,8 +1,10 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { useDesign } from '@/context/DesignSystem';
+import { setScrollCallback } from '@/utils/scrollRefManager';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { Image } from 'expo-image';
+import React, { useEffect, useRef } from 'react';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 /*
 const dummyData = Array.from({ length: 12 }, (_, index) => ({
@@ -19,7 +21,7 @@ const dummyImageUrls = [
 ];
 
 // ✅ dummyData 생성 시 랜덤 이미지 추가
-const dummyData = Array.from({ length: 12 }, (_, index) => ({
+const dummyData = Array.from({ length: 39 }, (_, index) => ({
   id: index.toString(),
   likes: Math.floor(Math.random() * 10) + 1, // ❤️ 1~10 랜덤
   image: dummyImageUrls[Math.floor(Math.random() * dummyImageUrls.length)],
@@ -27,6 +29,14 @@ const dummyData = Array.from({ length: 12 }, (_, index) => ({
 
 export default function CommunityScreen() {
   const { colors, font } = useDesign();
+  const navigation = useNavigation();
+  const flatListRef = useRef<FlatList<any>>(null);
+  
+  useEffect(() => {
+    setScrollCallback('teams', () => {
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    });
+  }, [navigation, flatListRef]);
 
   const renderItem = ({ item }: { item: any }) => (
     <View style={styles.card}>
@@ -42,6 +52,7 @@ export default function CommunityScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* ✅ 그리드 카드 */}
       <FlatList
+        ref={flatListRef}
         data={dummyData}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
