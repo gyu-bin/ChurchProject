@@ -1,26 +1,23 @@
+// 기존 import들 유지
 import OptimizedFlatList from '@/components/OptimizedFlatList';
 import { useDesign } from '@/context/DesignSystem';
+import { db } from '@/firebase/config';
 import { useAuth } from '@/hooks/useAuth';
 import { useAddSermonReply, useDeleteSermonReply, useUpdateSermonReply } from '@/hooks/useSermonQuestions';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View
+  ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform,
+  RefreshControl,
+  Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type SermonQuestion = { id: string; content: string; author?: string };
-type SermonReply = { id: string; content: string; author?: string };
+type SermonReply = { id: string; content: string; author?: string; createdAt?: string };
 
 export default function SermonQuestionDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -32,278 +29,213 @@ export default function SermonQuestionDetail() {
   const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
   const [anonymous, setAnonymous] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const insets = useSafeAreaInsets();
 
-  // TanStack Query 기반 데이터 패칭
   const { data: question, isLoading: questionLoading, refetch: refetchQuestion } = useQuery<SermonQuestion | null>({
     queryKey: ['sermon_question', id],
     queryFn: async () => {
       if (!id) return null;
-      // 실제 fetch 로직으로 대체
-      return null;
+      const docRef = doc(db, 'sermon_questions', id);
+      const snap = await getDoc(docRef);
+      return snap.exists() ? { id: snap.id, ...snap.data() } as SermonQuestion : null;
     },
     enabled: !!id,
-    staleTime: 1000 * 60 * 5,
-    refetchOnWindowFocus: false,
   });
-  const { data: replies = [], isLoading: repliesLoading, refetch: refetchReplies } = useQuery<SermonReply[]>({
+
+  const { data: repliesData = [], isLoading: repliesLoading, refetch: refetchReplies } = useQuery<SermonReply[]>({
     queryKey: ['sermon_replies', id],
     queryFn: async () => {
       if (!id) return [];
-      // 실제 fetch 로직으로 대체
-      return [];
+      const colRef = collection(db, 'sermon_questions', id, 'replies');
+      const snap = await getDocs(colRef);
+      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as SermonReply[];
     },
     enabled: !!id,
-    staleTime: 1000 * 60 * 5,
-    refetchOnWindowFocus: false,
   });
 
-  // 답글 mutation 훅
   const addReply = useAddSermonReply();
   const updateReply = useUpdateSermonReply();
   const deleteReply = useDeleteSermonReply();
 
-  // 답글 항상 최신화: 화면 진입 시 refetch
   useEffect(() => {
     if (id) refetchReplies();
   }, [id]);
 
-  const loading = questionLoading || repliesLoading;
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refetchReplies();
+    await refetchQuestion();
+    setRefreshing(false);
+  };
 
   const submitReply = async () => {
-    if (submitLoading) return;
+    if (submitLoading || !replyText.trim()) return;
     setSubmitLoading(true);
-    setWriteModalVisible(false);
-    if (!replyText.trim()) {
-      setSubmitLoading(false);
-      return;
-    }
     try {
       if (editingReplyId) {
         await updateReply.mutateAsync({ questionId: id!, id: editingReplyId, content: replyText });
       } else {
-        await addReply.mutateAsync({ questionId: id!, content: replyText, author: anonymous ? '익명' : (user?.name || '익명') });
+        const newReply = {
+          content: replyText,
+          author: anonymous ? '익명' : (user?.name || '익명'),
+          createdAt: new Date().toISOString(),
+        };
+        const colRef = collection(db, 'sermon_questions', id!, 'replies');
+        await addDoc(colRef, newReply);
       }
+      await refetchReplies();
     } catch (e) {
       console.error('답글 저장 오류', e);
     } finally {
       setReplyText('');
       setEditingReplyId(null);
       setAnonymous(false);
+      setWriteModalVisible(false);
       setSubmitLoading(false);
     }
   };
 
   const handleDeleteReply = async (replyId: string) => {
-    try {
-      await deleteReply.mutateAsync({ questionId: id!, replyId });
-    } catch (e) {
-      console.error('답글 삭제 오류', e);
-    }
+    Alert.alert('삭제 확인', '정말 삭제하시겠습니까?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '삭제',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            if (!id) return;
+            await deleteDoc(doc(db, 'sermon_questions', id, 'replies', replyId));
+            await refetchReplies();
+          } catch (e) {
+            console.error('답글 삭제 오류', e);
+          }
+        },
+      },
+    ]);
   };
 
+  const sortedReplies = [...repliesData].sort((a, b) => {
+    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return bTime - aTime;
+  });
+
+  const loading = questionLoading || repliesLoading;
+
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{
-        flex: 1,
-        backgroundColor: colors.background,
-        paddingTop: Platform.OS === 'android' ? insets.top : insets.top,
-      }}>
-      {/* 🔝 상단 헤더 */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: spacing.md,
-          paddingVertical: spacing.sm,
-          borderBottomWidth: 1,
-          borderBottomColor: colors.border,
-        }}>
-        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: spacing.sm }}>
-          <Ionicons name='arrow-back' size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.text }}>
-          {question?.content}
-        </Text>
-      </View>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      <View style={{ backgroundColor: colors.background, paddingTop: insets.top, flex: 1 }}>
+        {/* Header */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name='arrow-back' size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={{ marginLeft: spacing.sm, fontSize: 18, fontWeight: 'bold', color: colors.text }}>질문 상세</Text>
+        </View>
 
-      {loading ? (
-        <ActivityIndicator size='large' color={colors.primary} style={{ marginTop: 20 }} />
-      ) : (
-        <View style={{ flex: 1, padding: spacing.md }}>
-          {/* 📝 질문 본문 */}
-          <View style={{ marginBottom: spacing.lg }}>
-            <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text }}>
-              {question?.content}
-            </Text>
-            <Text style={{ fontSize: 14, color: colors.subtext, marginTop: 4 }}>
-              작성자: {question?.author || '익명'}
-            </Text>
-          </View>
-
-          {/* 💬 답글 목록 */}
+        {loading ? (
+          <ActivityIndicator style={{ marginTop: 20 }} color={colors.primary} />
+        ) : (
           <OptimizedFlatList
-            data={replies}
-            keyExtractor={(item) => item.id}
+            data={sortedReplies}
+            keyExtractor={item => item.id}
+            ListHeaderComponent={
+              <View style={{ padding: spacing.md }}>
+                <Text style={{ fontSize: 20, fontWeight: 'bold', color: colors.text }}>{question?.content}</Text>
+                <Text style={{ fontSize: 14, color: colors.subtext, marginTop: 4 }}>작성자: {question?.author || '익명'}</Text>
+              </View>
+            }
             renderItem={({ item }) => (
-              <View
-                style={{
-                  backgroundColor: colors.surface,
-                  borderRadius: 8,
-                  padding: spacing.md,
-                  marginBottom: spacing.sm,
-                }}>
-                {/* 📝 답글 내용 */}
+              <View style={{ backgroundColor: colors.surface, borderRadius: 8, margin: spacing.sm, padding: spacing.md }}>
                 <Text style={{ color: colors.text }}>{item.content}</Text>
-
-                {/* 👤 작성자 + 수정/삭제 버튼 */}
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginTop: 4,
-                  }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
                   <Text style={{ color: colors.subtext, fontSize: 12 }}>- {item.author}</Text>
-
                   {user?.name === item.author && (
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: spacing.sm,
-                      }}>
-                      <TouchableOpacity
-                        onPress={() => {
-                          setReplyText(item.content);
-                          setEditingReplyId(item.id);
-                          setWriteModalVisible(true);
-                        }}>
+                    <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                      <TouchableOpacity onPress={() => { setReplyText(item.content); setEditingReplyId(item.id); setWriteModalVisible(true); }}>
                         <Text style={{ color: colors.primary, fontSize: 12 }}>✏️ 수정</Text>
                       </TouchableOpacity>
-
                       <TouchableOpacity onPress={() => handleDeleteReply(item.id)}>
-                        <Text style={{ color: colors.error, fontSize: 14 }}>🗑 삭제</Text>
+                        <Text style={{ color: colors.error, fontSize: 12 }}>🗑 삭제</Text>
                       </TouchableOpacity>
                     </View>
                   )}
                 </View>
               </View>
             )}
-            showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
             ListFooterComponent={
               <TouchableOpacity
-                onPress={() => {
-                  setReplyText('');
-                  setWriteModalVisible(true);
-                }}
+                onPress={() => { setReplyText(''); setWriteModalVisible(true); }}
                 style={{
-                  backgroundColor: colors.primary,
-                  borderRadius: 20,
-                  paddingVertical: spacing.md,
-                  paddingHorizontal: spacing.lg,
-                  alignSelf: 'center',
-                  marginTop: spacing.lg,
-                  marginBottom: spacing.lg,
+                  backgroundColor: colors.primary, borderRadius: 20, paddingVertical: spacing.md,
+                  paddingHorizontal: spacing.lg, alignSelf: 'center', marginVertical: spacing.lg,
                 }}>
                 <Text style={{ color: '#fff', fontWeight: 'bold' }}>✍️ 답글 작성</Text>
               </TouchableOpacity>
             }
           />
+        )}
 
-          {/* 답글 작성 모달 */}
-          <Modal
-            visible={writeModalVisible}
-            animationType='slide'
-            transparent
-            onRequestClose={() => setWriteModalVisible(false)}>
-            <TouchableWithoutFeedback onPress={() => setWriteModalVisible(false)}>
-              <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }}>
-                <KeyboardAvoidingView
-                  style={{ flex: 1, justifyContent: 'flex-end' }}
-                  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-                  <View
-                    style={{
-                      backgroundColor: colors.surface,
-                      borderTopLeftRadius: 20,
-                      borderTopRightRadius: 20,
-                      padding: spacing.lg,
-                    }}>
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        justifyContent: 'space-between',
-                        marginBottom: spacing.md,
-                      }}>
-                      <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.text }}>
-                        답글 작성
-                      </Text>
-                      <TouchableOpacity onPress={() => setWriteModalVisible(false)}>
-                        <Ionicons name='close' size={24} color={colors.text} />
-                      </TouchableOpacity>
-                    </View>
-
-                    <TextInput
-                      placeholder='답글 내용을 입력하세요...'
-                      placeholderTextColor={colors.subtext}
-                      value={replyText}
-                      onChangeText={setReplyText}
-                      multiline
-                      style={{
-                        borderColor: colors.border,
-                        borderWidth: 1,
-                        borderRadius: 12,
-                        padding: spacing.md,
-                        minHeight: 100,
-                        color: colors.text,
-                      }}
-                    />
-                    {/* 익명 체크박스 */}
-                    <TouchableOpacity
-                      onPress={() => setAnonymous((prev) => !prev)}
-                      style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.md, marginBottom: spacing.md }}>
-                      <View
-                        style={{
-                          width: 24,
-                          height: 24,
-                          borderRadius: 6,
-                          borderWidth: 2,
-                          borderColor: anonymous ? colors.primary : colors.border,
-                          backgroundColor: anonymous ? colors.primary : 'transparent',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          marginRight: spacing.sm,
-                        }}>
-                        {anonymous && <Ionicons name='checkmark' size={16} color='#fff' />}
-                      </View>
-                      <Text style={{ color: colors.text, fontSize: 15 }}>익명으로 작성</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      onPress={submitLoading ? undefined : submitReply}
-                      disabled={submitLoading}
-                      style={{
-                        backgroundColor: colors.primary,
-                        borderRadius: 12,
-                        paddingVertical: spacing.md,
-                        alignItems: 'center',
-                        marginTop: spacing.lg,
-                        opacity: submitLoading ? 0.7 : 1,
-                      }}>
-                      {submitLoading ? (
-                        <ActivityIndicator color='#fff' />
-                      ) : (
-                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>작성 완료</Text>
-                      )}
+        {/* Modal */}
+        <Modal visible={writeModalVisible} animationType='slide' transparent>
+          <TouchableWithoutFeedback onPress={() => setWriteModalVisible(false)}>
+            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }}>
+              <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'flex-end' }} behavior='padding'>
+                <View style={{ backgroundColor: colors.surface, padding: spacing.lg, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.md }}>
+                    <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.text }}>답글 작성</Text>
+                    <TouchableOpacity onPress={() => setWriteModalVisible(false)}>
+                      <Ionicons name='close' size={24} color={colors.text} />
                     </TouchableOpacity>
                   </View>
-                </KeyboardAvoidingView>
-              </View>
-            </TouchableWithoutFeedback>
-          </Modal>
-        </View>
-      )}
+
+                  <TextInput
+                    placeholder='답글 내용을 입력하세요...'
+                    placeholderTextColor={colors.subtext}
+                    value={replyText}
+                    onChangeText={setReplyText}
+                    multiline
+                    style={{
+                      borderColor: colors.border, borderWidth: 1, borderRadius: 12,
+                      padding: spacing.md, minHeight: 100, color: colors.text,
+                    }}
+                  />
+
+                  {/* 익명 */}
+                  <TouchableOpacity
+                    onPress={() => setAnonymous(prev => !prev)}
+                    style={{ flexDirection: 'row', alignItems: 'center', marginVertical: spacing.md }}>
+                    <View style={{
+                      width: 24, height: 24, borderRadius: 6, borderWidth: 2,
+                      borderColor: anonymous ? colors.primary : colors.border,
+                      backgroundColor: anonymous ? colors.primary : 'transparent',
+                      justifyContent: 'center', alignItems: 'center', marginRight: spacing.sm
+                    }}>
+                      {anonymous && <Ionicons name='checkmark' size={16} color='#fff' />}
+                    </View>
+                    <Text style={{ color: colors.text }}>익명으로 작성</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={submitReply}
+                    disabled={submitLoading}
+                    style={{
+                      backgroundColor: colors.primary, borderRadius: 12,
+                      paddingVertical: spacing.md, alignItems: 'center',
+                      opacity: submitLoading ? 0.7 : 1
+                    }}>
+                    {submitLoading ? <ActivityIndicator color='#fff' /> : (
+                      <Text style={{ color: '#fff', fontWeight: 'bold' }}>작성 완료</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </KeyboardAvoidingView>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
+      </View>
     </KeyboardAvoidingView>
   );
 }

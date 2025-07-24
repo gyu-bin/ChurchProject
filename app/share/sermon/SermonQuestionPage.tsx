@@ -1,5 +1,6 @@
 import OptimizedFlatList from '@/components/OptimizedFlatList';
 import { useDesign } from '@/context/DesignSystem';
+import { useAuth } from '@/hooks/useAuth';
 import { useFirestoreDeleteDoc, useFirestoreUpdateDoc } from '@/hooks/useFirestoreQuery';
 import { queryKeys } from '@/hooks/useQueryKeys';
 import { useAddSermonQuestion, useInfiniteSermonQuestions } from '@/hooks/useSermons';
@@ -23,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SermonQuestionPage() {
   const { colors, spacing, font, radius } = useDesign();
+  const { user } = useAuth();
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<any>(null);
   const [content, setContent] = useState('');
@@ -94,7 +96,7 @@ export default function SermonQuestionPage() {
     }
     const payload = {
       content,
-      author: anonymous ? '익명' : '익명', // 실제 유저 정보 필요시 수정
+      author: anonymous ? '익명' : user?.name || '알 수 없음',
       createdAt: new Date(),
     };
     try {
@@ -132,8 +134,7 @@ export default function SermonQuestionPage() {
   };
 
   const renderItem = ({ item }: { item: any }) => {
-    // 실제 유저 정보 필요시 isMyPost 조건 수정
-    const isMyPost = false;
+    const isMyPost = item.author === user?.name;
     return (
       <TouchableOpacity
         onPress={() => router.push(`/share/sermon/sermonQustionDeatil?id=${item.id}`)}
