@@ -12,17 +12,17 @@ import { collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc } from 
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -190,12 +190,18 @@ export default function CreateTeam() {
         approved: true,
       });
       // 2. id, teamId 필드에 문서 id를 update
-      if (docRef?.id) {
+      if (docRef && docRef.id) {
         const teamDocRef = doc(db, 'teams', docRef.id);
         await updateDoc(teamDocRef, {
           id: docRef.id,
           teamId: docRef.id,
         });
+      }
+      // ✅ 팀 생성 후 전체 목록 최신화
+      if (typeof window !== 'undefined') {
+        const { useTeams } = require('@/hooks/useTeams');
+        const { refetch: refetchTeams } = useTeams();
+        refetchTeams && refetchTeams();
       }
 
       // ✅ '✨ 반짝소모임'일 경우: 삭제 예약 + 푸시 알림

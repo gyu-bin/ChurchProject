@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
+    ActivityIndicator,
     Keyboard,
     KeyboardAvoidingView,
     Platform,
@@ -30,6 +31,7 @@ export default function PrayerSubmitPage() {
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [isAnonymous, setIsAnonymous] = useState(false);
     const [isUrgent, setIsUrgent] = useState(false);
+    const [submitLoading, setSubmitLoading] = useState(false);
 
     useEffect(() => {
         const loadUser = async () => {
@@ -57,8 +59,9 @@ export default function PrayerSubmitPage() {
     const { mutate: addPrayer } = useAddPrayer();
 
     const handleSubmit = () => {
+        if (submitLoading) return;
         if (!title.trim() || !content.trim()) return;
-
+        setSubmitLoading(true);
         addPrayer(
             {
                 title,
@@ -71,11 +74,13 @@ export default function PrayerSubmitPage() {
             {
                 onSuccess: () => {
                     Toast.show('✅ 제출되었습니다');
+                    setSubmitLoading(false);
                     router.back();
                 },
                 onError: (error: any) => {
                     console.error('기도제목 등록 오류:', error);
                     Toast.show('❌ 제출에 실패했습니다');
+                    setSubmitLoading(false);
                 },
             }
         );
@@ -224,24 +229,30 @@ export default function PrayerSubmitPage() {
                         )}
 
                         <TouchableOpacity
-                            onPress={handleSubmit}
+                            onPress={submitLoading ? undefined : handleSubmit}
+                            disabled={submitLoading}
                             style={{
                                 backgroundColor: colors.primary,
                                 paddingVertical: spacing.md,
                                 borderRadius: radius.md,
                                 alignItems: 'center',
                                 marginBottom: spacing.md,
+                                opacity: submitLoading ? 0.7 : 1,
                             }}
                         >
-                            <Text
-                                style={{
-                                    color: '#fff',
-                                    fontSize: font.body,
-                                    fontWeight: 'bold',
-                                }}
-                            >
-                                🙏 제출하기
-                            </Text>
+                            {submitLoading ? (
+                                <ActivityIndicator color='#fff' />
+                            ) : (
+                                <Text
+                                    style={{
+                                        color: '#fff',
+                                        fontSize: font.body,
+                                        fontWeight: 'bold',
+                                    }}
+                                >
+                                    🙏 제출하기
+                                </Text>
+                            )}
                         </TouchableOpacity>
 
                         <TouchableOpacity

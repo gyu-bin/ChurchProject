@@ -26,6 +26,8 @@ export default function SermonQuestionDetail() {
   const [replyText, setReplyText] = useState('');
   const [writeModalVisible, setWriteModalVisible] = useState(false);
   const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
+  const [anonymous, setAnonymous] = useState(false);
+  const [submitLoading, setSubmitLoading] = useState(false);
   const insets = useSafeAreaInsets();
 
   // TanStack Query 기반 데이터 패칭
@@ -45,19 +47,26 @@ export default function SermonQuestionDetail() {
   const loading = questionLoading || repliesLoading;
 
   const submitReply = async () => {
+    if (submitLoading) return;
+    setSubmitLoading(true);
     setWriteModalVisible(false);
-    if (!replyText.trim()) return;
+    if (!replyText.trim()) {
+      setSubmitLoading(false);
+      return;
+    }
     try {
       if (editingReplyId) {
         await updateReply.mutateAsync({ questionId: id!, id: editingReplyId, content: replyText });
       } else {
-        await addReply.mutateAsync({ questionId: id!, content: replyText, author: user?.name || '익명' });
+        await addReply.mutateAsync({ questionId: id!, content: replyText, author: anonymous ? '익명' : (user?.name || '익명') });
       }
     } catch (e) {
       console.error('답글 저장 오류', e);
     } finally {
       setReplyText('');
       setEditingReplyId(null);
+      setAnonymous(false);
+      setSubmitLoading(false);
     }
   };
 
@@ -226,17 +235,43 @@ export default function SermonQuestionDetail() {
                         color: colors.text,
                       }}
                     />
+                    {/* 익명 체크박스 */}
+                    <TouchableOpacity
+                      onPress={() => setAnonymous((prev) => !prev)}
+                      style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.md, marginBottom: spacing.md }}>
+                      <View
+                        style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: 6,
+                          borderWidth: 2,
+                          borderColor: anonymous ? colors.primary : colors.border,
+                          backgroundColor: anonymous ? colors.primary : 'transparent',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginRight: spacing.sm,
+                        }}>
+                        {anonymous && <Ionicons name='checkmark' size={16} color='#fff' />}
+                      </View>
+                      <Text style={{ color: colors.text, fontSize: 15 }}>익명으로 작성</Text>
+                    </TouchableOpacity>
 
                     <TouchableOpacity
-                      onPress={submitReply}
+                      onPress={submitLoading ? undefined : submitReply}
+                      disabled={submitLoading}
                       style={{
                         backgroundColor: colors.primary,
                         borderRadius: 12,
                         paddingVertical: spacing.md,
                         alignItems: 'center',
                         marginTop: spacing.lg,
+                        opacity: submitLoading ? 0.7 : 1,
                       }}>
-                      <Text style={{ color: '#fff', fontWeight: 'bold' }}>작성 완료</Text>
+                      {submitLoading ? (
+                        <ActivityIndicator color='#fff' />
+                      ) : (
+                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>작성 완료</Text>
+                      )}
                     </TouchableOpacity>
                   </View>
                 </KeyboardAvoidingView>

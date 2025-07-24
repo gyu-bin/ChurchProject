@@ -5,11 +5,12 @@ import { queryKeys } from './useQueryKeys';
 export const useNotifications = (userEmail: string) => {
   return useFirestoreCollection(
     'notifications',
-    queryKeys.notifications.list(),
+    [...queryKeys.notifications.list(), userEmail],
     {
       where: [['to', '==', userEmail]],
-      orderBy: [['createdAt', 'desc']],
+      // orderBy: [['createdAt', 'desc']],
       limit: 20,
+      enabled: !!userEmail,
       staleTime: 1 * 60 * 1000, // 1분
     }
   );
@@ -22,7 +23,7 @@ export const useUnreadNotifications = (userEmail: string) => {
     queryKeys.notifications.unread(),
     {
       where: [['to', '==', userEmail], ['read', '==', false]],
-      orderBy: [['createdAt', 'desc']],
+      // orderBy: [['createdAt', 'desc']],
       staleTime: 1 * 60 * 1000, // 1분
     }
   );

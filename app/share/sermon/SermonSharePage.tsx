@@ -108,7 +108,7 @@ export default function SermonSharePage() {
   const isMyPost = (item: any) => item.userEmail === user?.email;
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View style={{ flex: 1, backgroundColor: colors.background,paddingTop: spacing.md }}>
       {isLoading ? (
         <ActivityIndicator size='large' color={colors.primary} style={{ marginTop: spacing.lg }} />
       ) : (
@@ -120,7 +120,7 @@ export default function SermonSharePage() {
             <View
               style={{
                 backgroundColor: colors.surface,
-                padding: 16,
+                padding: spacing.md,
                 marginBottom: 12,
                 borderRadius: 8,
                 borderWidth: 1,
@@ -132,7 +132,16 @@ export default function SermonSharePage() {
               <Text style={{ color: colors.subtext, marginBottom: spacing.xs }}>
                 {item.preacher}
               </Text>
-              <Text style={{ color: colors.text, marginBottom: spacing.xs }}>{item.content}</Text>
+
+              {/* 내용과 작성자를 한 줄에 좌우 배치 */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs }}>
+                <Text style={{ color: colors.text, flex: 1 }} numberOfLines={2} ellipsizeMode='tail'>
+                  {item.content}
+                </Text>
+                <Text style={{ color: colors.subtext, fontSize: 13, marginLeft: spacing.md }}>
+                  작성자: {item.anonymous ? '익명' : (item.userEmail || '알 수 없음')}
+                </Text>
+              </View>
 
               {isMyPost(item) && (
                 <View

@@ -21,34 +21,34 @@ import * as ImagePicker from 'expo-image-picker';
 import { ImagePickerAsset } from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-    arrayRemove,
-    collection,
-    deleteDoc,
-    doc,
-    getDocs,
-    increment,
-    onSnapshot,
-    query,
-    setDoc,
-    Timestamp,
-    updateDoc,
-    where,
-    writeBatch,
+  arrayRemove,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  increment,
+  onSnapshot,
+  query,
+  setDoc,
+  Timestamp,
+  updateDoc,
+  where,
+  writeBatch,
 } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Platform,
-    RefreshControl,
-    Image as RNImage,
-    SafeAreaView,
-    ScrollView,
-    Share,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Platform,
+  RefreshControl,
+  Image as RNImage,
+  SafeAreaView,
+  ScrollView,
+  Share,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import Toast from 'react-native-root-toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -152,6 +152,7 @@ export default function TeamDetail() {
   const [selectedLocation, setSelectedLocation] = useState('');
 
   const [loaded, setLoaded] = useState(false);
+  const [joinLoading, setJoinLoading] = useState(false);
 
   useEffect(() => {
     const random = Math.floor(Math.random() * loadingAnimations.length);
@@ -185,6 +186,31 @@ export default function TeamDetail() {
       setEditCategory(team.category || '');
     }
     getCurrentUser().then(setCurrentUser);
+    
+    // ✅ members 필드 동기화 함수
+    const syncMembersField = async () => {
+      if (!team) return;
+      
+      const actualMemberCount = team.membersList?.length || 0;
+      if (team.members !== actualMemberCount) {
+        try {
+          const teamRef = doc(db, 'teams', team.id);
+          await updateDoc(teamRef, {
+            members: actualMemberCount,
+          });
+          console.log('✅ members 필드 동기화 완료:', actualMemberCount);
+          // ✅ 동기화 후 즉시 최신화
+          await refetchTeam();
+        } catch (e) {
+          console.error('❌ members 필드 동기화 실패:', e);
+        }
+      }
+    };
+    
+    // 팀 데이터가 로드되면 members 필드 동기화
+    if (team) {
+      syncMembersField();
+    }
     // const fetchData = async () => {
     //   const q = query(collection(db, 'teams'), where('id', '==', id));
     //   const snapshot = await getDocs(q);
@@ -192,7 +218,7 @@ export default function TeamDetail() {
     // };
 
     // fetchData();
-  }, []);
+  }, [team]);
 
   useEffect(() => {
     if (team?.thumbnail) {
@@ -332,10 +358,16 @@ export default function TeamDetail() {
 
   // 모임가입
   const handleJoin = async () => {
-    if (!team || !user) return;
+    if (joinLoading) return;
+    setJoinLoading(true);
+    if (!team || !user) {
+      setJoinLoading(false);
+      return;
+    }
 
     if (team.membersList?.includes(user.email)) {
       Alert.alert('참여 불가', '이미 가입된 모임입니다.');
+      setJoinLoading(false);
       return;
     }
 
@@ -343,37 +375,45 @@ export default function TeamDetail() {
 
     if (!isUnlimited && (team.membersList?.length ?? 0) >= (team.maxMembers ?? 99)) {
       Alert.alert('인원 초과', '모집이 마감되었습니다.');
+      setJoinLoading(false);
       return;
     }
 
-    // ✅ 1. Push 토큰 가져오기 (email 기준으로)
-    const q = query(collection(db, 'expoTokens'), where('email', '==', team.leaderEmail));
-    const snap = await getDocs(q);
-    const tokens: string[] = snap.docs.map((doc) => doc.data().token).filter(Boolean);
+    try {
+      // ✅ 1. Push 토큰 가져오기 (email 기준으로)
+      const q = query(collection(db, 'expoTokens'), where('email', '==', team.leaderEmail));
+      const snap = await getDocs(q);
+      const tokens: string[] = snap.docs.map((doc) => doc.data().token).filter(Boolean);
 
-    // ✅ 2. Firestore 알림 저장 (email 저장)
-    await sendNotification({
-      to: team.leaderEmail, // Firestore 알림 받는 주체(email)
-      message: `${user.name}님이 "${team.name}" 모임에 가입 신청했습니다.`,
-      type: 'team_join_request',
-      link: '/notifications',
-      teamId: team.id,
-      teamName: team.name,
-      applicantEmail: user.email,
-      applicantName: user.name,
-    });
-
-    // ✅ 3. Expo 푸시 전송 (token 기반)
-    if (tokens.length > 0) {
-      await sendPushNotification({
-        to: tokens,
-        title: '🙋 소모임 가입 신청',
-        body: `${user.name}님이 "${team.name}" 모임에 가입 신청했습니다.`,
+      // ✅ 2. Firestore 알림 저장 (email 저장)
+      await sendNotification({
+        to: team.leaderEmail, // 반드시 이메일로 저장 (닉네임/이름이 아닌 실제 이메일)
+        message: `${user.name}님이 "${team.name}" 모임에 가입 신청했습니다.`,
+        type: 'team_join_request',
+        link: '/notifications',
+        teamId: team.id,
+        teamName: team.name,
+        applicantEmail: user.email,
+        applicantName: user.name,
       });
-    }
 
-    showToast('✅가입 신청 완료: 모임장에게 신청 메시지를 보냈습니다.');
-    fetchTeam(); // ✅ 추가된 부분
+      // ✅ 3. Expo 푸시 전송 (token 기반)
+      if (tokens.length > 0) {
+        await sendPushNotification({
+          to: tokens,
+          title: '🙋 소모임 가입 신청',
+          body: `${user.name}님이 "${team.name}" 모임에 가입 신청했습니다.`,
+        });
+      }
+
+      showToast('✅가입 신청 완료: 모임장에게 신청 메시지를 보냈습니다.');
+      fetchTeam(); // ✅ 추가된 부분
+      await refetchTeam(); // 인원/참여자 최신화
+    } catch (e) {
+      Toast.show('가입 신청 중 오류가 발생했습니다. 네트워크를 확인해주세요.', { position: Toast.positions.CENTER });
+    } finally {
+      setJoinLoading(false);
+    }
     // router.back();
   };
 
@@ -394,8 +434,8 @@ export default function TeamDetail() {
 
     if (team.expirationDate) {
       const parsedDate =
-        team.expirationDate instanceof Date
-          ? team.expirationDate
+        team.expirationDate instanceof Timestamp
+          ? team.expirationDate.toDate()
           : team.expirationDate.toDate?.() || new Date(team.expirationDate);
       setExpirationDate(parsedDate);
     }
@@ -611,6 +651,7 @@ export default function TeamDetail() {
 
             setMemberUsers((prev) => prev.filter((m) => m.email !== email));
             refetchTeam(); // TanStack Query의 refetch 사용
+            await refetchTeam(); // 인원/참여자 최신화
             Alert.alert('강퇴 완료', `${displayName}님이 강퇴되었습니다.`);
           } catch (e) {
             console.error('❌ 강퇴 실패:', e);
@@ -930,6 +971,33 @@ export default function TeamDetail() {
     } catch (err) {
       console.error('일정 취소 오류:', err);
       Toast.show('일정 취소에 실패했습니다.');
+    }
+  };
+
+  const cancelJoinRequest = async () => {
+    if (joinLoading || !team || !user) return;
+    setJoinLoading(true);
+    try {
+      // 해당 가입신청 알림 삭제
+      const q = query(
+        collection(db, 'notifications'),
+        where('type', '==', 'team_join_request'),
+        where('teamId', '==', team.id),
+        where('applicantEmail', '==', user.email)
+      );
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        await Promise.all(snap.docs.map((doc) => deleteDoc(doc.ref)));
+        showToast('가입 신청이 취소되었습니다.');
+        setAlreadyRequested(false);
+      } else {
+        showToast('취소할 가입 신청이 없습니다.');
+      }
+    } catch (e) {
+      showToast('가입 신청 취소 중 오류가 발생했습니다.');
+      console.error(e);
+    } finally {
+      setJoinLoading(false);
     }
   };
 
@@ -1300,25 +1368,55 @@ export default function TeamDetail() {
             </View>
           )}
 
-          {/* 가입 신청 버튼 */}
+          {/* 가입 신청/취소 버튼 */}
           {!isFull && !isCreator && !team.membersList?.includes(user.email) && (
-            <TouchableOpacity
-              onPress={alreadyRequested ? undefined : handleJoin}
-              disabled={isFull || alreadyRequested}
-              style={{
-                backgroundColor: isFull || alreadyRequested ? colors.border : colors.primary,
-                paddingVertical: spacing.sm,
-                borderRadius: radius.md,
-                alignItems: 'center',
-                flexDirection: 'row',
-                justifyContent: 'center',
-                gap: spacing.xs,
-              }}>
-              <Ionicons name='person-add-outline' size={18} color='#fff' />
-              <Text style={{ color: '#fff', fontSize: font.body, fontWeight: '600' }}>
-                {isFull ? '모집마감' : alreadyRequested ? '가입 신청 완료' : '가입 신청'}
-              </Text>
-            </TouchableOpacity>
+            alreadyRequested ? (
+              <TouchableOpacity
+                onPress={cancelJoinRequest}
+                disabled={joinLoading}
+                style={{
+                  backgroundColor: colors.error,
+                  paddingVertical: spacing.md,
+                  borderRadius: radius.md,
+                  alignItems: 'center',
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                  gap: spacing.xs,
+                  marginBottom: spacing.sm,
+                }}>
+                <Ionicons name='close-circle-outline' size={18} color='#fff' />
+                {joinLoading ? (
+                  <ActivityIndicator color='#fff' size='small' style={{ marginLeft: 8 }} />
+                ) : (
+                  <Text style={{ color: '#fff', fontSize: font.body, fontWeight: '600' }}>
+                    가입 신청 취소
+                  </Text>
+                )}
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                onPress={joinLoading ? undefined : handleJoin}
+                disabled={isFull || joinLoading}
+                style={{
+                  backgroundColor: isFull ? colors.border : colors.primary,
+                  paddingVertical: spacing.md,
+                  borderRadius: radius.md,
+                  alignItems: 'center',
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                  gap: spacing.xs,
+                  marginBottom: spacing.sm,
+                }}>
+                <Ionicons name='person-add-outline' size={18} color='#fff' />
+                {joinLoading ? (
+                  <ActivityIndicator color='#fff' size='small' style={{ marginLeft: 8 }} />
+                ) : (
+                  <Text style={{ color: '#fff', fontSize: font.body, fontWeight: '600' }}>
+                    {isFull ? '모집마감' : '가입 신청'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )
           )}
         </View>
 
@@ -1727,6 +1825,7 @@ export default function TeamDetail() {
                           });
                           showToast('✅ 모임에서 탈퇴했습니다.');
                           router.back();
+                          await refetchTeam(); // 인원/참여자 최신화
                         } catch (error) {
                           console.error('탈퇴 실패:', error);
                           showToast('⚠️ 탈퇴에 실패했습니다.');

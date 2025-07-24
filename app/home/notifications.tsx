@@ -17,6 +17,7 @@ import {
     getDocs,
     increment,
     query,
+    updateDoc,
     where
 } from 'firebase/firestore';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -62,7 +63,13 @@ export default function NotificationsScreen() {
     const horizontalPadding = 20;
 
     // TanStack Query 훅 사용
-    const { data: notifications = [], isLoading, refetch: refetchNotifications } = useNotifications(user?.email || '');
+    const { data: notificationsData = [], isLoading, refetch: refetchNotifications } = useNotifications(user?.email || '');
+    const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+
+    // useNotifications에서 받아온 데이터를 상태에 동기화
+    useEffect(() => {
+        setNotifications(notificationsData);
+    }, [notificationsData]);
     const updateTeamMutation = useUpdateTeam();
 
     useEffect(() => {
@@ -80,19 +87,20 @@ export default function NotificationsScreen() {
         setRefreshing(false);
     }, [user, refetchNotifications]);
 
+    // 알림 삭제 후 화면에서도 즉시 제거하는 함수
+    const removeNotification = (id: string) => {
+        if (!Array.isArray(notifications)) return;
+        // notifications가 배열이 아닐 경우 방어
+        if (typeof setNotifications === 'function') {
+            setNotifications((prev: any[]) => prev.filter((n) => n.id !== id));
+        }
+    };
+
     const handleNotificationPress = async (notification: NotificationItem) => {
         try {
             if (notification.type === 'team_join_request') {
                 setSelectedNotification(notification);
                 setModalVisible(true);
-                return;
-            }
-            if (notification.type === 'team_join_approved' && notification.teamId) {
-                router.push({
-                    pathname: "/components/pages/teams/chat",
-                    params: { id: notification.teamId }
-                } as any);
-                await deleteDoc(doc(db, 'notifications', notification.id));
                 return;
             }
             if (notification.type === 'open_meditation_ranking') {
@@ -101,6 +109,7 @@ export default function NotificationsScreen() {
                     params: { showRanking: 'true' }
                 } as any);
                 await deleteDoc(doc(db, 'notifications', notification.id));
+                removeNotification(notification.id); // 화면에서도 즉시 제거
                 return;
             }
         } catch (e) {
@@ -115,12 +124,11 @@ export default function NotificationsScreen() {
         }
         try {
             if (approve) {
-                await updateTeamMutation.mutateAsync({
-                    id: selectedNotification.teamId,
-                    data: {
-                        membersList: arrayUnion(selectedNotification.applicantEmail),
-                        members: increment(1),
-                    }
+                // ✅ 직접 updateDoc 사용하여 members 필드 확실히 업데이트
+                const teamRef = doc(db, 'teams', selectedNotification.teamId);
+                await updateDoc(teamRef, {
+                    membersList: arrayUnion(selectedNotification.applicantEmail),
+                    members: increment(1),
                 });
 
                 await sendNotification({
@@ -148,6 +156,8 @@ export default function NotificationsScreen() {
                 }
 
                 showToast(`✅ 승인 완료: ${selectedNotification.applicantName}님이 소모임에 가입되었습니다.`);
+                // ✅ 알림 목록 최신화
+                await refetchNotifications();
                 router.push({
                     pathname: '/teams/[id]',
                     params: { id: selectedNotification.teamId }
@@ -155,6 +165,7 @@ export default function NotificationsScreen() {
             }
 
             await deleteDoc(doc(db, 'notifications', selectedNotification.id));
+            removeNotification(selectedNotification.id); // 화면에서도 즉시 제거
             setModalVisible(false);
             setSelectedNotification(null);
         } catch (e) {
@@ -210,6 +221,7 @@ export default function NotificationsScreen() {
                 onPress={async () => {
                     try {
                         await deleteDoc(doc(db, 'notifications', item.id));
+                        removeNotification(item.id); // 화면에서도 즉시 제거
                         Toast.show('🗑️ 삭제 완료', {
                             duration: Toast.durations.SHORT,
                             position: Toast.positions.BOTTOM,
@@ -261,46 +273,46 @@ export default function NotificationsScreen() {
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 style={{ flex: 1 }}
             >
-            <TouchableWithoutFeedback onPress={() => {
-                openedRowRef.current?.closeRow();
-                Keyboard.dismiss();
-            }}>
-                <SwipeListView
-                    data={notifications}
-                    keyExtractor={(item) => item.id}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-                    onRowOpen={(rowKey, rowMap) => {
-                        if (openedRowRef.current && openedRowRef.current !== rowMap[rowKey]) {
-                            openedRowRef.current.closeRow();
+                <TouchableWithoutFeedback onPress={() => {
+                    openedRowRef.current?.closeRow();
+                    Keyboard.dismiss();
+                }}>
+                    <SwipeListView
+                        data={notifications}
+                        keyExtractor={(item) => item.id}
+                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                        onRowOpen={(rowKey, rowMap) => {
+                            if (openedRowRef.current && openedRowRef.current !== rowMap[rowKey]) {
+                                openedRowRef.current.closeRow();
+                            }
+                            openedRowRef.current = rowMap[rowKey]; // 🔥 이걸 안 쓰면 row를 추적 못함
+                        }}
+                        onTouchStart={() => {
+                            if (openedRowRef.current) {
+                                openedRowRef.current.closeRow();
+                                openedRowRef.current = null;
+                            }
+                        }}
+                        renderItem={renderItem}
+                        renderHiddenItem={renderHiddenItem}
+                        leftOpenValue={0}
+                        rightOpenValue={-80}
+                        disableRightSwipe
+                        closeOnRowBeginSwipe={false}
+                        closeOnRowPress={true}
+                        keyboardShouldPersistTaps="handled" // ✅ 꼭 추가
+                        ListEmptyComponent={
+                            <Text style={{
+                                textAlign: 'center',
+                                color: colors.subtext,
+                                paddingTop: Platform.OS === 'android' ? 20 : 10,
+                                fontSize: 20,
+                            }}>
+                                알림이 없습니다.
+                            </Text>
                         }
-                        openedRowRef.current = rowMap[rowKey]; // 🔥 이걸 안 쓰면 row를 추적 못함
-                    }}
-                    onTouchStart={() => {
-                        if (openedRowRef.current) {
-                            openedRowRef.current.closeRow();
-                            openedRowRef.current = null;
-                        }
-                    }}
-                    renderItem={renderItem}
-                    renderHiddenItem={renderHiddenItem}
-                    leftOpenValue={0}
-                    rightOpenValue={-80}
-                    disableRightSwipe
-                    closeOnRowBeginSwipe={false}
-                    closeOnRowPress={true}
-                    keyboardShouldPersistTaps="handled" // ✅ 꼭 추가
-                    ListEmptyComponent={
-                        <Text style={{
-                            textAlign: 'center',
-                            color: colors.subtext,
-                            paddingTop: Platform.OS === 'android' ? 20 : 10,
-                            fontSize: 20,
-                        }}>
-                            알림이 없습니다.
-                        </Text>
-                    }
-                />
-            </TouchableWithoutFeedback>
+                    />
+                </TouchableWithoutFeedback>
             </KeyboardAvoidingView>
 
             {/* 승인 모달 */}

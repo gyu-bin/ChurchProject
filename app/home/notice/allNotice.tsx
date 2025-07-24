@@ -5,35 +5,42 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  onSnapshot,
-  query,
-  serverTimestamp,
-  updateDoc,
-  where,
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    DocumentData,
+    getDocs,
+    limit,
+    onSnapshot,
+    orderBy,
+    query,
+    QueryDocumentSnapshot,
+    serverTimestamp,
+    startAfter,
+    updateDoc,
+    where,
 } from 'firebase/firestore';
 import { getLinkPreview } from 'link-preview-js';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Keyboard,
-  KeyboardAvoidingView,
-  Linking,
-  Modal,
-  Platform,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Image,
+    Keyboard,
+    KeyboardAvoidingView,
+    Linking,
+    Modal,
+    Platform,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View,
 } from 'react-native';
+import Toast from 'react-native-root-toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface NoticeItem {
@@ -57,7 +64,9 @@ const campusOptions = [
 export default function NoticePage() {
   const [user, setUser] = useState<any>(null);
   const [notices, setNotices] = useState<NoticeItem[]>([]);
+  const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -94,6 +103,77 @@ export default function NoticePage() {
       if (unsubscribe) unsubscribe();
     };
   }, []);
+
+  // 최초 10개 불러오기
+  useEffect(() => {
+    const fetchInitial = async () => {
+      setLoading(true);
+      try {
+        const q = query(
+          collection(db, 'notice'),
+          where('type', '==', 'notice'),
+          orderBy('date', 'desc'),
+          limit(10)
+        );
+        const snapshot = await getDocs(q);
+        const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as NoticeItem));
+        setNotices(list);
+        setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
+        setHasMore(snapshot.docs.length === 10);
+      } catch (e) {
+        Toast.show('공지사항을 불러오지 못했습니다. 네트워크를 확인해주세요.', { position: Toast.positions.CENTER });
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInitial();
+  }, []);
+
+  // 추가 데이터 불러오기
+  const fetchMore = async () => {
+    if (loading || !hasMore || !lastVisible) return;
+    setLoading(true);
+    try {
+      const q = query(
+        collection(db, 'notice'),
+        where('type', '==', 'notice'),
+        orderBy('date', 'desc'),
+        startAfter(lastVisible),
+        limit(10)
+      );
+      const snapshot = await getDocs(q);
+      const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as NoticeItem));
+      setNotices((prev) => [...prev, ...list]);
+      setLastVisible(snapshot.docs[snapshot.docs.length - 1] || lastVisible);
+      setHasMore(snapshot.docs.length === 10);
+    } catch (e) {
+      Toast.show('공지사항 추가 로딩 실패. 네트워크를 확인해주세요.', { position: Toast.positions.CENTER });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 새로고침
+  const handleRefresh = async () => {
+    setLoading(true);
+    try {
+      const q = query(
+        collection(db, 'notice'),
+        where('type', '==', 'notice'),
+        orderBy('date', 'desc'),
+        limit(10)
+      );
+      const snapshot = await getDocs(q);
+      const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as NoticeItem));
+      setNotices(list);
+      setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
+      setHasMore(snapshot.docs.length === 10);
+    } catch (e) {
+      Toast.show('공지사항 새로고침 실패. 네트워크를 확인해주세요.', { position: Toast.positions.CENTER });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchNotices = async () => {
     try {
@@ -210,10 +290,10 @@ export default function NoticePage() {
   };
 
   const [campusFilter, setCampusFilter] = useState('전체');
-  const filteredNotices =
-    campusFilter === '전체'
-      ? notices
-      : notices.filter((n) => n.campus?.trim().toLowerCase() === campusFilter.trim().toLowerCase());
+  // 캠퍼스 필터 적용
+  const filteredNotices = campusFilter === '전체'
+    ? notices
+    : notices.filter((n) => n.campus?.trim().toLowerCase() === campusFilter.trim().toLowerCase());
   const [filterModalVisible, setFilterModalVisible] = useState(false);
 
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
@@ -224,6 +304,117 @@ export default function NoticePage() {
     } else {
       setExpandedIds([...expandedIds, id]); // 펼치기
     }
+  };
+
+  // 공지 렌더링 함수 분리
+  const renderNotice = ({ item }: { item: NoticeItem }) => {
+    const formattedDate = item.date?.seconds
+      ? new Date(item.date.seconds * 1000).toLocaleDateString('ko-KR')
+      : '';
+    return (
+      <View
+        key={item.id}
+        style={{
+          backgroundColor: colors.surface,
+          borderRadius: 12,
+          padding: spacing.md,
+          marginBottom: spacing.sm,
+          shadowColor: '#000',
+          shadowOpacity: 0.05,
+          shadowOffset: { width: 0, height: 1 },
+          shadowRadius: 4,
+          elevation: 2,
+          borderColor: '#b9b8b8',
+          borderWidth: 1,
+          position: 'relative',
+        }}>
+        {/* ✅ 우측 상단 수정/삭제 */}
+        {(user?.role === '교역자' || user?.role === '관리자') && (
+          <View
+            style={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              flexDirection: 'row',
+              gap: 10,
+            }}>
+            <TouchableOpacity onPress={() => openEditModal(item)}>
+              <Text style={{ color: colors.primary, fontSize: 13 }}>✏️ </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleDeleteNotice(item.id)}>
+              <Text style={{ color: colors.error, fontSize: 13 }}>🗑️</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {/* ✅ 상단 배지 */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+          <Text
+            style={{
+              backgroundColor: '#E3F2FD',
+              color: '#1976D2',
+              fontSize: 11,
+              fontWeight: 'bold',
+              paddingHorizontal: 6,
+              paddingVertical: 2,
+              borderRadius: 4,
+              marginRight: 6,
+            }}>
+            광고
+          </Text>
+          <Text
+            style={{
+              backgroundColor: '#F3E5F5',
+              color: '#6A1B9A',
+              fontSize: 11,
+              fontWeight: 'bold',
+              paddingHorizontal: 6,
+              paddingVertical: 2,
+              borderRadius: 4,
+              marginRight: 6,
+            }}>
+            {item.campus}
+          </Text>
+          <Text style={{ fontSize: 12, color: colors.subtext }}>{formattedDate}</Text>
+        </View>
+        {/* ✅ 제목 */}
+        <Text
+          style={{
+            fontSize: 15,
+            fontWeight: 'bold',
+            color: colors.text,
+            marginBottom: 4,
+          }}>
+          {item.title}
+        </Text>
+        {/* ✅ 내용 */}
+        <Text
+          style={{
+            fontSize: 14,
+            color: colors.subtext,
+          }}
+          numberOfLines={expandedIds.includes(item.id) ? undefined : 10}>
+          {item.content}
+        </Text>
+        {/* ✅ 링크 미리보기 */}
+        {item.link && (
+          <TouchableOpacity onPress={() => item.link && openLink(item.link)}>
+            <Text style={{ color: colors.primary, marginTop: 8 }}>🔗 {item.link}</Text>
+          </TouchableOpacity>
+        )}
+        {/* ✅ 접기/펼치기 버튼 (박스 하단 중앙) */}
+        <TouchableOpacity onPress={() => toggleExpand(item.id)} activeOpacity={0.8}>
+          <Text
+            style={{
+              textAlign: 'center',
+              color: colors.text,
+              paddingTop: 12,
+              fontSize: 14,
+            }}>
+            {expandedIds.includes(item.id) ? '▲' : '▼'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
   };
 
   return (
@@ -314,131 +505,18 @@ export default function NoticePage() {
       </View>
 
       {/* ✅ 공지사항 목록 */}
-      {loading ? (
-        <ActivityIndicator style={{ marginTop: 20 }} />
-      ) : (
-        <ScrollView contentContainerStyle={{ padding: spacing.md }}>
-          {filteredNotices.length > 0 ? (
-            filteredNotices.map((item) => {
-              const formattedDate = item.date?.seconds
-                ? new Date(item.date.seconds * 1000).toLocaleDateString('ko-KR')
-                : '';
-
-              return (
-                <View
-                  key={item.id}
-                  style={{
-                    backgroundColor: colors.surface,
-                    borderRadius: 12,
-                    padding: spacing.md,
-                    marginBottom: spacing.sm,
-                    shadowColor: '#000',
-                    shadowOpacity: 0.05,
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowRadius: 4,
-                    elevation: 2,
-                    borderColor: '#b9b8b8',
-                    borderWidth: 1,
-                    position: 'relative', // ✅ 상단 버튼 위치 위해
-                  }}>
-                  {/* ✅ 우측 상단 수정/삭제 */}
-                  {(user?.role === '교역자' || user?.role === '관리자') && (
-                    <View
-                      style={{
-                        position: 'absolute',
-                        top: 8,
-                        right: 8,
-                        flexDirection: 'row',
-                        gap: 10,
-                      }}>
-                      <TouchableOpacity onPress={() => openEditModal(item)}>
-                        <Text style={{ color: colors.primary, fontSize: 13 }}>✏️ </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={() => handleDeleteNotice(item.id)}>
-                        <Text style={{ color: colors.error, fontSize: 13 }}>🗑️</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-
-                  {/* ✅ 상단 배지 */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                    <Text
-                      style={{
-                        backgroundColor: '#E3F2FD',
-                        color: '#1976D2',
-                        fontSize: 11,
-                        fontWeight: 'bold',
-                        paddingHorizontal: 6,
-                        paddingVertical: 2,
-                        borderRadius: 4,
-                        marginRight: 6,
-                      }}>
-                      광고
-                    </Text>
-                    <Text
-                      style={{
-                        backgroundColor: '#F3E5F5',
-                        color: '#6A1B9A',
-                        fontSize: 11,
-                        fontWeight: 'bold',
-                        paddingHorizontal: 6,
-                        paddingVertical: 2,
-                        borderRadius: 4,
-                        marginRight: 6,
-                      }}>
-                      {item.campus}
-                    </Text>
-                    <Text style={{ fontSize: 12, color: colors.subtext }}>{formattedDate}</Text>
-                  </View>
-
-                  {/* ✅ 제목 */}
-                  <Text
-                    style={{
-                      fontSize: 15,
-                      fontWeight: 'bold',
-                      color: colors.text,
-                      marginBottom: 4,
-                    }}>
-                    {item.title}
-                  </Text>
-
-                  {/* ✅ 내용 */}
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      color: colors.subtext,
-                    }}
-                    numberOfLines={expandedIds.includes(item.id) ? undefined : 10}>
-                    {item.content}
-                  </Text>
-
-                  {/* ✅ 링크 미리보기 */}
-                  {item.link && (
-                    <TouchableOpacity onPress={() => item.link && openLink(item.link)}>
-                      <Text style={{ color: colors.primary, marginTop: 8 }}>🔗 {item.link}</Text>
-                    </TouchableOpacity>
-                  )}
-
-                  {/* ✅ 접기/펼치기 버튼 (박스 하단 중앙) */}
-                  <TouchableOpacity onPress={() => toggleExpand(item.id)} activeOpacity={0.8}>
-                    <Text
-                      style={{
-                        textAlign: 'center',
-                        color: colors.text,
-                        paddingTop: 12,
-                        fontSize: 14,
-                      }}>
-                      {expandedIds.includes(item.id) ? '▲' : '▼'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              );
-            })
-          ) : (
-            <Text style={{ color: colors.subtext, textAlign: 'center' }}>공지사항이 없습니다.</Text>
-          )}
-        </ScrollView>
-      )}
+      <FlatList
+        data={filteredNotices}
+        keyExtractor={(item) => item.id?.toString?.() || String(item.id)}
+        renderItem={renderNotice}
+        contentContainerStyle={{ padding: spacing.md }}
+        ListEmptyComponent={<Text style={{ color: colors.subtext, textAlign: 'center' }}>{loading ? '' : '공지사항이 없습니다.'}</Text>}
+        ListFooterComponent={loading ? <ActivityIndicator style={{ marginTop: 20 }} /> : null}
+        onEndReached={fetchMore}
+        onEndReachedThreshold={0.2}
+        refreshing={loading}
+        onRefresh={handleRefresh}
+      />
 
       {/* ✅ 공지사항 추가/수정 모달 */}
       <Modal

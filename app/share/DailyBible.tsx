@@ -10,15 +10,21 @@ import {
   collection,
   deleteDoc,
   doc,
+  DocumentData,
   getDocs,
+  limit,
   orderBy,
   query,
+  QueryDocumentSnapshot,
+  startAfter,
   updateDoc,
   where,
 } from 'firebase/firestore';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
+  FlatList,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -40,6 +46,10 @@ export default function DevotionPage() {
   const [user, setUser] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
   const [allPosts, setAllPosts] = useState<any[]>([]);
+  const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState('');
   const [writeModalVisible, setWriteModalVisible] = useState(false);
@@ -58,6 +68,7 @@ export default function DevotionPage() {
   const insets = useSafeAreaInsets();
   const [rankingRangeText, setRankingRangeText] = useState<string>(''); // 📅 날짜 표시용 추가
   const [anonymous, setAnonymous] = useState(false);
+  const [submitLoading, setSubmitLoading] = useState(false);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -101,20 +112,77 @@ export default function DevotionPage() {
     }
   }, [showRanking]);
 
+  // 최초 10개 불러오기
   useEffect(() => {
-    const fetchData = async () => {
-      const q = query(collection(db, 'devotions'), orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setAllPosts(data);
+    const fetchInitial = async () => {
+      setLoading(true);
+      try {
+        const q = query(
+          collection(db, 'devotions'),
+          orderBy('createdAt', 'desc'),
+          limit(10)
+        );
+        const snapshot = await getDocs(q);
+        const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        setAllPosts(list);
+        setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
+        setHasMore(snapshot.docs.length === 10);
+      } catch (e) {
+        Toast.show('묵상글을 불러오지 못했습니다. 네트워크를 확인해주세요.', { position: Toast.positions.CENTER });
+      } finally {
+        setLoading(false);
+      }
     };
-
-    fetchData();
+    fetchInitial();
   }, []);
 
-  useEffect(() => {
-    let filtered = [...allPosts];
+  // 추가 데이터 불러오기
+  const fetchMore = async () => {
+    if (loading || !hasMore || !lastVisible) return;
+    setLoading(true);
+    try {
+      const q = query(
+        collection(db, 'devotions'),
+        orderBy('createdAt', 'desc'),
+        startAfter(lastVisible),
+        limit(10)
+      );
+      const snapshot = await getDocs(q);
+      const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setAllPosts((prev) => [...prev, ...list]);
+      setLastVisible(snapshot.docs[snapshot.docs.length - 1] || lastVisible);
+      setHasMore(snapshot.docs.length === 10);
+    } catch (e) {
+      Toast.show('묵상글 추가 로딩 실패. 네트워크를 확인해주세요.', { position: Toast.positions.CENTER });
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // 새로고침
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const q = query(
+        collection(db, 'devotions'),
+        orderBy('createdAt', 'desc'),
+        limit(10)
+      );
+      const snapshot = await getDocs(q);
+      const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setAllPosts(list);
+      setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
+      setHasMore(snapshot.docs.length === 10);
+    } catch (e) {
+      Toast.show('묵상글 새로고침 실패. 네트워크를 확인해주세요.', { position: Toast.positions.CENTER });
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // 필터 적용
+  const filteredPosts = React.useMemo(() => {
+    let filtered = [...allPosts];
     if (filterDate) {
       const start = new Date(filterDate);
       start.setHours(0, 0, 0, 0);
@@ -125,15 +193,13 @@ export default function DevotionPage() {
         return createdAt >= start && createdAt <= end;
       });
     }
-
     if (filterUserName) {
       filtered = filtered.filter((post) =>
         post.authorName?.toLowerCase().includes(filterUserName.toLowerCase())
       );
     }
-
-    setPosts(filtered);
-  }, [filterDate, allPosts, filterUserName]);
+    return filtered;
+  }, [allPosts, filterDate, filterUserName]);
 
   const clearFilters = () => {
     setFilterDate(null);
@@ -141,7 +207,12 @@ export default function DevotionPage() {
   };
 
   const handleSubmit = async () => {
-    if (!content.trim() || !user) return;
+    if (submitLoading) return;
+    setSubmitLoading(true);
+    if (!content.trim() || !user) {
+      setSubmitLoading(false);
+      return;
+    }
     try {
       await addDoc(collection(db, 'devotions'), {
         content,
@@ -154,6 +225,8 @@ export default function DevotionPage() {
       setWriteModalVisible(false);
     } catch (e) {
       Alert.alert('오류', '묵상 내용을 업로드하지 못했습니다.');
+    } finally {
+      setSubmitLoading(false);
     }
   };
 
@@ -321,6 +394,37 @@ export default function DevotionPage() {
         />
       </View>
 
+      {/* 날짜 표시 및 좌우 이동 버튼 */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
+        <TouchableOpacity
+          onPress={() => {
+            setFilterDate((prev) => {
+              const newDate = new Date(prev ?? new Date());
+              newDate.setDate(newDate.getDate() - 1);
+              return newDate;
+            });
+          }}
+          style={{ padding: 8, marginRight: 16 }}>
+          <Ionicons name='chevron-back' size={24} color={colors.primary} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setShowDatePicker(true)} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }}>
+          <Text style={{ fontSize: 18, fontWeight: '600', color: colors.text }}>
+            {filterDate ? format(filterDate, 'yyyy-MM-dd') : ''}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => {
+            setFilterDate((prev) => {
+              const newDate = new Date(prev ?? new Date());
+              newDate.setDate(newDate.getDate() + 1);
+              return newDate;
+            });
+          }}
+          style={{ padding: 8, marginLeft: 16 }}>
+          <Ionicons name='chevron-forward' size={24} color={colors.primary} />
+        </TouchableOpacity>
+      </View>
+
       {/* 날짜 선택기 */}
       <DateTimePickerModal
         isVisible={showDatePicker}
@@ -339,87 +443,13 @@ export default function DevotionPage() {
       )}
 
       <View {...panResponder.panHandlers} style={{ flex: 1 }}>
-        <ScrollView
-          contentContainerStyle={{
-            paddingLeft: spacing.lg,
-            paddingRight: spacing.lg,
-            paddingBottom: spacing.lg,
-          }}>
-          <View
-            style={{
-              alignItems: 'center',
-              marginVertical: 16,
-              flexDirection: 'row',
-              justifyContent: 'center',
-            }}>
-            <TouchableOpacity
-              onPress={() => {
-                setFilterDate((prev) => {
-                  const newDate = new Date(prev ?? new Date());
-                  newDate.setDate(newDate.getDate() - 1);
-                  return newDate;
-                });
-              }}
-              style={{
-                padding: 8,
-                marginRight: 16,
-              }}>
-              <Ionicons name='chevron-back' size={24} color={colors.primary} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setShowDatePicker(true)}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: colors.surface,
-                paddingVertical: 8,
-                paddingHorizontal: 16,
-                borderRadius: 20,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 4,
-                elevation: 3,
-              }}>
-              <Text
-                style={{
-                  fontSize: 18,
-                  fontWeight: '600',
-                  color: colors.text,
-                }}>
-                {filterDate ? format(filterDate, 'yyyy-MM-dd') : ''}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => {
-                setFilterDate((prev) => {
-                  const newDate = new Date(prev ?? new Date());
-                  newDate.setDate(newDate.getDate() + 1);
-                  return newDate;
-                });
-              }}
-              style={{
-                padding: 8,
-                marginLeft: 16,
-              }}>
-              <Ionicons name='chevron-forward' size={24} color={colors.primary} />
-            </TouchableOpacity>
-          </View>
-
-          {posts.length === 0 && (
-            <Text
-              style={{ color: colors.subtext, textAlign: 'center', marginVertical: spacing.xl }}>
-              오늘은 아직 묵상이 없어요
-            </Text>
-          )}
-
-          {posts.map((post) => (
+        <FlatList
+          data={filteredPosts}
+          keyExtractor={(item) => item.id?.toString?.() || String(item.id)}
+          renderItem={({ item }) => (
             <View
-              key={post.id}
               style={{
-                marginBottom: spacing.xl,
+                marginBottom: theme.spacing.xl,
                 backgroundColor: theme.colors.surface,
                 borderRadius: theme.radius.lg,
                 padding: theme.spacing.md,
@@ -439,36 +469,34 @@ export default function DevotionPage() {
                 }}>
                 {/* 작성자 · 날짜 */}
                 <Text style={{ color: colors.subtext }}>
-                  {post.authorName} ・{' '}
-                  {new Date(post.createdAt.seconds * 1000).toLocaleDateString()}
+                  {item.authorName} ・{' '}
+                  {new Date(item.createdAt.seconds * 1000).toLocaleDateString()}
                 </Text>
-
                 {/* 수정/삭제 버튼 (본인 글만 노출) */}
-                {user?.email === post.authorEmail && editingId !== post.id && (
-                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                {user?.email === item.authorEmail && editingId !== item.id && (
+                  <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
                     <TouchableOpacity
                       onPress={() => {
-                        setEditingId(post.id);
-                        setEditingContent(post.content);
+                        setEditingId(item.id);
+                        setEditingContent(item.content);
                       }}>
                       <Text style={{ color: colors.primary }}>수정</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleDelete(post.id)}>
+                    <TouchableOpacity onPress={() => handleDelete(item.id)}>
                       <Text style={{ color: colors.error }}>삭제</Text>
                     </TouchableOpacity>
                   </View>
                 )}
               </View>
-
               {/* 본문 or 수정 중 */}
               <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1 }}>
                 <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
                   <ScrollView
-                    contentContainerStyle={{ padding: spacing.md }}
+                    contentContainerStyle={{ padding: theme.spacing.md }}
                     keyboardShouldPersistTaps='handled'>
-                    {editingId === post.id ? (
+                    {editingId === item.id ? (
                       <>
                         <TextInput
                           value={editingContent}
@@ -477,37 +505,48 @@ export default function DevotionPage() {
                           style={{
                             borderColor: colors.border,
                             borderWidth: 1,
-                            borderRadius: radius.sm,
-                            padding: spacing.sm,
+                            borderRadius: theme.radius.sm,
+                            padding: theme.spacing.sm,
                             minHeight: 100,
                             color: colors.text,
-                            marginBottom: spacing.sm,
-                            textAlignVertical: 'top', // ✅ 멀티라인 입력 시 위 정렬
+                            marginBottom: theme.spacing.sm,
+                            textAlignVertical: 'top',
                           }}
                         />
                         <View
                           style={{
                             flexDirection: 'row',
                             justifyContent: 'flex-end',
-                            gap: spacing.sm,
+                            gap: theme.spacing.sm,
                           }}>
                           <TouchableOpacity onPress={() => setEditingId(null)}>
                             <Text style={{ color: colors.subtext }}>취소</Text>
                           </TouchableOpacity>
-                          <TouchableOpacity onPress={() => handleUpdate(post.id)}>
+                          <TouchableOpacity onPress={() => handleUpdate(item.id)}>
                             <Text style={{ color: colors.primary, fontWeight: 'bold' }}>저장</Text>
                           </TouchableOpacity>
                         </View>
                       </>
                     ) : (
-                      <Text style={{ color: colors.text, lineHeight: 20 }}>{post.content}</Text>
+                      <Text style={{ color: colors.text, lineHeight: 20 }}>{item.content}</Text>
                     )}
                   </ScrollView>
                 </TouchableWithoutFeedback>
               </KeyboardAvoidingView>
             </View>
-          ))}
-        </ScrollView>
+          )}
+          ListEmptyComponent={
+            <Text style={{ color: colors.subtext, textAlign: 'center', marginVertical: theme.spacing.xl }}>
+              {loading ? '' : '오늘은 아직 묵상이 없어요'}
+            </Text>
+          }
+          onEndReached={fetchMore}
+          onEndReachedThreshold={0.2}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          ListFooterComponent={loading ? <Text style={{ color: colors.subtext, textAlign: 'center', marginVertical: theme.spacing.xl }}>불러오는 중...</Text> : null}
+          contentContainerStyle={{ paddingLeft: spacing.lg, paddingRight: spacing.lg, paddingBottom: spacing.lg }}
+        />
       </View>
       <Modal
         visible={writeModalVisible}
@@ -616,21 +655,27 @@ export default function DevotionPage() {
                   paddingHorizontal: spacing.lg,
                 }}>
                 <TouchableOpacity
-                  onPress={handleSubmit}
+                  onPress={submitLoading ? undefined : handleSubmit}
+                  disabled={submitLoading}
                   style={{
                     backgroundColor: '#007AFF',
                     paddingVertical: spacing.md,
                     borderRadius: 12,
                     alignItems: 'center',
+                    opacity: submitLoading ? 0.7 : 1,
                   }}>
-                  <Text
-                    style={{
-                      color: '#fff',
-                      fontSize: font.body,
-                      fontWeight: '600',
-                    }}>
-                    작성 완료
-                  </Text>
+                  {submitLoading ? (
+                    <ActivityIndicator color='#fff' />
+                  ) : (
+                    <Text
+                      style={{
+                        color: '#fff',
+                        fontSize: font.body,
+                        fontWeight: '600',
+                      }}>
+                      작성 완료
+                    </Text>
+                  )}
                 </TouchableOpacity>
               </View>
             </View>

@@ -22,6 +22,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import Toast from 'react-native-root-toast';
 import { EdgeInsets, useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 import styled from 'styled-components/native';
 // const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -266,8 +267,10 @@ export default function TeamsList() {
     return filtered;
   }, [teams, filters, searchQuery, sortOption, userEmail]);
 
+  // 팀 상세에서 돌아올 때마다 목록 최신화
   useFocusEffect(
     useCallback(() => {
+      refetchTeams();
       // 화면에 포커스될 때마다 필터링 초기화
       if (!filter || filter === '') {
         setFilters((prev) => ({ ...prev, category: '' }));
@@ -293,8 +296,13 @@ export default function TeamsList() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await refetchTeams();
-    setRefreshing(false);
+    try {
+      await refetchTeams();
+    } catch (e) {
+      Toast.show('소모임 목록 새로고침 실패. 네트워크를 확인해주세요.', { position: Toast.positions.CENTER });
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const handlePress = (id: string) => {
@@ -743,7 +751,7 @@ export default function TeamsList() {
         renderSkeletons()
       ) : filteredTeams.length === 0 ? (
         <NoTeamsView>
-          <NoTeamsText>등록된 소모임이 없습니다.</NoTeamsText>
+          <NoTeamsText>{loading ? '' : '등록된 소모임이 없습니다.'}</NoTeamsText>
         </NoTeamsView>
       ) : (
         <FlatList
@@ -751,7 +759,7 @@ export default function TeamsList() {
           data={filteredTeams}
           key={isGrid ? 'grid' : 'list'}
           numColumns={isGrid ? 2 : 1}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id?.toString?.() || String(item.id)}
           renderItem={renderItem}
           contentContainerStyle={[styles.listContent, !isGrid && { paddingHorizontal: 10 }]}
           columnWrapperStyle={isGrid && { gap: 4 }}
