@@ -25,7 +25,7 @@ export default function AlarmListScreen() {
         loadUser();
     }, []);
 
-    const { data: alarms = [], isLoading } = useQuery<any[]>({
+    const { data: alarms = [], isLoading, refetch } = useQuery<any[]>({
         queryKey: ['alarms', userId],
         queryFn: async () => {
             if (!userId) return [];
@@ -41,6 +41,7 @@ export default function AlarmListScreen() {
     const deleteAlarm = async (id: string) => {
         await deleteDoc(doc(db, 'alarms', id));
         Alert.alert('🗑️ 삭제 완료', '알람이 삭제되었습니다.');
+        refetch();
     };
 
     return (

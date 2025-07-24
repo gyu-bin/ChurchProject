@@ -197,6 +197,8 @@ export default function ChurchNewsPage({ url }: { url: string }) {
 
     const insets = useSafeAreaInsets();
 
+    const filteredPosts = posts.filter(post => post.type === selectedType);
+
     return (
         <View style={{ flex: 1, backgroundColor: colors.background }}>
             {/* ✅ 상단 헤더 */}
@@ -235,7 +237,7 @@ export default function ChurchNewsPage({ url }: { url: string }) {
 
             {/* ✅ 뉴스 리스트 */}
             <FlatList
-                data={posts}
+                data={filteredPosts}
                 keyExtractor={item => item.id}
                 contentContainerStyle={{ paddingHorizontal: spacing.md }}
                 renderItem={({ item }) => (

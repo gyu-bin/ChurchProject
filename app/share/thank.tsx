@@ -1,6 +1,7 @@
 // pages/gratitude/index.tsx
 import { useDesign } from '@/context/DesignSystem';
 import { useAppTheme } from '@/context/ThemeContext';
+import { db } from '@/firebase/config';
 import {
   useAddGratitude,
   useDeleteGratitude,
@@ -11,6 +12,7 @@ import { getCurrentUser } from '@/services/authService';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { useRouter } from 'expo-router';
+import { arrayRemove, arrayUnion, doc, updateDoc } from 'firebase/firestore';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -37,6 +39,7 @@ type Gratitude = {
   authorEmail: string;
   authorName?: string;
   createdAt: { seconds: number; nanoseconds: number };
+  likeCount?: number;
 };
 
 export default function ThanksPage() {
@@ -76,7 +79,7 @@ export default function ThanksPage() {
     })
   ).current;
 
-  const { data: gratitudes = [], isLoading } = useGratitudes(filterDate);
+  const { data: gratitudes = [], isLoading, refetch } = useGratitudes(filterDate);
   const addGratitude = useAddGratitude();
   const updateGratitude = useUpdateGratitude();
   const deleteGratitude = useDeleteGratitude();
@@ -142,6 +145,22 @@ export default function ThanksPage() {
         },
       },
     ]);
+  };
+
+  const handleLike = async (id: string, liked: boolean, userEmail: string) => {
+    const ref = doc(db, 'gratitudes', id);
+    await updateDoc(ref, {
+      likedUsers: liked ? arrayRemove(userEmail) : arrayUnion(userEmail),
+    });
+    refetch();
+  };
+
+  const handlePray = async (id: string, prayed: boolean, userEmail: string) => {
+    const ref = doc(db, 'prayer_requests', id);
+    await updateDoc(ref, {
+      prayedUsers: prayed ? arrayRemove(userEmail) : arrayUnion(userEmail),
+    });
+    refetch();
   };
 
   return (
@@ -234,6 +253,14 @@ export default function ThanksPage() {
         {gratitudes.map((item) => {
           const isMyPost = item.authorEmail === user?.email;
 
+          const likedUsers = Array.isArray(item.likedUsers) ? item.likedUsers : [];
+          const likeCount = likedUsers.length;
+          const liked = likedUsers.includes(user?.email);
+
+          const prayedUsers = Array.isArray(item.prayedUsers) ? item.prayedUsers : [];
+          const prayCount = prayedUsers.length;
+          const prayed = prayedUsers.includes(user?.email);
+
           return (
             <View
               key={item.id}
@@ -264,6 +291,11 @@ export default function ThanksPage() {
 
               {/* 작성자 표시 */}
               <Text style={{ fontSize: font.body, color: colors.subtext }}>{item.authorName}</Text>
+
+              {/* 좋아요 버튼 */}
+              <TouchableOpacity onPress={() => handleLike(item.id, liked, user?.email)} style={{ marginTop: 8, alignSelf: 'flex-start' }}>
+                <Text style={{ fontSize: 22 }}>{liked ? '❤️' : '🤍'} {likeCount}</Text>
+              </TouchableOpacity>
 
               {/* 본인 글일 때만 버튼 */}
               {isMyPost && (

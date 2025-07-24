@@ -1,8 +1,10 @@
 import { useDesign } from '@/context/DesignSystem';
 import { useAppTheme } from '@/context/ThemeContext';
-import { useAddPrayer } from '@/hooks/usePrayers';
+import { db } from '@/firebase/config';
+import { useAddPrayer, usePrayers } from '@/hooks/usePrayers';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import { arrayRemove, arrayUnion, doc, updateDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -33,6 +35,8 @@ export default function PrayerSubmitPage() {
     const [isUrgent, setIsUrgent] = useState(false);
     const [submitLoading, setSubmitLoading] = useState(false);
 
+    const { data: prayerRequests, refetch } = usePrayers('all');
+
     useEffect(() => {
         const loadUser = async () => {
             const raw = await AsyncStorage.getItem('currentUser');
@@ -57,6 +61,14 @@ export default function PrayerSubmitPage() {
     };
 
     const { mutate: addPrayer } = useAddPrayer();
+
+    const handlePray = async (id: string, prayed: boolean, userEmail: string) => {
+        const ref = doc(db, 'prayer_requests', id);
+        await updateDoc(ref, {
+            prayedUsers: prayed ? arrayRemove(userEmail) : arrayUnion(userEmail),
+        });
+        refetch();
+    };
 
     const handleSubmit = () => {
         if (submitLoading) return;
@@ -222,7 +234,7 @@ export default function PrayerSubmitPage() {
                                         )}
                                     </View>
                                     <Text style={{ fontSize: font.body, color: colors.text }}>
-                                        모든 사람에게 알림을 보내요
+                                        긴급 표시가 생겨요
                                     </Text>
                                 </TouchableOpacity>
                             </>

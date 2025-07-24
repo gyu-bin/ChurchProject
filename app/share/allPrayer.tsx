@@ -9,7 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { useRouter } from 'expo-router';
-import { collection, getDocs, limit, orderBy, query, startAfter } from 'firebase/firestore';
+import { arrayRemove, arrayUnion, collection, doc, getDocs, limit, orderBy, query, startAfter, updateDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -32,6 +32,8 @@ type Prayer = {
   urgent?: 'Y' | 'N';
   anonymous?: 'Y' | 'N';
   email?: string;
+  prayCount?: number;
+  prayedUsers?: string[];
 };
 
 export default function PrayerListScreen() {
@@ -116,11 +118,23 @@ export default function PrayerListScreen() {
     }
   };
 
+  const handlePray = async (id: string, prayed: boolean, userEmail: string) => {
+    const ref = doc(db, 'prayer_requests', id);
+    await updateDoc(ref, {
+      prayedUsers: prayed ? arrayRemove(userEmail) : arrayUnion(userEmail),
+    });
+    refetch();
+  };
+
   const renderItem = ({ item }: { item: Prayer }) => {
     const isUrgent = item.urgent === 'Y';
     const date = item.createdAt?.seconds
       ? format(new Date(item.createdAt.seconds * 1000), 'yyyy-MM-dd HH:mm')
       : '';
+
+    const prayedUsers = Array.isArray(item.prayedUsers) ? item.prayedUsers : [];
+    const prayCount = prayedUsers.length;
+    const prayed = prayedUsers.includes(currentUser?.email);
 
     return (
       <View
@@ -160,6 +174,10 @@ export default function PrayerListScreen() {
           {item.content}
         </Text>
 
+        <TouchableOpacity onPress={() => handlePray(item.id, prayed, currentUser?.email)} style={{ marginTop: 8, alignSelf: 'flex-start' }}>
+          <Text style={{ fontSize: 22 }}>{prayed ? '❤️' : '🤍'} {prayCount}</Text>
+        </TouchableOpacity>
+
         <Text
           style={{
             fontSize: 12,
@@ -168,6 +186,7 @@ export default function PrayerListScreen() {
           }}>
           {date} - {item.anonymous === 'Y' ? '익명' : item.name}
         </Text>
+
 
         {currentUser?.email === item.email && (
           <TouchableOpacity
@@ -185,6 +204,7 @@ export default function PrayerListScreen() {
             <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>삭제</Text>
           </TouchableOpacity>
         )}
+        
       </View>
     );
   };

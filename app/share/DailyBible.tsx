@@ -8,6 +8,8 @@ import { format } from 'date-fns';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
   addDoc,
+  arrayRemove,
+  arrayUnion,
   collection,
   deleteDoc,
   doc,
@@ -48,6 +50,8 @@ type DevotionPost = {
   authorName: string;
   createdAt: { seconds: number };
   content: string;
+  likeCount?: number;
+  likedUsers?: string[];
 };
 
 export default function DevotionPage() {
@@ -255,6 +259,14 @@ export default function DevotionPage() {
     } catch (e) {
       Alert.alert('오류', '수정에 실패했습니다.');
     }
+  };
+
+  const handleLike = async (id: string, liked: boolean, userEmail: string) => {
+    const ref = doc(db, 'devotions', id);
+    await updateDoc(ref, {
+      likedUsers: liked ? arrayRemove(userEmail) : arrayUnion(userEmail),
+    });
+    refetch();
   };
 
   const loadRanking = async () => {
@@ -523,7 +535,12 @@ export default function DevotionPage() {
                         </View>
                       </>
                     ) : (
-                      <Text style={{ color: colors.text, lineHeight: 20 }}>{item.content}</Text>
+                      <>
+                        <Text style={{ color: colors.text, lineHeight: 20 }}>{item.content}</Text>
+                        <TouchableOpacity onPress={() => handleLike(item.id, item.likedUsers?.includes(user?.email) ?? false, user?.email)} style={{ marginTop: 8, alignSelf: 'flex-start' }}>
+                          <Text style={{ fontSize: 22 }}>{item.likedUsers?.includes(user?.email) ? '❤️' : '🤍'} {item.likedUsers?.length ?? 0}</Text>
+                        </TouchableOpacity>
+                      </>
                     )}
                   </ScrollView>
                 </TouchableWithoutFeedback>
