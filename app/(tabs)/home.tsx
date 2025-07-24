@@ -16,16 +16,16 @@ import { AntDesign, Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import {
-  FlatList,
-  Modal,
-  Platform,
-  Pressable,
-  RefreshControl,
-  Text,
-  TouchableOpacity,
-  View,
+    FlatList,
+    Modal,
+    Platform,
+    Pressable,
+    RefreshControl,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DefaultTheme } from 'styled-components';
@@ -217,6 +217,9 @@ export default function HomeScreen() {
   const [calendarVisible, setCalendarVisible] = useState(false);
 
   const frame = useSafeAreaFrame();
+  const [isPending, startTransition] = useTransition();
+  const [searchQuery, setSearchQuery] = useState('');
+  const deferredSearchQuery = useDeferredValue(searchQuery);
 
   useEffect(() => {
     setScrollCallback('home', () => {
@@ -285,146 +288,147 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeArea style={{ paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>
-      <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
-      <FlatList
-        ref={mainListRef}
-        ListHeaderComponent={
-          <ListHeaderContainer>
-            <HeaderView>
-              <RowContainer>
-                <LogoContainer>
-                  <StyledImage source={require('@/assets/logoVer1.png')} resizeMode='cover' />
-                </LogoContainer>
-                <LogoText>Xion</LogoText>
-              </RowContainer>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  paddingHorizontal: 16,
-                }}>
-                {/* 📅 캘린더 버튼 */}
-                <TouchableOpacity
-                  onPress={() => router.push('/home/QuickMenuButton/calendar')}
-                  style={{ alignItems: 'center', paddingRight: 10 }}>
-                  <AntDesign name='calendar' size={30} color={theme.colors.text} />
-                  {/*<QuickMenuLabel>캘린더</QuickMenuLabel>*/}
-                </TouchableOpacity>
+    <Suspense fallback={<Text style={{ textAlign: 'center', marginTop: 40 }}>로딩 중...</Text>}>
+      <SafeArea style={{ paddingTop: Platform.OS === 'android' ? insets.top : 0 }}>
+        <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
+        <FlatList
+          ref={mainListRef}
+          ListHeaderComponent={
+            <ListHeaderContainer>
+              <HeaderView>
+                <RowContainer>
+                  <LogoContainer>
+                    <StyledImage source={require('@/assets/logoVer1.png')} resizeMode='cover' />
+                  </LogoContainer>
+                  <LogoText>Xion</LogoText>
+                </RowContainer>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    paddingHorizontal: 16,
+                  }}>
+                  {/* 📅 캘린더 버튼 */}
+                  <TouchableOpacity
+                    onPress={() => router.push('/home/QuickMenuButton/calendar')}
+                    style={{ alignItems: 'center', paddingRight: 10 }}>
+                    <AntDesign name='calendar' size={30} color={theme.colors.text} />
+                    {/*<QuickMenuLabel>캘린더</QuickMenuLabel>*/}
+                  </TouchableOpacity>
 
-                {/* 🔔 알림 버튼 */}
-                <NotificationButton onPress={() => router.push('/home/notifications')}>
-                  <Ionicons name='notifications-outline' size={24} color={theme.colors.text} />
-                  {notifications.length > 0 && (
-                    <NotificationBadge>
-                      <StyledText>{notifications.length}</StyledText>
-                    </NotificationBadge>
-                  )}
-                </NotificationButton>
-              </View>
-            </HeaderView>
+                  {/* 🔔 알림 버튼 */}
+                  <NotificationButton onPress={() => router.push('/home/notifications')}>
+                    <Ionicons name='notifications-outline' size={24} color={theme.colors.text} />
+                    {notifications.length > 0 && (
+                      <NotificationBadge>
+                        <StyledText>{notifications.length}</StyledText>
+                      </NotificationBadge>
+                    )}
+                  </NotificationButton>
+                </View>
+              </HeaderView>
 
-            {/*공지 & 일정*/}
-            <StyledView>
-              <HomeNotices />
-            </StyledView>
+              {/*공지 & 일정*/}
+              <StyledView>
+                <HomeNotices />
+              </StyledView>
 
-            {/* 상단배너*/}
-            <BannerCarousel events={banners} goToEvent={goToEvent} theme={theme} />
+              {/* 상단배너*/}
+              <BannerCarousel events={banners} goToEvent={goToEvent} theme={theme} />
 
-            {/* 퀵메뉴 */}
-            <QuickMenuContainer>
-              {[
-                {
-                  icon: <Text style={{ fontSize: 30 }}>💕</Text>,
-                  label: '오늘의 말씀',
-                  action: () => router.push('../home/QuickMenuButton/todayVerse'),
-                },
-                {
-                  icon: <Text style={{ fontSize: 30 }}>📰</Text>,
-                  label: '주보',
-                  action: () => router.push('../home/QuickMenuButton/BulletinListPage'),
-                },
-                {
-                  icon: <Text style={{ fontSize: 30 }}>📖</Text>,
-                  label: '교리',
-                  action: () => router.push('../home/QuickMenuButton/catechism/'),
-                },
-                {
-                  icon: <Text style={{ fontSize: 30 }}>💬</Text>,
-                  label: '심방 요청',
-                  action: () => router.push('../home/QuickMenuButton/counseling'),
-                },
-                /*   {
+              {/* 퀵메뉴 */}
+              <QuickMenuContainer>
+                {[
+                  {
+                    icon: <Text style={{ fontSize: 30 }}>💕</Text>,
+                    label: '오늘의 말씀',
+                    action: () => startTransition(() => router.push('../home/QuickMenuButton/todayVerse')),
+                  },
+                  {
+                    icon: <Text style={{ fontSize: 30 }}>📰</Text>,
+                    label: '주보',
+                    action: () => startTransition(() => router.push('../home/QuickMenuButton/BulletinListPage')),
+                  },
+                  {
+                    icon: <Text style={{ fontSize: 30 }}>📖</Text>,
+                    label: '교리',
+                    action: () => startTransition(() => router.push('../home/QuickMenuButton/catechism/')),
+                  },
+                  {
+                    icon: <Text style={{ fontSize: 30 }}>💬</Text>,
+                    label: '심방 요청',
+                    action: () => startTransition(() => router.push('../home/QuickMenuButton/counseling')),
+                  },
+                  /*   {
                                 icon: <Text style={{ fontSize: 30 }}>📅</Text>,
                                 label: '캘린더',
                                 action: () => setCalendarVisible(true),
                             }*/
-              ].map((item, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  onPress={item.action}
-                  style={{ alignItems: 'center', width: 72 }}>
-                  <QuickMenuButtonContainer>{item.icon}</QuickMenuButtonContainer>
-                  <QuickMenuLabel>{item.label}</QuickMenuLabel>
-                </TouchableOpacity>
-              ))}
-            </QuickMenuContainer>
+                ].map((item, idx) => (
+                  <TouchableOpacity
+                    key={idx}
+                    onPress={item.action}
+                    style={{ alignItems: 'center', width: 72 }}>
+                    <QuickMenuButtonContainer>{item.icon}</QuickMenuButtonContainer>
+                    <QuickMenuLabel>{item.label}</QuickMenuLabel>
+                  </TouchableOpacity>
+                ))}
+              </QuickMenuContainer>
 
-            <StyledView>
-              <HomeNews />
-            </StyledView>
+              <StyledView>
+                <HomeNews />
+              </StyledView>
 
-            {/*반짝 & 기도*/}
-            <StyledView>
-              <ActiveSection />
-            </StyledView>
+              {/*반짝 & 기도*/}
+              <StyledView>
+                <ActiveSection />
+              </StyledView>
 
-            <StyledView>
-              <TodayBible />
-            </StyledView>
-          </ListHeaderContainer>
-        }
-        data={prayers}
-        keyExtractor={(item) => item.id}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        renderItem={() => <View />}
-      />
-      {/* 오늘의 말씀 모달 */}
-      <Modal
-        visible={quickModal === 'verse'}
-        transparent
-        animationType='fade'
-        onRequestClose={() => setQuickModal(null)}>
-        <Pressable
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.2)',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
-          onPress={() => setQuickModal(null)}>
-          <View
+              <StyledView>
+                <TodayBible />
+              </StyledView>
+            </ListHeaderContainer>
+          }
+          data={prayers}
+          keyExtractor={(item) => item.id}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          renderItem={() => <View />}
+        />
+        {/* 오늘의 말씀 모달 */}
+        <Modal
+          visible={quickModal === 'verse'}
+          transparent
+          animationType='fade'
+          onRequestClose={() => setQuickModal(null)}>
+          <Pressable
             style={{
-              backgroundColor: '#fff',
-              borderRadius: 20,
-              padding: 28,
-              minWidth: 260,
+              flex: 1,
+              backgroundColor: 'rgba(0,0,0,0.2)',
+              justifyContent: 'center',
               alignItems: 'center',
-              shadowColor: '#000',
-              shadowOpacity: 0.1,
-              shadowRadius: 12,
-            }}>
-            <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 8 }}>오늘의 말씀</Text>
-            <Text style={{ fontSize: 16, color: '#222', marginBottom: 4 }}>{verse.verse}</Text>
-            <Text style={{ fontSize: 14, color: '#888' }}>{verse.reference}</Text>
-          </View>
-        </Pressable>
-      </Modal>
+            }}
+            onPress={() => setQuickModal(null)}>
+            <View
+              style={{
+                backgroundColor: '#fff',
+                borderRadius: 20,
+                padding: 28,
+                minWidth: 260,
+                alignItems: 'center',
+                shadowColor: '#000',
+                shadowOpacity: 0.1,
+                shadowRadius: 12,
+              }}>
+              <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 8 }}>오늘의 말씀</Text>
+              <Text style={{ fontSize: 16, color: '#222', marginBottom: 4 }}>{verse.verse}</Text>
+              <Text style={{ fontSize: 14, color: '#888' }}>{verse.reference}</Text>
+            </View>
+          </Pressable>
+        </Modal>
 
-      {/* 교리문답 모달 */}
-      {/*<Modal
+        {/* 교리문답 모달 */}
+        {/*<Modal
         visible={quickModal === 'catechism'}
         transparent
         animationType='fade'
@@ -459,7 +463,8 @@ export default function HomeScreen() {
         </Pressable>
       </Modal>*/}
 
-      <PromoModal />
-    </SafeArea>
+        <PromoModal />
+      </SafeArea>
+    </Suspense>
   );
 }

@@ -5,7 +5,7 @@ import { useAddPrayer, usePrayers } from '@/hooks/usePrayers';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { arrayRemove, arrayUnion, doc, updateDoc } from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
+import React, { useActionState, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Keyboard,
@@ -70,32 +70,34 @@ export default function PrayerSubmitPage() {
         refetch();
     };
 
-    const handleSubmit = () => {
-        if (submitLoading) return;
-        if (!title.trim() || !content.trim()) return;
-        setSubmitLoading(true);
-        addPrayer(
-            {
-                title,
-                content,
-                name: currentUser?.name,
-                email: user?.email ?? '',
-                anonymous: isAnonymous ? 'Y' : 'N',
-                urgent: isUrgent ? 'Y' : 'N',
-            },
-            {
-                onSuccess: () => {
-                    Toast.show('✅ 제출되었습니다');
-                    setSubmitLoading(false);
-                    router.back();
-                },
-                onError: (error: any) => {
-                    console.error('기도제목 등록 오류:', error);
-                    Toast.show('❌ 제출에 실패했습니다');
-                    setSubmitLoading(false);
-                },
+    const [formState, submitAction, isPending] = useActionState<any>(
+        async (prevState: any) => {
+            if (!title.trim() || !content.trim()) {
+                return { error: '제목과 내용을 모두 입력하세요.' };
             }
-        );
+            try {
+                await addPrayer({
+                    title,
+                    content,
+                    name: currentUser?.name,
+                    email: user?.email ?? '',
+                    anonymous: isAnonymous ? 'Y' : 'N',
+                    urgent: isUrgent ? 'Y' : 'N',
+                });
+                Toast.show('✅ 제출되었습니다');
+                router.back();
+                return { success: true };
+            } catch (error) {
+                console.error('기도제목 등록 오류:', error);
+                Toast.show('❌ 제출에 실패했습니다');
+                return { error: '제출에 실패했습니다.' };
+            }
+        },
+        { error: undefined, success: false }
+    );
+
+    const handleSubmit = () => {
+        submitAction();
     };
 
     return (
@@ -241,18 +243,18 @@ export default function PrayerSubmitPage() {
                         )}
 
                         <TouchableOpacity
-                            onPress={submitLoading ? undefined : handleSubmit}
-                            disabled={submitLoading}
+                            onPress={handleSubmit}
+                            disabled={isPending}
                             style={{
                                 backgroundColor: colors.primary,
                                 paddingVertical: spacing.md,
                                 borderRadius: radius.md,
                                 alignItems: 'center',
                                 marginBottom: spacing.md,
-                                opacity: submitLoading ? 0.7 : 1,
+                                opacity: isPending ? 0.7 : 1,
                             }}
                         >
-                            {submitLoading ? (
+                            {isPending ? (
                                 <ActivityIndicator color='#fff' />
                             ) : (
                                 <Text

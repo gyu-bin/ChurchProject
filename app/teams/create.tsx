@@ -1,28 +1,26 @@
 import { useDesign } from '@/context/DesignSystem';
-import { db, storage } from '@/firebase/config';
+import { storage } from '@/firebase/config';
 import { useAddTeam } from '@/hooks/useTeams';
-import { sendPushNotification } from '@/services/notificationService';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { ImagePickerAsset } from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,6 +30,7 @@ import loading3 from '@/assets/lottie/Animation - 1747201413764.json';
 import loading2 from '@/assets/lottie/Animation - 1747201431992.json';
 import loading1 from '@/assets/lottie/Animation - 1747201461030.json';
 import LoadingModal from '@/components/lottieModal';
+import { useActionState } from 'react';
 import Toast from 'react-native-root-toast';
 
 export default function CreateTeam() {
@@ -143,132 +142,38 @@ export default function CreateTeam() {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!name) {
-      Alert.alert('입력 오류', '모임명을 입력해주세요.');
-      return;
-    }
-
-    let max: number | null = null;
-    if (!isUnlimited) {
-      max = parseInt(memberCount);
-      if (isNaN(max) || max < 2 || max > 500) {
-        Alert.alert('입력 오류', '참여 인원 수는 2명 이상 500명 이하로 설정해주세요.');
-        setUpdateLoading(false);
-        return;
+  const [formState, submitAction, isPending] = useActionState<any>(
+    async (prevState: any) => {
+      if (!name.trim() || !description.trim()) {
+        return { error: '모임명과 설명을 모두 입력하세요.' };
       }
-    } else {
-      max = -1;
-    }
-
-    const downloadUrls: string[] = [];
-
-    for (const image of imageURLs) {
-      const downloadUrl = await uploadImageToFirebase(image.uri);
-      downloadUrls.push(downloadUrl);
-    }
-
-    try {
-      const baseData = {
-        name,
-        leader,
-        leaderEmail: creatorEmail,
-        description,
-        membersList: [creatorEmail],
-        createdAt: serverTimestamp(),
-        openContact,
-        maxMembers: max,
-        category,
-        ...(category === '✨ 반짝소모임' && expirationDate && { expirationDate }),
-        ...(category === '✨ 반짝소모임' && location && { location }),
-        thumbnail: downloadUrls[0],
-      };
-
-      // 1. 문서 추가 (id/teamId 없이)
-      const docRef = await addTeamMutation.mutateAsync({
-        ...baseData,
-        approved: true,
-      });
-      // 2. id, teamId 필드에 문서 id를 update
-      if (docRef && docRef.id) {
-        const teamDocRef = doc(db, 'teams', docRef.id);
-        await updateDoc(teamDocRef, {
-          id: docRef.id,
-          teamId: docRef.id,
+      try {
+        await addTeamMutation.mutateAsync({
+          name,
+          description,
+          location,
+          leader,
+          creatorEmail,
+          category,
+          memberCount: isUnlimited ? -1 : Number(memberCount),
+          openContact,
+          expirationDate,
+          imageURLs,
         });
+        Toast.show('✅ 모임이 생성되었습니다.');
+        router.back();
+        return { success: true };
+      } catch (error) {
+        console.error('모임 생성 오류:', error);
+        Toast.show('❌ 생성에 실패했습니다.');
+        return { error: '생성에 실패했습니다.' };
       }
-      // ✅ 팀 생성 후 전체 목록 최신화
-      if (typeof window !== 'undefined') {
-        const { useTeams } = require('@/hooks/useTeams');
-        const { refetch: refetchTeams } = useTeams();
-        refetchTeams && refetchTeams();
-      }
-
-      // ✅ '✨ 반짝소모임'일 경우: 삭제 예약 + 푸시 알림
-      if (category === '✨ 반짝소모임' && expirationDate) {
-        // 🔹 삭제 예약
-        const deletionDate = new Date(expirationDate);
-        deletionDate.setDate(deletionDate.getDate() + 1);
-        const timeUntilDeletion = deletionDate.getTime() - new Date().getTime();
-
-        setTimeout(async () => {
-          try {
-            await deleteDoc(doc(db, 'teams', docRef.id));
-            console.log('✅ 반짝소모임 자동 삭제 완료');
-          } catch (e) {
-            console.error('❌ 삭제 실패:', e);
-          }
-        }, timeUntilDeletion);
-
-        // 🔹 푸시 알림: 모든 Expo 토큰 대상, 중복 방지
-        try {
-          const snapshot = await getDocs(collection(db, 'users'));
-          const sentTokens = new Set<string>();
-          const pushPromises: Promise<void>[] = [];
-
-          snapshot.docs.forEach((docSnap) => {
-            const user = docSnap.data();
-            const tokens: string[] = user.expoPushTokens || [];
-
-            tokens.forEach((token) => {
-              if (
-                typeof token === 'string' &&
-                token.startsWith('ExponentPushToken') &&
-                !sentTokens.has(token)
-              ) {
-                sentTokens.add(token);
-
-                pushPromises.push(
-                  sendPushNotification({
-                    to: token,
-                    title: '✨ 반짝소모임 생성!',
-                    body: `${leader}님의 반짝소모임 "${name}"에 참여해보세요!`,
-                  })
-                );
-              }
-            });
-          });
-
-          await Promise.all(pushPromises);
-          console.log(`✅ ${sentTokens.size}개의 Expo 푸시 전송 완료`);
-        } catch (err) {
-          console.error('❌ 푸시 알림 실패:', err);
-        }
-      }
-      setTimeout(() => {
-        Toast.show('✅ 모임이 성공적으로 생성되었습니다.', { duration: 1500 });
-        setTimeout(() => {
-          setUpdateLoading(false); // 데이터 로드 후 로딩 상태 종료
-        }, 500);
-      }, 1500);
-      if (docRef?.id) {
-        router.replace(`/teams/${docRef.id}`);
-      } else {
-        router.replace('/teams');
-      }
-    } catch (error: any) {
-      Alert.alert('생성 실패', error.message);
-    }
+    },
+    { error: undefined, success: false }
+  );
+  // 기존 handleSubmit 대신 아래로 교체
+  const handleSubmit = () => {
+    submitAction();
   };
 
   const handleCategorySelect = (cat: { label: string; value: string }) => {

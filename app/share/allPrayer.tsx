@@ -10,26 +10,26 @@ import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { useRouter } from 'expo-router';
 import {
-  arrayRemove,
-  arrayUnion,
-  collection,
-  doc,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  startAfter,
-  updateDoc,
+    arrayRemove,
+    arrayUnion,
+    collection,
+    doc,
+    getDocs,
+    limit,
+    orderBy,
+    query,
+    startAfter,
+    updateDoc,
 } from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
+import React, { startTransition, useEffect, useMemo, useOptimistic, useState } from 'react';
 import {
-  ActivityIndicator,
-  Platform,
-  RefreshControl,
-  SafeAreaView,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Platform,
+    RefreshControl,
+    SafeAreaView,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import Toast from 'react-native-root-toast';
 import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -60,6 +60,30 @@ export default function PrayerListScreen() {
   const router = useRouter();
   const isDark = mode === 'dark';
 
+  const [optimisticPray, addOptimisticPray] = useOptimistic<any>({
+    reducer: (state: any, action: any) => {
+      const prev = state[action.id] || { prayed: false, prayCount: 0 };
+      if (action.prayed) {
+        return {
+          ...state,
+          [action.id]: {
+            prayed: false,
+            prayCount: Math.max(0, prev.prayCount - 1),
+          },
+        };
+      } else {
+        return {
+          ...state,
+          [action.id]: {
+            prayed: true,
+            prayCount: prev.prayCount + 1,
+          },
+        };
+      }
+    },
+    initialState: {}
+  });
+
   useEffect(() => {
     const loadUser = async () => {
       const raw = await AsyncStorage.getItem('currentUser');
@@ -85,6 +109,14 @@ export default function PrayerListScreen() {
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
   });
+
+  // 항상 최신순으로 정렬된 prayers
+  const sortedPrayers = useMemo(() =>
+    [...prayers].sort((a, b) => {
+      const aDate = a.createdAt?.seconds || 0;
+      const bDate = b.createdAt?.seconds || 0;
+      return bDate - aDate;
+    }), [prayers]);
 
   // 추가 데이터 불러오기
   const fetchMore = async () => {
@@ -135,12 +167,22 @@ export default function PrayerListScreen() {
     }
   };
 
-  const handlePray = async (id: string, prayed: boolean, userEmail: string) => {
-    const ref = doc(db, 'prayer_requests', id);
-    await updateDoc(ref, {
-      prayedUsers: prayed ? arrayRemove(userEmail) : arrayUnion(userEmail),
-    });
-    refetch();
+  const handlePray = async (id: string, prayed: boolean, userEmail: string, prayCount: number) => {
+    // 1. 낙관적 UI 적용 (startTransition으로 감싸기)
+    startTransition(() => addOptimisticPray({ id, prayed, userEmail }));
+    try {
+      const ref = doc(db, 'prayer_requests', id);
+      await updateDoc(ref, {
+        prayedUsers: prayed ? arrayRemove(userEmail) : arrayUnion(userEmail),
+      });
+      refetch();
+    } catch (e) {
+      // 실패 시 롤백: 반대값으로 다시 낙관적 UI 적용
+      startTransition(() => addOptimisticPray({ id, prayed: !prayed, userEmail }));
+      Toast.show('기도 반영 실패. 네트워크를 확인해주세요.', {
+        position: Toast.positions.CENTER,
+      });
+    }
   };
 
   const renderItem = ({ item }: { item: Prayer }) => {
@@ -149,9 +191,13 @@ export default function PrayerListScreen() {
       ? format(new Date(item.createdAt.seconds * 1000), 'yyyy-MM-dd HH:mm')
       : '';
 
-    const prayedUsers = Array.isArray(item.prayedUsers) ? item.prayedUsers : [];
-    const prayCount = prayedUsers.length;
-    const prayed = prayedUsers.includes(currentUser?.email);
+    const prayedUsers: any = Array.isArray(item.prayedUsers) ? item.prayedUsers : [];
+    const prayCount: any = prayedUsers.length;
+    const prayed: any = prayedUsers.includes(currentUser?.email);
+    // 낙관적 UI 적용
+    const optimistic: any = optimisticPray[item.id];
+    const displayPrayed: any = optimistic ? optimistic.prayed : prayed;
+    const displayPrayCount: any = optimistic ? optimistic.prayCount : prayCount;
 
     return (
       <View
@@ -192,10 +238,10 @@ export default function PrayerListScreen() {
         </Text>
 
         <TouchableOpacity
-          onPress={() => handlePray(item.id, prayed, currentUser?.email)}
+          onPress={() => handlePray(item.id, displayPrayed, currentUser?.email, displayPrayCount)}
           style={{ marginTop: 8, alignSelf: 'flex-start' }}>
           <Text style={{ fontSize: 16 }}>
-            {prayed ? '❤️' : '🤍'} {prayCount}
+            {displayPrayed ? '❤️' : '🤍'} {displayPrayCount}
           </Text>
         </TouchableOpacity>
 
@@ -265,7 +311,7 @@ export default function PrayerListScreen() {
 
       {/* 리스트 */}
       <OptimizedFlatList
-        data={prayers}
+        data={sortedPrayers}
         keyExtractor={(item) => item.id?.toString?.() || String(item.id)}
         renderItem={renderItem}
         contentContainerStyle={{ paddingBottom: 40 }}
