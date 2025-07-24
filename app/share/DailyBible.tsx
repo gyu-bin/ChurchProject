@@ -124,12 +124,16 @@ export default function DevotionPage() {
     }
   }, [showRanking]);
 
-  const { data: allPosts = [], isLoading, refetch } = useQuery<DevotionPost[]>({
+  const {
+    data: allPosts = [],
+    isLoading,
+    refetch,
+  } = useQuery<DevotionPost[]>({
     queryKey: ['devotions'],
     queryFn: async () => {
       const q = query(collection(db, 'devotions'), orderBy('createdAt', 'desc'), limit(10));
       const snap = await getDocs(q);
-      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as DevotionPost));
+      return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as DevotionPost);
     },
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
@@ -152,7 +156,9 @@ export default function DevotionPage() {
       setLastVisible(snapshot.docs[snapshot.docs.length - 1] || lastVisible);
       setHasMore(snapshot.docs.length === 10);
     } catch (e) {
-      Toast.show('묵상글 추가 로딩 실패. 네트워크를 확인해주세요.', { position: Toast.positions.CENTER });
+      Toast.show('묵상글 추가 로딩 실패. 네트워크를 확인해주세요.', {
+        position: Toast.positions.CENTER,
+      });
     } finally {
       setLoading(false);
     }
@@ -162,18 +168,16 @@ export default function DevotionPage() {
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      const q = query(
-        collection(db, 'devotions'),
-        orderBy('createdAt', 'desc'),
-        limit(10)
-      );
+      const q = query(collection(db, 'devotions'), orderBy('createdAt', 'desc'), limit(10));
       const snapshot = await getDocs(q);
       const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       // setAllPosts(list); // 이 줄을 완전히 제거
       setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
       setHasMore(snapshot.docs.length === 10);
     } catch (e) {
-      Toast.show('묵상글 새로고침 실패. 네트워크를 확인해주세요.', { position: Toast.positions.CENTER });
+      Toast.show('묵상글 새로고침 실패. 네트워크를 확인해주세요.', {
+        position: Toast.positions.CENTER,
+      });
     } finally {
       setRefreshing(false);
     }
@@ -402,7 +406,13 @@ export default function DevotionPage() {
       </View>
 
       {/* 날짜 표시 및 좌우 이동 버튼 */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: spacing.md,
+        }}>
         <TouchableOpacity
           onPress={() => {
             setFilterDate((prev) => {
@@ -414,7 +424,21 @@ export default function DevotionPage() {
           style={{ padding: 8, marginRight: 16 }}>
           <Ionicons name='chevron-back' size={24} color={colors.primary} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setShowDatePicker(true)} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }}>
+        <TouchableOpacity
+          onPress={() => setShowDatePicker(true)}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: colors.surface,
+            paddingVertical: 8,
+            paddingHorizontal: 16,
+            borderRadius: 20,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+            elevation: 3,
+          }}>
           <Text style={{ fontSize: 18, fontWeight: '600', color: colors.text }}>
             {filterDate ? format(filterDate, 'yyyy-MM-dd') : ''}
           </Text>
@@ -537,8 +561,19 @@ export default function DevotionPage() {
                     ) : (
                       <>
                         <Text style={{ color: colors.text, lineHeight: 20 }}>{item.content}</Text>
-                        <TouchableOpacity onPress={() => handleLike(item.id, item.likedUsers?.includes(user?.email) ?? false, user?.email)} style={{ marginTop: 8, alignSelf: 'flex-start' }}>
-                          <Text style={{ fontSize: 22 }}>{item.likedUsers?.includes(user?.email) ? '❤️' : '🤍'} {item.likedUsers?.length ?? 0}</Text>
+                        <TouchableOpacity
+                          onPress={() =>
+                            handleLike(
+                              item.id,
+                              item.likedUsers?.includes(user?.email) ?? false,
+                              user?.email
+                            )
+                          }
+                          style={{ marginTop: 8, alignSelf: 'flex-start' }}>
+                          <Text style={{ fontSize: 16 }}>
+                            {item.likedUsers?.includes(user?.email) ? '❤️' : '🤍'}{' '}
+                            {item.likedUsers?.length ?? 0}
+                          </Text>
                         </TouchableOpacity>
                       </>
                     )}
@@ -548,7 +583,12 @@ export default function DevotionPage() {
             </View>
           )}
           ListEmptyComponent={
-            <Text style={{ color: colors.subtext, textAlign: 'center', marginVertical: theme.spacing.xl }}>
+            <Text
+              style={{
+                color: colors.subtext,
+                textAlign: 'center',
+                marginVertical: theme.spacing.xl,
+              }}>
               {isLoading ? '불러오는 중...' : '오늘은 아직 묵상이 없어요'}
             </Text>
           }
@@ -557,11 +597,22 @@ export default function DevotionPage() {
           refreshing={refreshing}
           onRefresh={handleRefresh}
           ListFooterComponent={
-            isLoading && filteredPosts.length > 0 && hasMore
-              ? <Text style={{ color: colors.subtext, textAlign: 'center', marginVertical: theme.spacing.xl }}>불러오는 중...</Text>
-              : null
+            isLoading && filteredPosts.length > 0 && hasMore ? (
+              <Text
+                style={{
+                  color: colors.subtext,
+                  textAlign: 'center',
+                  marginVertical: theme.spacing.xl,
+                }}>
+                불러오는 중...
+              </Text>
+            ) : null
           }
-          contentContainerStyle={{ paddingLeft: spacing.lg, paddingRight: spacing.lg, paddingBottom: spacing.lg }}
+          contentContainerStyle={{
+            paddingLeft: spacing.lg,
+            paddingRight: spacing.lg,
+            paddingBottom: spacing.lg,
+          }}
         />
       </View>
       <Modal

@@ -293,8 +293,12 @@ export default function ThanksPage() {
               <Text style={{ fontSize: font.body, color: colors.subtext }}>{item.authorName}</Text>
 
               {/* 좋아요 버튼 */}
-              <TouchableOpacity onPress={() => handleLike(item.id, liked, user?.email)} style={{ marginTop: 8, alignSelf: 'flex-start' }}>
-                <Text style={{ fontSize: 22 }}>{liked ? '❤️' : '🤍'} {likeCount}</Text>
+              <TouchableOpacity
+                onPress={() => handleLike(item.id, liked, user?.email)}
+                style={{ marginTop: 8, alignSelf: 'flex-start' }}>
+                <Text style={{ fontSize: 16 }}>
+                  {liked ? '❤️' : '🤍'} {likeCount}
+                </Text>
               </TouchableOpacity>
 
               {/* 본인 글일 때만 버튼 */}

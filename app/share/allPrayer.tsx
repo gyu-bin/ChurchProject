@@ -9,7 +9,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { useRouter } from 'expo-router';
-import { arrayRemove, arrayUnion, collection, doc, getDocs, limit, orderBy, query, startAfter, updateDoc } from 'firebase/firestore';
+import {
+  arrayRemove,
+  arrayUnion,
+  collection,
+  doc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  startAfter,
+  updateDoc,
+} from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -60,12 +71,16 @@ export default function PrayerListScreen() {
     loadUser();
   }, []);
 
-  const { data: prayers = [], isLoading, refetch } = useQuery<Prayer[]>({
+  const {
+    data: prayers = [],
+    isLoading,
+    refetch,
+  } = useQuery<Prayer[]>({
     queryKey: ['prayer_requests'],
     queryFn: async () => {
       const q = query(collection(db, 'prayer_requests'), orderBy('createdAt', 'desc'), limit(10));
       const snap = await getDocs(q);
-      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Prayer));
+      return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Prayer);
     },
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
@@ -82,10 +97,12 @@ export default function PrayerListScreen() {
         limit(10)
       );
       const snapshot = await getDocs(q);
-      const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Prayer));
+      const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Prayer);
       refetch(); // refetch를 사용하여 데이터를 업데이트
     } catch (e) {
-      Toast.show('기도제목 추가 로딩 실패. 네트워크를 확인해주세요.', { position: Toast.positions.CENTER });
+      Toast.show('기도제목 추가 로딩 실패. 네트워크를 확인해주세요.', {
+        position: Toast.positions.CENTER,
+      });
     }
   };
 
@@ -96,23 +113,23 @@ export default function PrayerListScreen() {
       refetch(); // refetch를 사용하여 데이터를 업데이트
     } catch (error) {
       console.error('🔥 기도제목 삭제 실패:', error);
-      Toast.show('❌ 삭제에 실패했습니다. 네트워크를 확인해주세요.', { position: Toast.positions.CENTER });
+      Toast.show('❌ 삭제에 실패했습니다. 네트워크를 확인해주세요.', {
+        position: Toast.positions.CENTER,
+      });
     }
   };
 
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      const q = query(
-        collection(db, 'prayer_requests'),
-        orderBy('createdAt', 'desc'),
-        limit(10)
-      );
+      const q = query(collection(db, 'prayer_requests'), orderBy('createdAt', 'desc'), limit(10));
       const snapshot = await getDocs(q);
-      const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Prayer));
+      const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Prayer);
       refetch(); // refetch를 사용하여 데이터를 업데이트
     } catch (e) {
-      Toast.show('기도제목 새로고침 실패. 네트워크를 확인해주세요.', { position: Toast.positions.CENTER });
+      Toast.show('기도제목 새로고침 실패. 네트워크를 확인해주세요.', {
+        position: Toast.positions.CENTER,
+      });
     } finally {
       setRefreshing(false);
     }
@@ -174,8 +191,12 @@ export default function PrayerListScreen() {
           {item.content}
         </Text>
 
-        <TouchableOpacity onPress={() => handlePray(item.id, prayed, currentUser?.email)} style={{ marginTop: 8, alignSelf: 'flex-start' }}>
-          <Text style={{ fontSize: 22 }}>{prayed ? '❤️' : '🤍'} {prayCount}</Text>
+        <TouchableOpacity
+          onPress={() => handlePray(item.id, prayed, currentUser?.email)}
+          style={{ marginTop: 8, alignSelf: 'flex-start' }}>
+          <Text style={{ fontSize: 16 }}>
+            {prayed ? '❤️' : '🤍'} {prayCount}
+          </Text>
         </TouchableOpacity>
 
         <Text
@@ -186,7 +207,6 @@ export default function PrayerListScreen() {
           }}>
           {date} - {item.anonymous === 'Y' ? '익명' : item.name}
         </Text>
-
 
         {currentUser?.email === item.email && (
           <TouchableOpacity
@@ -204,7 +224,6 @@ export default function PrayerListScreen() {
             <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>삭제</Text>
           </TouchableOpacity>
         )}
-        
       </View>
     );
   };
