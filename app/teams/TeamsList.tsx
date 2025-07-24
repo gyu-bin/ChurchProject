@@ -163,7 +163,6 @@ export default function TeamsList() {
     },
   });
   const { filter } = useLocalSearchParams(); // filter param 받아오기
-  const [firstLoad, setFirstLoad] = useState(true);
   const navigation = useNavigation();
 
   // TanStack Query 훅 사용

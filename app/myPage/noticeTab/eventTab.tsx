@@ -1,24 +1,25 @@
 // EventTab.tsx
 import { useDesign } from '@/context/DesignSystem';
+import { useAppTheme } from "@/context/ThemeContext";
 import { db, storage } from '@/firebase/config';
-import * as FileSystem from 'expo-file-system';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useQuery } from '@tanstack/react-query';
+import * as ImageManipulator from 'expo-image-manipulator';
 import type { ImagePickerAsset } from 'expo-image-picker';
 import * as ImagePicker from 'expo-image-picker';
 import {
-    addDoc, collection, deleteDoc, doc, getDoc, getDocs, query, Timestamp, updateDoc, where
+    addDoc, collection, deleteDoc, doc,
+    getDocs, query,
+    updateDoc, where
 } from 'firebase/firestore';
-import {getDownloadURL, ref, uploadBytes, uploadString,getStorage} from 'firebase/storage';
-import React, { useEffect, useState } from 'react';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import React, { useState } from 'react';
 import {
-  Alert, FlatList, Image, KeyboardAvoidingView, Modal, Platform, RefreshControl,
-  ScrollView, Text, TextInput, TouchableOpacity, View,
+    Alert, FlatList, Image, KeyboardAvoidingView, Modal, Platform, RefreshControl,
+    ScrollView, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import Toast from 'react-native-root-toast';
-import {router} from "expo-router";
-import * as ImageManipulator from 'expo-image-manipulator';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import {useAppTheme} from "@/context/ThemeContext";
 
 export default function EventTab() {
     const { mode } = useAppTheme();
@@ -31,7 +32,6 @@ export default function EventTab() {
     const [tempStart, setTempStart] = useState<Date | null>(null);
     const [tempEnd, setTempEnd] = useState<Date | null>(null);
     const [refreshing, setRefreshing] = useState(false);
-    const [eventList, setEventList] = useState<any[]>([]);
     const [imageURLs, setImageURLs] = useState<ImagePickerAsset[]>([]);
     const [isSelectingStartTime, setIsSelectingStartTime] = useState(true);
     const [tempTime, setTempTime] = useState<Date>(new Date());
@@ -47,22 +47,22 @@ export default function EventTab() {
         return range;
     };
 
-    const fetchBanners = async () => {
+    const { data: eventList = [], isLoading, refetch } = useQuery<any[]>({
+      queryKey: ['eventList'],
+      queryFn: async () => {
         const q = query(collection(db, 'notice'), where('type', '==', 'banner'));
         const snap = await getDocs(q);
-        const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setEventList(list);
-    };
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      },
+      staleTime: 1000 * 60 * 5,
+      refetchOnWindowFocus: false,
+    });
 
     const onRefresh = async () => {
         setRefreshing(true);
-        await fetchBanners();
+        await refetch();
         setRefreshing(false);
     };
-
-    useEffect(() => {
-        fetchBanners();
-    }, []);
 
     // 이미지 선택
     const pickImage = async () => {
@@ -193,7 +193,7 @@ export default function EventTab() {
 
             await updateDoc(doc(db, 'notice', form.id), payload);
 
-            await fetchBanners();
+            await refetch();
 
             Toast.show('게시글이 수정되었습니다.');
             setModalVisible(false);
@@ -286,7 +286,7 @@ const renderItem = ({ item }: any) => {
                       style: 'destructive',
                       onPress: async () => {
                         await deleteDoc(doc(db, 'notice', item.id));
-                        fetchBanners();
+                        refetch();
                       },
                     },
                   ]);
@@ -307,6 +307,16 @@ const renderItem = ({ item }: any) => {
             contentContainerStyle={{ padding: spacing.md }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
             renderItem={renderItem}
+            ListEmptyComponent={
+              !isLoading ? (
+                <Text style={{ color: colors.subtext, textAlign: 'center', marginTop: 40 }}>등록된 이벤트가 없습니다.</Text>
+              ) : null
+            }
+            ListFooterComponent={
+              isLoading ? (
+                <Text style={{ color: colors.subtext, textAlign: 'center', marginVertical: 20 }}>불러오는 중...</Text>
+              ) : null
+            }
         />
 
         {!modalVisible && (

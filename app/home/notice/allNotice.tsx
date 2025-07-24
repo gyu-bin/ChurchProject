@@ -3,42 +3,41 @@ import { useDesign } from '@/context/DesignSystem';
 import { db } from '@/firebase/config';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import {
-    addDoc,
-    collection,
-    deleteDoc,
-    doc,
-    DocumentData,
-    getDocs,
-    limit,
-    onSnapshot,
-    orderBy,
-    query,
-    QueryDocumentSnapshot,
-    serverTimestamp,
-    startAfter,
-    updateDoc,
-    where,
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  startAfter,
+  updateDoc,
+  where
 } from 'firebase/firestore';
 import { getLinkPreview } from 'link-preview-js';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    Keyboard,
-    KeyboardAvoidingView,
-    Linking,
-    Modal,
-    Platform,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
 } from 'react-native';
 import Toast from 'react-native-root-toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -63,10 +62,12 @@ const campusOptions = [
 
 export default function NoticePage() {
   const [user, setUser] = useState<any>(null);
-  const [notices, setNotices] = useState<NoticeItem[]>([]);
-  const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [hasMore, setHasMore] = useState(true);
+  const { colors, spacing, font } = useDesign();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const [linkPreview, setLinkPreview] = useState<any>(null);
+
+  // 👇 상태 선언을 useEffect보다 위로 이동
   const [modalVisible, setModalVisible] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -74,10 +75,22 @@ export default function NoticePage() {
   const [content, setContent] = useState('');
   const [campus, setCampus] = useState('문래');
   const [link, setLink] = useState('');
-  const { colors, spacing, font } = useDesign();
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const [linkPreview, setLinkPreview] = useState<any>(null);
+
+  const { data: notices = [], isLoading, refetch } = useQuery<any[]>({
+    queryKey: ['notices'],
+    queryFn: async () => {
+      const q = query(
+        collection(db, 'notice'),
+        where('type', '==', 'notice'),
+        orderBy('date', 'desc'),
+        limit(10)
+      );
+      const snap = await getDocs(q);
+      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
 
   useEffect(() => {
     let unsubscribe: () => void;
@@ -107,7 +120,6 @@ export default function NoticePage() {
   // 최초 10개 불러오기
   useEffect(() => {
     const fetchInitial = async () => {
-      setLoading(true);
       try {
         const q = query(
           collection(db, 'notice'),
@@ -117,13 +129,13 @@ export default function NoticePage() {
         );
         const snapshot = await getDocs(q);
         const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as NoticeItem));
-        setNotices(list);
-        setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
-        setHasMore(snapshot.docs.length === 10);
+        // setNotices(list); // 삭제
+        // setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null); // 삭제
+        // setHasMore(snapshot.docs.length === 10); // 삭제
       } catch (e) {
         Toast.show('공지사항을 불러오지 못했습니다. 네트워크를 확인해주세요.', { position: Toast.positions.CENTER });
       } finally {
-        setLoading(false);
+        // setLoading(false); // 삭제
       }
     };
     fetchInitial();
@@ -131,31 +143,29 @@ export default function NoticePage() {
 
   // 추가 데이터 불러오기
   const fetchMore = async () => {
-    if (loading || !hasMore || !lastVisible) return;
-    setLoading(true);
+    if (isLoading) return; // 삭제
     try {
       const q = query(
         collection(db, 'notice'),
         where('type', '==', 'notice'),
         orderBy('date', 'desc'),
-        startAfter(lastVisible),
+        startAfter(notices[notices.length - 1]?.date), // 사용자 정의 함수에서 사용하는 lastVisible 대신 사용
         limit(10)
       );
       const snapshot = await getDocs(q);
       const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as NoticeItem));
-      setNotices((prev) => [...prev, ...list]);
-      setLastVisible(snapshot.docs[snapshot.docs.length - 1] || lastVisible);
-      setHasMore(snapshot.docs.length === 10);
+      // setNotices((prev) => [...prev, ...list]); // 삭제
+      // setLastVisible(snapshot.docs[snapshot.docs.length - 1] || notices[notices.length - 1]?.date); // 삭제
+      // setHasMore(snapshot.docs.length === 10); // 삭제
     } catch (e) {
       Toast.show('공지사항 추가 로딩 실패. 네트워크를 확인해주세요.', { position: Toast.positions.CENTER });
     } finally {
-      setLoading(false);
+      // setLoading(false); // 삭제
     }
   };
 
   // 새로고침
   const handleRefresh = async () => {
-    setLoading(true);
     try {
       const q = query(
         collection(db, 'notice'),
@@ -165,13 +175,13 @@ export default function NoticePage() {
       );
       const snapshot = await getDocs(q);
       const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as NoticeItem));
-      setNotices(list);
-      setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
-      setHasMore(snapshot.docs.length === 10);
+      // setNotices(list); // 삭제
+      // setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null); // 삭제
+      // setHasMore(snapshot.docs.length === 10); // 삭제
     } catch (e) {
       Toast.show('공지사항 새로고침 실패. 네트워크를 확인해주세요.', { position: Toast.positions.CENTER });
     } finally {
-      setLoading(false);
+      // setLoading(false); // 삭제
     }
   };
 
@@ -183,11 +193,11 @@ export default function NoticePage() {
         id: doc.id,
         ...doc.data(),
       })) as NoticeItem[];
-      setNotices(fetched);
+      // setNotices(fetched); // 삭제
     } catch (e) {
       console.error('❌ 공지 불러오기 실패:', e);
     } finally {
-      setLoading(false);
+      // setLoading(false); // 삭제
     }
   };
 
@@ -510,11 +520,11 @@ export default function NoticePage() {
         keyExtractor={(item) => item.id?.toString?.() || String(item.id)}
         renderItem={renderNotice}
         contentContainerStyle={{ padding: spacing.md }}
-        ListEmptyComponent={<Text style={{ color: colors.subtext, textAlign: 'center' }}>{loading ? '' : '공지사항이 없습니다.'}</Text>}
-        ListFooterComponent={loading ? <ActivityIndicator style={{ marginTop: 20 }} /> : null}
+        ListEmptyComponent={<Text style={{ color: colors.subtext, textAlign: 'center' }}>{isLoading ? '' : '공지사항이 없습니다.'}</Text>}
+        ListFooterComponent={isLoading ? <ActivityIndicator style={{ marginTop: 20 }} /> : null}
         onEndReached={fetchMore}
         onEndReachedThreshold={0.2}
-        refreshing={loading}
+        refreshing={isLoading}
         onRefresh={handleRefresh}
       />
 

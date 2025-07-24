@@ -1,5 +1,6 @@
 import { useDesign } from '@/context/DesignSystem';
 import { db } from '@/firebase/config';
+import { useQuery } from '@tanstack/react-query';
 import {
     addDoc,
     collection,
@@ -10,8 +11,9 @@ import {
     updateDoc,
     where,
 } from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
+    Alert,
     FlatList,
     KeyboardAvoidingView,
     Modal,
@@ -21,30 +23,28 @@ import {
     TextInput,
     TouchableOpacity,
     View,
-    Alert,
 } from 'react-native';
 
 export default function NoticeTab() {
     const { colors, spacing } = useDesign();
     const [modalVisible, setModalVisible] = useState(false);
     const [form, setForm] = useState({ id: '', title: '', content: '' });
-    const [noticeList, setNoticeList] = useState<any[]>([]);
     const [refreshing, setRefreshing] = useState(false);
 
-    const fetchNotices = async () => {
-        const q = query(collection(db, 'notice'), where('type', '==', 'notice'));
-        const snap = await getDocs(q);
-        const list = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setNoticeList(list);
-    };
-
-    useEffect(() => {
-        fetchNotices();
-    }, []);
+    const { data: noticeList = [], isLoading, refetch } = useQuery<any[]>({
+        queryKey: ['noticeList'],
+        queryFn: async () => {
+            const q = query(collection(db, 'notice'), where('type', '==', 'notice'));
+            const snap = await getDocs(q);
+            return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        },
+        staleTime: 1000 * 60 * 5,
+        refetchOnWindowFocus: false,
+    });
 
     const onRefresh = async () => {
         setRefreshing(true);
-        await fetchNotices();
+        await refetch();
         setRefreshing(false);
     };
 
@@ -68,7 +68,7 @@ export default function NoticeTab() {
 
         setForm({ id: '', title: '', content: '' });
         setModalVisible(false);
-        fetchNotices(); // 저장 후 목록 업데이트
+        refetch(); // 저장 후 목록 업데이트
     };
 
     const renderItem = ({ item }: any) => (
@@ -95,7 +95,7 @@ export default function NoticeTab() {
                                 style: 'destructive',
                                 onPress: async () => {
                                     await deleteDoc(doc(db, 'notice', item.id));
-                                    fetchNotices();
+                                    refetch();
                                 },
                             },
                         ]);
@@ -116,6 +116,16 @@ export default function NoticeTab() {
                 contentContainerStyle={{ padding: spacing.md }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 renderItem={renderItem}
+                ListEmptyComponent={
+                    !isLoading ? (
+                        <Text style={{ color: colors.subtext, textAlign: 'center', marginTop: 40 }}>등록된 공지가 없습니다.</Text>
+                    ) : null
+                }
+                ListFooterComponent={
+                    isLoading ? (
+                        <Text style={{ color: colors.subtext, textAlign: 'center', marginVertical: 20 }}>불러오는 중...</Text>
+                    ) : null
+                }
             />
 
             <TouchableOpacity

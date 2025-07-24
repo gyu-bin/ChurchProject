@@ -6,18 +6,19 @@ import { useDeletePrayer } from '@/hooks/usePrayers';
 import { showToast } from '@/utils/toast';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { useRouter } from 'expo-router';
-import { collection, DocumentData, getDocs, limit, orderBy, query, QueryDocumentSnapshot, startAfter } from 'firebase/firestore';
+import { collection, getDocs, limit, orderBy, query, startAfter } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Platform,
-    RefreshControl,
-    SafeAreaView,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Platform,
+  RefreshControl,
+  SafeAreaView,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import Toast from 'react-native-root-toast';
 import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,19 +27,14 @@ type Prayer = {
   id: string;
   title: string;
   content: string;
-  name?: string;
-  email?: string;
-  createdAt?: { toDate?: () => Date } | string;
-  anonymous?: 'Y' | 'N';
+  name: string;
+  createdAt?: { seconds: number };
   urgent?: 'Y' | 'N';
+  anonymous?: 'Y' | 'N';
+  email?: string;
 };
 
 export default function PrayerListScreen() {
-  const [prayers, setPrayers] = useState<Prayer[]>([]);
-  const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-
   const { mutateAsync: deletePrayer } = useDeletePrayer();
 
   const { mode } = useAppTheme();
@@ -62,50 +58,32 @@ export default function PrayerListScreen() {
     loadUser();
   }, []);
 
-  // 최초 10개 불러오기
-  useEffect(() => {
-    const fetchInitial = async () => {
-      setLoading(true);
-      try {
-        const q = query(
-          collection(db, 'prayer_requests'),
-          orderBy('createdAt', 'desc'),
-          limit(10)
-        );
-        const snapshot = await getDocs(q);
-        const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Prayer));
-        setPrayers(list);
-        setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
-        setHasMore(snapshot.docs.length === 10);
-      } catch (e) {
-        Toast.show('기도제목을 불러오지 못했습니다. 네트워크를 확인해주세요.', { position: Toast.positions.CENTER });
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchInitial();
-  }, []);
+  const { data: prayers = [], isLoading, refetch } = useQuery<Prayer[]>({
+    queryKey: ['prayer_requests'],
+    queryFn: async () => {
+      const q = query(collection(db, 'prayer_requests'), orderBy('createdAt', 'desc'), limit(10));
+      const snap = await getDocs(q);
+      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Prayer));
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
 
   // 추가 데이터 불러오기
   const fetchMore = async () => {
-    if (loading || !hasMore || !lastVisible) return;
-    setLoading(true);
+    if (isLoading || prayers.length === 0) return;
     try {
       const q = query(
         collection(db, 'prayer_requests'),
         orderBy('createdAt', 'desc'),
-        startAfter(lastVisible),
+        startAfter(prayers[prayers.length - 1]),
         limit(10)
       );
       const snapshot = await getDocs(q);
       const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Prayer));
-      setPrayers((prev) => [...prev, ...list]);
-      setLastVisible(snapshot.docs[snapshot.docs.length - 1] || lastVisible);
-      setHasMore(snapshot.docs.length === 10);
+      refetch(); // refetch를 사용하여 데이터를 업데이트
     } catch (e) {
       Toast.show('기도제목 추가 로딩 실패. 네트워크를 확인해주세요.', { position: Toast.positions.CENTER });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -113,9 +91,7 @@ export default function PrayerListScreen() {
     try {
       await deletePrayer(id);
       showToast('🙏 기도제목이 삭제되었습니다.');
-      // refetch(); // usePrayers 대신 직접 쿼리를 사용하므로 refetch는 제거
-      // 삭제 후 새로고침
-      handleRefresh();
+      refetch(); // refetch를 사용하여 데이터를 업데이트
     } catch (error) {
       console.error('🔥 기도제목 삭제 실패:', error);
       Toast.show('❌ 삭제에 실패했습니다. 네트워크를 확인해주세요.', { position: Toast.positions.CENTER });
@@ -132,9 +108,7 @@ export default function PrayerListScreen() {
       );
       const snapshot = await getDocs(q);
       const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Prayer));
-      setPrayers(list);
-      setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
-      setHasMore(snapshot.docs.length === 10);
+      refetch(); // refetch를 사용하여 데이터를 업데이트
     } catch (e) {
       Toast.show('기도제목 새로고침 실패. 네트워크를 확인해주세요.', { position: Toast.positions.CENTER });
     } finally {
@@ -144,12 +118,9 @@ export default function PrayerListScreen() {
 
   const renderItem = ({ item }: { item: Prayer }) => {
     const isUrgent = item.urgent === 'Y';
-    const date =
-      typeof item.createdAt === 'string'
-        ? item.createdAt
-        : item.createdAt?.toDate
-          ? format(item.createdAt.toDate(), 'yyyy-MM-dd HH:mm')
-          : '';
+    const date = item.createdAt?.seconds
+      ? format(new Date(item.createdAt.seconds * 1000), 'yyyy-MM-dd HH:mm')
+      : '';
 
     return (
       <View
@@ -267,7 +238,7 @@ export default function PrayerListScreen() {
           />
         }
         ListEmptyComponent={
-          !loading ? (
+          !isLoading ? (
             <View style={{ marginTop: 40 }}>
               <Text style={{ textAlign: 'center', color: theme.colors.subtext }}>
                 등록된 기도제목이 없습니다.
@@ -276,7 +247,7 @@ export default function PrayerListScreen() {
           ) : null
         }
         ListFooterComponent={
-          loading ? (
+          isLoading ? (
             <ActivityIndicator color={theme.colors.primary} style={{ marginVertical: 20 }} />
           ) : null
         }

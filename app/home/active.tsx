@@ -1,15 +1,15 @@
-import { db } from '@/firebase/config';
-import { router } from 'expo-router';
-import { collection, deleteDoc, doc, orderBy, query, where } from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
-import { Dimensions, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useDesign } from '@/context/DesignSystem';
-import FlexibleCarousel from '../../components/FlexibleCarousel';
-import { Image } from 'expo-image';
+import { db } from '@/firebase/config';
+import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import { useRealtimeCollection } from '@/hooks/useRealtimeCollection';
-import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
+import { router } from 'expo-router';
+import { collection, getDocs } from 'firebase/firestore';
+import React from 'react';
+import { Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { useSafeAreaFrame } from 'react-native-safe-area-context';
+import FlexibleCarousel from '../../components/FlexibleCarousel';
 interface Team {
   id: string;
   name: string;
@@ -39,11 +39,46 @@ export default function ActiveSection() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
-  const { data: allTeams } = useRealtimeCollection('teams');
-  const { data: allPrayers } = useRealtimeCollection('prayer_requests');
+  const { data: allTeams = [], isLoading: loadingTeams } = useQuery<any[]>({
+    queryKey: ['teams'],
+    queryFn: async () => {
+      const snap = await getDocs(collection(db, 'teams'));
+      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
+  const { data: allPrayers = [], isLoading: loadingPrayers } = useQuery<any[]>({
+    queryKey: ['prayer_requests'],
+    queryFn: async () => {
+      const snap = await getDocs(collection(db, 'prayer_requests'));
+      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
 
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [prayers, setPrayers] = useState<PrayerRequest[]>([]);
+  const todayStr = dayjs().format('YYYY-MM-DD');
+  const validTeams = React.useMemo(() => {
+    return allTeams.filter((team: any) => {
+      const expirationDate = team.expirationDate?.seconds
+        ? dayjs(team.expirationDate.seconds * 1000)
+        : null;
+      const dueDate = expirationDate ? expirationDate.format('YYYY-MM-DD') : null;
+      return dueDate && dueDate >= todayStr;
+    });
+  }, [allTeams, todayStr]);
+
+  const sortedTeams = React.useMemo(() => {
+    return validTeams
+      .filter((t: any) => t.category === '✨ 반짝소모임')
+      .sort((a: any, b: any) => b.dueDate.localeCompare(a.dueDate))
+      .slice(0, 9);
+  }, [validTeams]);
+
+  const shuffledPrayers = React.useMemo(() => {
+    return [...allPrayers].sort(() => Math.random() - 0.5).slice(0, 99);
+  }, [allPrayers]);
 
   const dummyImageUrls = [
     'https://i.pinimg.com/736x/e3/08/ee/e308eedf0ca6ecacbaae866f2abf81d0.jpg',
@@ -51,40 +86,6 @@ export default function ActiveSection() {
     'https://i.pinimg.com/736x/e5/6b/51/e56b51f0052bcb20364000c4f10b88e3.jpg',
     'https://i.pinimg.com/736x/b6/50/48/b650489faca0b69e3f4681271a9adff2.jpg',
   ];
-
-  useEffect(() => {
-    const todayStr = dayjs().format('YYYY-MM-DD');
-    const validTeams: Team[] = [];
-
-    allTeams.forEach((team: any) => {
-      const expirationDate = team.expirationDate?.seconds
-        ? dayjs(team.expirationDate.seconds * 1000)
-        : null;
-
-      const dueDate = expirationDate ? expirationDate.format('YYYY-MM-DD') : null;
-
-      if (dueDate && dueDate >= todayStr) {
-        validTeams.push({ ...team, dueDate });
-      }
-      /*else if (dueDate && dueDate < todayStr) {
-        deleteDoc(doc(db, 'teams', team.id)).catch((e) =>
-          console.error(`팀 삭제 실패 (${team.id}):`, e)
-        );
-      }*/
-    });
-
-    const sortedTeams = validTeams
-      .filter((t) => t.category === '✨ 반짝소모임')
-      .sort((a, b) => b.dueDate.localeCompare(a.dueDate))
-      .slice(0, 9);
-
-    setTeams(sortedTeams);
-
-    // 🔥 기도제목 랜덤 정렬
-    const shuffledPrayers = [...allPrayers].sort(() => Math.random() - 0.5).slice(0, 99);
-
-    setPrayers(shuffledPrayers);
-  }, [allTeams, allPrayers]);
 
   const getDDay = (dueDate: string) => {
     const today = dayjs().startOf('day');
@@ -298,8 +299,8 @@ export default function ActiveSection() {
             <Ionicons name='chevron-forward' size={20} color={colors.text} />
           </View>
         </TouchableOpacity>
-        {teams.length === 1 && renderTeamCard(teams[0])}
-        {teams.length >= 2 && <FlexibleCarousel data={teams} renderItem={renderTeamCard} />}
+        {sortedTeams.length === 1 && renderTeamCard(sortedTeams[0])}
+        {sortedTeams.length >= 2 && <FlexibleCarousel data={sortedTeams} renderItem={renderTeamCard} />}
       </View>
 
       <View>
@@ -317,7 +318,7 @@ export default function ActiveSection() {
             <Ionicons name='chevron-forward' size={20} color={colors.text} />
           </View>
         </TouchableOpacity>
-        {prayers.length > 0 && <FlexibleCarousel data={prayers} renderItem={renderPrayerCard} />}
+        {shuffledPrayers.length > 0 && <FlexibleCarousel data={shuffledPrayers} renderItem={renderPrayerCard} />}
       </View>
     </View>
   );

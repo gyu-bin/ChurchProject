@@ -3,6 +3,7 @@ import { useAppTheme } from '@/context/ThemeContext';
 import { db } from '@/firebase/config';
 import { getCurrentUser } from '@/services/authService';
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { arrayRemove, collection, deleteDoc, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
@@ -19,17 +20,14 @@ import Toast from 'react-native-root-toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function JoinedTeams() {
-    const [teams, setTeams] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [userEmail, setUserEmail] = useState('');
-    const [selectMode, setSelectMode] = useState(false);
-    const [selectedIds, setSelectedIds] = useState<string[]>([]);
-
     const { colors, font, spacing, radius } = useDesign();
     const { mode } = useAppTheme();
     const isDark = mode === 'dark';
     const router = useRouter();
     const insets = useSafeAreaInsets();
+    const [userEmail, setUserEmail] = useState('');
+    const [selectMode, setSelectMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -41,25 +39,19 @@ export default function JoinedTeams() {
         fetchUser();
     }, []);
 
-    useEffect(() => {
-        fetchTeams();
-    }, []);
-
-    const fetchTeams = async () => {
-        setLoading(true);
-        const user = await getCurrentUser();
-        if (!user?.email) return;
-
-        const teamsRef = collection(db, 'teams');
-        const q = query(teamsRef, where('membersList', 'array-contains', user.email));
-        const snap = await getDocs(q);
-
-        const result: any[] = [];
-        snap.forEach(doc => result.push({ id: doc.id, ...doc.data() }));
-
-        setTeams(result);
-        setLoading(false);
-    };
+    const { data: teams = [], isLoading, refetch } = useQuery<any[]>({
+        queryKey: ['myTeams', userEmail],
+        queryFn: async () => {
+            if (!userEmail) return [];
+            const teamsRef = collection(db, 'teams');
+            const q = query(teamsRef, where('membersList', 'array-contains', userEmail));
+            const snap = await getDocs(q);
+            return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        },
+        enabled: !!userEmail,
+        staleTime: 1000 * 60 * 5,
+        refetchOnWindowFocus: false,
+    });
 
     const toggleSelect = (teamId: string) => {
         setSelectedIds(prev =>
@@ -93,10 +85,8 @@ export default function JoinedTeams() {
             const team = teams.find(t => t.id === teamId);
 
             if (team.leaderEmail === user.email) {
-                // 모임장일 경우 모임 자체 삭제
                 await deleteDoc(doc(db, 'teams', teamId));
             } else {
-                // 일반 멤버일 경우 멤버리스트에서 제거
                 await updateDoc(doc(db, 'teams', teamId), {
                     membersList: arrayRemove(user.email),
                 });
@@ -105,7 +95,7 @@ export default function JoinedTeams() {
 
         setSelectedIds([]);
         setSelectMode(false);
-        await fetchTeams();
+        await refetch();
 
         Toast.show('✅ 탈퇴되었습니다', {
             duration: Toast.durations.SHORT,
@@ -113,7 +103,7 @@ export default function JoinedTeams() {
         });
     };
 
-    if (loading || !userEmail) {
+    if (isLoading || !userEmail) {
         return (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
                 <ActivityIndicator size="large" color={colors.primary} />
@@ -158,35 +148,7 @@ export default function JoinedTeams() {
                             내 모임
                         </Text>
                     </View>
-                </View>
-                <View style={{
-                    flex: 1,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    backgroundColor: colors.background,
-                    paddingBottom: '15%'
-                }}>
-                    <Text style={{
-                        fontSize: 18,
-                        color: colors.subtext,
-                        marginBottom: 8
-                    }}>
-                        아직 가입한 모임이 없어요
-                    </Text>
-                    <TouchableOpacity
-                        onPress={() => router.push('/teams')}
-                        style={{
-                            backgroundColor: colors.primary,
-                            paddingVertical: 12,
-                            paddingHorizontal: 20,
-                            borderRadius: 12,
-                            marginTop: 16
-                        }}
-                    >
-                        <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
-                            모임 찾아보기
-                        </Text>
-                    </TouchableOpacity>
+                    <Text style={{ color: colors.subtext, textAlign: 'center', marginTop: 40 }}>가입된 모임이 없습니다.</Text>
                 </View>
             </SafeAreaView>
         );

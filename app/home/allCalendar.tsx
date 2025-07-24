@@ -1,5 +1,6 @@
 import { useDesign } from '@/context/DesignSystem';
 import { db } from '@/firebase/config';
+import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { collection, DocumentData, getDocs, limit, orderBy, query, QueryDocumentSnapshot, startAfter, where } from 'firebase/firestore';
 import React from 'react';
@@ -8,7 +9,16 @@ import Toast from 'react-native-root-toast';
 
 export default function AllEventsScreen() {
     const { colors, spacing, font } = useDesign();
-    const [events, setEvents] = React.useState<any[]>([]);
+    const { data: events = [], isLoading, refetch } = useQuery<any[]>({
+        queryKey: ['allEvents'],
+        queryFn: async () => {
+            const q = query(collection(db, 'notice'), where('type', '==', 'event'), orderBy('startDate', 'asc'), limit(10));
+            const snap = await getDocs(q);
+            return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        },
+        staleTime: 1000 * 60 * 5,
+        refetchOnWindowFocus: false,
+    });
     const [lastVisible, setLastVisible] = React.useState<QueryDocumentSnapshot<DocumentData> | null>(null);
     const [loading, setLoading] = React.useState(true);
     const [hasMore, setHasMore] = React.useState(true);
@@ -27,7 +37,6 @@ export default function AllEventsScreen() {
                 );
                 const snapshot = await getDocs(q);
                 const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-                setEvents(list);
                 setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
                 setHasMore(snapshot.docs.length === 10);
             } catch (e) {
@@ -53,7 +62,6 @@ export default function AllEventsScreen() {
             );
             const snapshot = await getDocs(q);
             const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-            setEvents((prev) => [...prev, ...list]);
             setLastVisible(snapshot.docs[snapshot.docs.length - 1] || lastVisible);
             setHasMore(snapshot.docs.length === 10);
         } catch (e) {
@@ -75,7 +83,6 @@ export default function AllEventsScreen() {
             );
             const snapshot = await getDocs(q);
             const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-            setEvents(list);
             setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
             setHasMore(snapshot.docs.length === 10);
         } catch (e) {

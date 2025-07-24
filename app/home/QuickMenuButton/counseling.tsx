@@ -1,29 +1,30 @@
 // app/counsel/request.tsx
-import React, { useEffect, useState } from 'react';
-import {
-  Alert,
-  Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDesign } from '@/context/DesignSystem';
 import { useAppTheme } from '@/context/ThemeContext';
 import { db } from '@/firebase/config';
+import { sendNotification, sendPushNotification } from '@/services/notificationService';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { addDoc, collection, getDocs, query, serverTimestamp, where } from 'firebase/firestore';
-import { sendNotification, sendPushNotification } from '@/services/notificationService';
+import React, { useEffect, useState } from 'react';
+import {
+    Alert,
+    Keyboard,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View,
+} from 'react-native';
 import { Dropdown } from 'react-native-element-dropdown';
-import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function CounselRequestPage() {
   const { colors, spacing, font, radius } = useDesign();
@@ -33,10 +34,30 @@ export default function CounselRequestPage() {
 
   const [content, setContent] = useState('');
   const [user, setUser] = useState<any>(null);
-  const [pastors, setPastors] = useState<{ label: string; value: string }[]>([]);
   const [selectedPastor, setSelectedPastor] = useState<string | null>(null);
-  const [myCounselHistory, setMyCounselHistory] = useState<any[]>([]);
   const [isHistoryModalVisible, setIsHistoryModalVisible] = useState(false);
+
+  const { data: pastors = [], isLoading: loadingPastors } = useQuery<any[]>({
+    queryKey: ['pastors'],
+    queryFn: async () => {
+      const snap = await getDocs(query(collection(db, 'users'), where('role', '==', '교역자')));
+      return snap.docs.map(doc => ({ label: doc.data().name, value: doc.data().email }));
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
+
+  const { data: myCounselHistory = [], isLoading: loadingHistory } = useQuery<any[]>({
+    queryKey: ['myCounselHistory', user?.email, isHistoryModalVisible],
+    queryFn: async () => {
+      if (!user?.email || !isHistoryModalVisible) return [];
+      const snap = await getDocs(query(collection(db, 'counsel_requests'), where('email', '==', user.email)));
+      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    },
+    enabled: !!user?.email && isHistoryModalVisible,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
 
   const handleOpenHistory = () => setIsHistoryModalVisible(true);
   const handleCloseHistory = () => setIsHistoryModalVisible(false);
@@ -50,25 +71,6 @@ export default function CounselRequestPage() {
   }, []);
 
   useEffect(() => {
-    const loadPastors = async () => {
-      try {
-        const snap = await getDocs(query(collection(db, 'users'), where('role', '==', '교역자')));
-        const list = snap.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            label: data.name,
-            value: data.email,
-          };
-        });
-        setPastors(list);
-      } catch (e) {
-        console.error('교역자 로딩 실패:', e);
-      }
-    };
-    loadPastors();
-  }, []);
-
-  useEffect(() => {
     if (isHistoryModalVisible && user?.email) {
       const fetchMyHistory = async () => {
         try {
@@ -76,12 +78,12 @@ export default function CounselRequestPage() {
             query(collection(db, 'counsel_requests'), where('email', '==', user.email))
           );
           const data = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-          setMyCounselHistory(data);
+          // setMyCounselHistory(data); // This line is removed as per the new_code
         } catch (err) {
           console.error('심방 내역 불러오기 실패:', err);
         }
       };
-      fetchMyHistory();
+      // fetchMyHistory(); // This line is removed as per the new_code
     }
   }, [isHistoryModalVisible, user]);
 

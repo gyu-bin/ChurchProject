@@ -3,6 +3,7 @@ import { useAppTheme } from '@/context/ThemeContext';
 import { db } from '@/firebase/config';
 import { getCurrentUser } from '@/services/authService';
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
@@ -41,11 +42,18 @@ import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import Toast from 'react-native-root-toast';
 import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+type DevotionPost = {
+  id: string;
+  authorEmail: string;
+  authorName: string;
+  createdAt: { seconds: number };
+  content: string;
+};
+
 export default function DevotionPage() {
   const [content, setContent] = useState('');
   const [user, setUser] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
-  const [allPosts, setAllPosts] = useState<any[]>([]);
   const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(true);
@@ -112,29 +120,16 @@ export default function DevotionPage() {
     }
   }, [showRanking]);
 
-  // 최초 10개 불러오기
-  useEffect(() => {
-    const fetchInitial = async () => {
-      setLoading(true);
-      try {
-        const q = query(
-          collection(db, 'devotions'),
-          orderBy('createdAt', 'desc'),
-          limit(10)
-        );
-        const snapshot = await getDocs(q);
-        const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setAllPosts(list);
-        setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
-        setHasMore(snapshot.docs.length === 10);
-      } catch (e) {
-        Toast.show('묵상글을 불러오지 못했습니다. 네트워크를 확인해주세요.', { position: Toast.positions.CENTER });
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchInitial();
-  }, []);
+  const { data: allPosts = [], isLoading, refetch } = useQuery<DevotionPost[]>({
+    queryKey: ['devotions'],
+    queryFn: async () => {
+      const q = query(collection(db, 'devotions'), orderBy('createdAt', 'desc'), limit(10));
+      const snap = await getDocs(q);
+      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as DevotionPost));
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
 
   // 추가 데이터 불러오기
   const fetchMore = async () => {
@@ -149,7 +144,7 @@ export default function DevotionPage() {
       );
       const snapshot = await getDocs(q);
       const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setAllPosts((prev) => [...prev, ...list]);
+      // setAllPosts((prev) => [...prev, ...list]); // 이 줄을 완전히 제거
       setLastVisible(snapshot.docs[snapshot.docs.length - 1] || lastVisible);
       setHasMore(snapshot.docs.length === 10);
     } catch (e) {
@@ -170,7 +165,7 @@ export default function DevotionPage() {
       );
       const snapshot = await getDocs(q);
       const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setAllPosts(list);
+      // setAllPosts(list); // 이 줄을 완전히 제거
       setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
       setHasMore(snapshot.docs.length === 10);
     } catch (e) {
@@ -537,14 +532,18 @@ export default function DevotionPage() {
           )}
           ListEmptyComponent={
             <Text style={{ color: colors.subtext, textAlign: 'center', marginVertical: theme.spacing.xl }}>
-              {loading ? '' : '오늘은 아직 묵상이 없어요'}
+              {isLoading ? '불러오는 중...' : '오늘은 아직 묵상이 없어요'}
             </Text>
           }
           onEndReached={fetchMore}
           onEndReachedThreshold={0.2}
           refreshing={refreshing}
           onRefresh={handleRefresh}
-          ListFooterComponent={loading ? <Text style={{ color: colors.subtext, textAlign: 'center', marginVertical: theme.spacing.xl }}>불러오는 중...</Text> : null}
+          ListFooterComponent={
+            isLoading && filteredPosts.length > 0 && hasMore
+              ? <Text style={{ color: colors.subtext, textAlign: 'center', marginVertical: theme.spacing.xl }}>불러오는 중...</Text>
+              : null
+          }
           contentContainerStyle={{ paddingLeft: spacing.lg, paddingRight: spacing.lg, paddingBottom: spacing.lg }}
         />
       </View>

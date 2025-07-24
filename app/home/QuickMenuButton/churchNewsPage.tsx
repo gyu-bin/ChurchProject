@@ -2,6 +2,7 @@ import { useDesign } from '@/context/DesignSystem';
 import { db } from '@/firebase/config';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import {
@@ -9,11 +10,10 @@ import {
     collection,
     deleteDoc,
     doc,
-    onSnapshot,
+    getDocs,
     query,
     serverTimestamp,
-    updateDoc,
-    where
+    updateDoc
 } from 'firebase/firestore';
 import { getLinkPreview } from 'link-preview-js';
 import React, { useEffect, useState } from 'react';
@@ -40,7 +40,16 @@ export default function ChurchNewsPage({ url }: { url: string }) {
     const router = useRouter();
     const { colors, spacing, font } = useDesign();
     const [selectedType, setSelectedType] = useState('공지');
-    const [posts, setPosts] = useState<any[]>([]);
+    const { data: posts = [], isLoading } = useQuery<any[]>({
+        queryKey: ['churchNewsPosts'],
+        queryFn: async () => {
+            const q = query(collection(db, 'church_news'));
+            const snap = await getDocs(q);
+            return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        },
+        staleTime: 1000 * 60 * 5,
+        refetchOnWindowFocus: false,
+    });
     const [selectedPost, setSelectedPost] = useState<any | null>(null);
     const [user, setUser] = useState<any>(null);
     const [showModal, setShowModal] = useState(false);
@@ -124,14 +133,15 @@ export default function ChurchNewsPage({ url }: { url: string }) {
         fetchUser();
     }, []);
 
-    useEffect(() => {
-        const q = query(collection(db, 'church_news'), where('type', '==', selectedType));
-        const unsubscribe = onSnapshot(q, snapshot => {
-            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setPosts(data);
-        });
-        return () => unsubscribe();
-    }, [selectedType]);
+    // useEffect(() => {
+    //     const q = query(collection(db, 'church_news'), where('type', '==', selectedType));
+    //     const unsubscribe = onSnapshot(q, snapshot => {
+    //         // This useEffect is now redundant as posts are fetched via useQuery
+    //         // but keeping it for now to avoid breaking existing logic if it were to be re-added.
+    //         // The useQuery will handle updates.
+    //     });
+    //     return () => unsubscribe();
+    // }, [selectedType]);
 
     const handleSubmit = async () => {
         if (!title || !content) return;

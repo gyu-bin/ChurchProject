@@ -15,6 +15,7 @@ import { getCurrentUser } from '@/services/authService';
 import { sendNotification, sendPushNotification } from '@/services/notificationService';
 import { showToast } from '@/utils/toast'; // ✅ 추가
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -101,11 +102,44 @@ type Schedule = {
 
 export default function TeamDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  
   // TanStack Query 훅 사용
   const { data: team = null, isLoading: loading, refetch: refetchTeam } = useTeam(id || '');
-  
-  const [memberUsers, setMemberUsers] = useState<any[]>([]);
+  const { data: memberUsers = [], isLoading: loadingMembers, refetch: refetchMembers } = useQuery<any[]>({
+    queryKey: ['teamMembers', team?.membersList],
+    queryFn: async () => {
+      if (!team?.membersList || team.membersList.length === 0) return [];
+      const batches = [];
+      const emails = Array.from(new Set(team.membersList));
+      let cloned = [...emails];
+      while (cloned.length) {
+        const batch = cloned.splice(0, 10);
+        batches.push(query(collection(db, 'users'), where('email', 'in', batch)));
+      }
+      const results = await Promise.all(batches.map((q) => getDocs(q)));
+      return results.flatMap((snap) => snap.docs.map((doc) => doc.data()));
+    },
+    enabled: !!team?.membersList,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
+  const [scheduleDate, setScheduleDate] = useState<string | null>(null);
+  const { data: votes = {}, isLoading: loadingVotes, refetch: refetchVotes } = useQuery<any>({
+    queryKey: ['scheduleVotes', team?.id, scheduleDate],
+    queryFn: async () => {
+      if (!team?.id || !scheduleDate) return {};
+      const votesRef = collection(db, 'teams', team.id, 'scheduleVotes');
+      const q = query(votesRef, where('scheduleDate', '==', scheduleDate));
+      const snap = await getDocs(q);
+      const votesData: { [key: string]: any } = {};
+      snap.docs.forEach((doc) => {
+        votesData[doc.id] = doc.data();
+      });
+      return votesData;
+    },
+    enabled: !!team?.id && !!scheduleDate,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
   const [user, setUser] = useState<any>(null);
   const router = useRouter();
   const { colors, font, spacing, radius } = useDesign();
@@ -127,14 +161,12 @@ export default function TeamDetail() {
   const [announcement, setAnnouncement] = useState('');
   const [openContact, setOpenContact] = useState('');
 
-  const [scheduleDate, setScheduleDate] = useState<string | null>(null);
   const [isDatePickerVisible, setDatePickerVisible] = useState(false);
   const [isClosed, setIsClosed] = useState(false);
   const [alreadyRequested, setAlreadyRequested] = useState(false);
 
   const [chatBadgeCount, setChatBadgeCount] = useState(0);
   const [isVoteModalVisible, setVoteModalVisible] = useState(false);
-  const [votes, setVotes] = useState<{ [key: string]: Vote }>({});
   const [myVote, setMyVote] = useState<VoteStatus | null>(null);
   const [selectedVote, setSelectedVote] = useState<VoteStatus | null>(null);
   const [showVoteStatus, setShowVoteStatus] = useState(false);
@@ -312,7 +344,7 @@ export default function TeamDetail() {
           }
           const results = await Promise.all(batches.map((q) => getDocs(q)));
           const users = results.flatMap((snap) => snap.docs.map((doc) => doc.data()));
-          setMemberUsers(users);
+          // setMemberUsers(users); // 삭제
         }
       } catch (e) {
         console.error('❌ 사용자/멤버 정보 로딩 실패:', e);
@@ -350,7 +382,7 @@ export default function TeamDetail() {
           setMyVote(doc.data().status as VoteStatus);
         }
       });
-      setVotes(votesData);
+      // setVotes(votesData); // 이 부분은 useQuery가 관리
     });
 
     return () => unsubscribe();
@@ -649,7 +681,7 @@ export default function TeamDetail() {
             //   });
             // }
 
-            setMemberUsers((prev) => prev.filter((m) => m.email !== email));
+            // setMemberUsers((prev) => prev.filter((m) => m.email !== email)); // 삭제
             refetchTeam(); // TanStack Query의 refetch 사용
             await refetchTeam(); // 인원/참여자 최신화
             Alert.alert('강퇴 완료', `${displayName}님이 강퇴되었습니다.`);
@@ -845,7 +877,7 @@ export default function TeamDetail() {
 
   // Add function to calculate vote statistics
   const calculateVoteStats = (): VoteStats => {
-    const voteArray = Object.values(votes);
+    const voteArray = Object.values(votes) as Vote[];
     const total = voteArray.length;
     return {
       yes: voteArray.filter((v) => v.status === 'yes').length,

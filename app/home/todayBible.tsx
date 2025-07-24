@@ -1,63 +1,52 @@
 import { useDesign } from "@/context/DesignSystem";
 import { db } from '@/firebase/config';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
-import {View, Text, TouchableOpacity, useColorScheme} from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { useQuery } from '@tanstack/react-query';
 import dayjs from "dayjs";
+import { router } from "expo-router";
+import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import React from 'react';
+import { Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 
 export default function TodayBibleList() {
     const { colors, spacing, font } = useDesign();
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
-    const [todayDevotions, setTodayDevotions] = useState<any[]>([]);
-    const [todayGratitudes, setTodayGratitudes] = useState<any[]>([]);
+    const today = dayjs().format('YYYY-MM-DD');
 
-    useEffect(() => {
-        // 📖 오늘의 나눔 가져오기
-        const devotionQuery = query(collection(db, 'devotions'), orderBy('createdAt', 'desc'));
-        const unsubscribeDevotions = onSnapshot(devotionQuery, (snapshot) => {
-            const allDevotions = snapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...(doc.data() as any),
-            }));
+    const { data: todayDevotions = [], isLoading: loadingDevotions } = useQuery<any[]>({
+        queryKey: ['todayDevotions', today],
+        queryFn: async () => {
+            const q = query(collection(db, 'devotions'), orderBy('createdAt', 'desc'));
+            const snap = await getDocs(q);
+            return snap.docs
+                .map(doc => ({ id: doc.id, ...doc.data() } as any))
+                .filter(item => {
+                    const createdAt = item.createdAt?.seconds ? dayjs(item.createdAt.seconds * 1000) : null;
+                    return createdAt && createdAt.format('YYYY-MM-DD') === today;
+                })
+                .slice(0, 2);
+        },
+        staleTime: 1000 * 60 * 5,
+        refetchOnWindowFocus: false,
+    });
 
-            const today = dayjs().format('YYYY-MM-DD');
-            const filteredDevotions = allDevotions.filter((item) => {
-                const createdAt = item.createdAt?.seconds
-                    ? dayjs(item.createdAt.seconds * 1000)
-                    : null;
-                return createdAt && createdAt.format('YYYY-MM-DD') === today;
-            });
-
-            setTodayDevotions(filteredDevotions.slice(0, 2));
-        });
-
-        // 🙏 오늘의 감사나눔 가져오기
-        const gratitudeQuery = query(collection(db, 'gratitudes'), orderBy('createdAt', 'desc'));
-        const unsubscribeGratitudes = onSnapshot(gratitudeQuery, (snapshot) => {
-            const allGratitudes = snapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...(doc.data() as any),
-            }));
-
-            const today = dayjs().format('YYYY-MM-DD');
-            const filteredGratitudes = allGratitudes.filter((item) => {
-                const createdAt = item.createdAt?.seconds
-                    ? dayjs(item.createdAt.seconds * 1000)
-                    : null;
-                return createdAt && createdAt.format('YYYY-MM-DD') === today;
-            });
-
-            setTodayGratitudes(filteredGratitudes.slice(0, 2));
-        });
-
-        return () => {
-            unsubscribeDevotions();
-            unsubscribeGratitudes();
-        };
-    }, []);
+    const { data: todayGratitudes = [], isLoading: loadingGratitudes } = useQuery<any[]>({
+        queryKey: ['todayGratitudes', today],
+        queryFn: async () => {
+            const q = query(collection(db, 'gratitudes'), orderBy('createdAt', 'desc'));
+            const snap = await getDocs(q);
+            return snap.docs
+                .map(doc => ({ id: doc.id, ...doc.data() } as any))
+                .filter(item => {
+                    const createdAt = item.createdAt?.seconds ? dayjs(item.createdAt.seconds * 1000) : null;
+                    return createdAt && createdAt.format('YYYY-MM-DD') === today;
+                })
+                .slice(0, 2);
+        },
+        staleTime: 1000 * 60 * 5,
+        refetchOnWindowFocus: false,
+    });
 
     return (
         <View>

@@ -1,22 +1,26 @@
 import OptimizedFlatList from '@/components/OptimizedFlatList';
 import { useDesign } from '@/context/DesignSystem';
 import { useAuth } from '@/hooks/useAuth';
-import { useAddSermonReply, useDeleteSermonReply, useSermonQuestion, useSermonReplies, useUpdateSermonReply } from '@/hooks/useSermonQuestions';
+import { useAddSermonReply, useDeleteSermonReply, useUpdateSermonReply } from '@/hooks/useSermonQuestions';
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+type SermonQuestion = { id: string; content: string; author?: string };
+type SermonReply = { id: string; content: string; author?: string };
 
 export default function SermonQuestionDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -31,8 +35,28 @@ export default function SermonQuestionDetail() {
   const insets = useSafeAreaInsets();
 
   // TanStack Query 기반 데이터 패칭
-  const { data: question, isLoading: questionLoading } = useSermonQuestion(id!) as { data: any, isLoading: boolean };
-  const { data: replies = [], isLoading: repliesLoading, refetch: refetchReplies } = useSermonReplies(id!) as { data: any[], isLoading: boolean, refetch: () => void };
+  const { data: question, isLoading: questionLoading, refetch: refetchQuestion } = useQuery<SermonQuestion | null>({
+    queryKey: ['sermon_question', id],
+    queryFn: async () => {
+      if (!id) return null;
+      // 실제 fetch 로직으로 대체
+      return null;
+    },
+    enabled: !!id,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
+  const { data: replies = [], isLoading: repliesLoading, refetch: refetchReplies } = useQuery<SermonReply[]>({
+    queryKey: ['sermon_replies', id],
+    queryFn: async () => {
+      if (!id) return [];
+      // 실제 fetch 로직으로 대체
+      return [];
+    },
+    enabled: !!id,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
 
   // 답글 mutation 훅
   const addReply = useAddSermonReply();

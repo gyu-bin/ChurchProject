@@ -1,43 +1,39 @@
-import React, { useEffect, useState } from "react";
-import {
-    View,
-    Text,
-    TouchableOpacity,
-    ActivityIndicator,
-    Image,
-    ScrollView,
-    Alert,
-    Dimensions,
-    Platform,
-} from "react-native";
-import {
-    collection,
-    query,
-    orderBy,
-    limit,
-    onSnapshot,
-    addDoc,
-    serverTimestamp,
-    getDocs,
-    deleteDoc
-} from "firebase/firestore";
-import {ref, uploadBytes, getDownloadURL, deleteObject} from "firebase/storage";
 import { db, storage } from "@/firebase/config";
 import { Ionicons } from "@expo/vector-icons";
-import * as ImagePicker from "expo-image-picker";
-import * as DocumentPicker from "expo-document-picker";
-import {useSafeAreaFrame, useSafeAreaInsets} from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { router } from "expo-router";
+import { useQuery } from '@tanstack/react-query';
+import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
-import * as Sharing from "expo-sharing";
-import * as Linking from "expo-linking";
+import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library";
+import { router } from "expo-router";
+import * as Sharing from "expo-sharing";
+import {
+    addDoc,
+    collection,
+    deleteDoc,
+    getDocs,
+    limit,
+    orderBy,
+    query,
+    serverTimestamp
+} from "firebase/firestore";
+import { deleteObject, getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import React, { useState } from "react";
+import {
+    ActivityIndicator,
+    Alert,
+    Image,
+    Platform,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View
+} from "react-native";
+import { useSafeAreaFrame, useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function BulletinPage() {
     const insets = useSafeAreaInsets();
-    const [loading, setLoading] = useState(true);
-    const [selectedBulletin, setSelectedBulletin] = useState<any>(null);
     const [mode, setMode] = useState<"view" | "upload">("view");
     const [title, setTitle] = useState("");
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -50,23 +46,20 @@ export default function BulletinPage() {
 
     // 🚨 관리자 권한 (임시로 true 처리, 실제로는 로그인 유저 role 체크)
     const isAdmin = true;
-
-    useEffect(() => {
-        const q = query(collection(db, "bulletins"), orderBy("createdAt", "desc"), limit(1));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            if (!snapshot.empty) {
-                const doc = snapshot.docs[0];
-                setSelectedBulletin({
-                    id: doc.id,
-                    ...doc.data(),
-                });
-            } else {
-                setSelectedBulletin(null);
+    const { data: selectedBulletin, isLoading } = useQuery<any | null>({
+        queryKey: ['selectedBulletin'],
+        queryFn: async () => {
+            const q = query(collection(db, "bulletins"), orderBy("createdAt", "desc"), limit(1));
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+                const docSnap = snap.docs[0];
+                return { id: docSnap.id, ...docSnap.data() };
             }
-            setLoading(false);
-        });
-        return unsubscribe;
-    }, []);
+            return null;
+        },
+        staleTime: 1000 * 60 * 5,
+        refetchOnWindowFocus: false,
+    });
 
     const pickImage = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -264,7 +257,7 @@ export default function BulletinPage() {
                 <View style={{ width: 24 }} />
             </View>
 
-            {loading ? (
+            {isLoading ? (
                 <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 50 }} />
             ) : selectedBulletin ? (
                 <ScrollView contentContainerStyle={{ padding: 16 }}>

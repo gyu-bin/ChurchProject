@@ -1,5 +1,6 @@
 // components/NotificationList.tsx
 import { db } from '@/firebase/config';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { collection, DocumentData, getDocs, limit, orderBy, query, QueryDocumentSnapshot, startAfter, where } from 'firebase/firestore';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -7,7 +8,22 @@ import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
 import Toast from 'react-native-root-toast';
 
 export default function NotificationList({ userEmail }: { userEmail: string }) {
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const { data: notifications = [], isLoading, refetch } = useQuery({
+    queryKey: ['notifications', userEmail],
+    queryFn: async () => {
+      const q = query(
+        collection(db, 'notifications'),
+        where('to', '==', userEmail),
+        orderBy('createdAt', 'desc'),
+        limit(10)
+      );
+      const snap = await getDocs(q);
+      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    },
+    enabled: !!userEmail,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
   const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -25,7 +41,7 @@ export default function NotificationList({ userEmail }: { userEmail: string }) {
         );
         const snapshot = await getDocs(q);
         const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setNotifications(list);
+        // setNotifications(list); // This line is removed as per the new_code
         setLastVisible(snapshot.docs[snapshot.docs.length - 1] || null);
         setHasMore(snapshot.docs.length === 10);
       } catch (e) {
@@ -51,7 +67,7 @@ export default function NotificationList({ userEmail }: { userEmail: string }) {
       );
       const snapshot = await getDocs(q);
       const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setNotifications((prev) => [...prev, ...list]);
+      // setNotifications((prev) => [...prev, ...list]); // This line is removed as per the new_code
       setLastVisible(snapshot.docs[snapshot.docs.length - 1] || lastVisible);
       setHasMore(snapshot.docs.length === 10);
     } catch (e) {

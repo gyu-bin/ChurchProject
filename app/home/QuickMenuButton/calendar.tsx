@@ -6,21 +6,20 @@ import { useDesign } from '@/context/DesignSystem';
 import { db } from '@/firebase/config';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { router } from 'expo-router';
-import { collection, doc, getDoc, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Dimensions,
-  FlatList,
-  PanResponder,
-  PanResponderGestureState,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
+    FlatList,
+    PanResponder,
+    PanResponderGestureState,
+    Platform,
+    SafeAreaView,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -50,7 +49,6 @@ export default function CalendarPage({
   onClose: () => void;
 }) {
   const { colors, spacing, font } = useDesign();
-  const [events, setEvents] = useState<any[]>([]);
   const [currentMonth, setCurrentMonth] = useState(dayjs());
   const [selectedDate, setSelectedDate] = useState(dayjs().format('YYYY-MM-DD'));
   const today = dayjs();
@@ -63,6 +61,17 @@ export default function CalendarPage({
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
   const frame = useSafeAreaFrame();
   const insets = useSafeAreaInsets();
+
+  const { data: events = [], isLoading } = useQuery<any[]>({
+    queryKey: ['calendarEvents'],
+    queryFn: async () => {
+      const q = query(collection(db, 'notice'), where('type', '==', 'event'));
+      const snap = await getDocs(q);
+      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -78,18 +87,6 @@ export default function CalendarPage({
       }
     };
     fetchUser();
-  }, []);
-
-  useEffect(() => {
-    const q = query(collection(db, 'notice'), where('type', '==', 'event'));
-    const unsub = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setEvents(list);
-    });
-    return () => unsub();
   }, []);
 
   const numRows = React.useMemo(() => {

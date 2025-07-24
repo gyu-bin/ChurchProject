@@ -1,8 +1,9 @@
 // ScheduleTab.tsx
 import { useDesign } from '@/context/DesignSystem';
 import { db } from '@/firebase/config';
-import {addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, query, updateDoc, where} from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { addDoc, collection, deleteDoc, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
+import React, { useState } from 'react';
 import {
     Alert,
     FlatList,
@@ -17,7 +18,6 @@ import {
     View,
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import Toast from "react-native-root-toast";
 
 export default function ScheduleTab() {
@@ -37,7 +37,23 @@ export default function ScheduleTab() {
     const [tempStart, setTempStart] = useState<Date | null>(null);
     const [tempEnd, setTempEnd] = useState<Date | null>(null);
     const [refreshing, setRefreshing] = useState(false);
-    const [scheduleList, setScheduleList] = useState<any[]>([]);
+
+    const { data: scheduleList = [], isLoading, refetch } = useQuery<any[]>({
+        queryKey: ['scheduleList'],
+        queryFn: async () => {
+            const q = query(collection(db, 'notice'), where('type', '==', 'event'));
+            const snap = await getDocs(q);
+            return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        },
+        staleTime: 1000 * 60 * 5,
+        refetchOnWindowFocus: false,
+    });
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await refetch();
+        setRefreshing(false);
+    };
 
     const campuses = ['전체','문래', '신촌', '시선교회'];
     const divisions = ['전체','유치부', '초등부', '중고등부', '청년1부', '청년2부', '장년부'];
@@ -52,23 +68,6 @@ export default function ScheduleTab() {
         }
         return range;
     };
-
-    const fetchSchedules = async () => {
-        const q = query(collection(db, 'notice'), where('type', '==', 'event'));
-        const snap = await getDocs(q);
-        const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setScheduleList(list);
-    };
-
-    const onRefresh = async () => {
-        setRefreshing(true);
-        await fetchSchedules();
-        setRefreshing(false);
-    };
-
-    useEffect(() => {
-        fetchSchedules();
-    }, []);
 
     const handleSave = async () => {
         if (!form.title || !form.place || !form.startDate || !form.endDate) {
@@ -94,7 +93,7 @@ export default function ScheduleTab() {
         Toast.show('수정되었습니다.')
         setModalVisible(false);
         setForm({ title: '', place: '', startDate: '', endDate: '', division: '', campus: '',id: '' });
-        fetchSchedules();
+        refetch();
     };
 
     const renderItem = ({ item }: any) => {
@@ -161,7 +160,7 @@ export default function ScheduleTab() {
                                     style: 'destructive',
                                     onPress: async () => {
                                         await deleteDoc(doc(db, 'notice', item.id));
-                                        fetchSchedules();
+                                        refetch();
                                     },
                                 },
                             ]);
@@ -182,6 +181,16 @@ export default function ScheduleTab() {
                 contentContainerStyle={{ padding: spacing.md }}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 renderItem={renderItem}
+                ListEmptyComponent={
+                    !isLoading ? (
+                        <Text style={{ color: colors.subtext, textAlign: 'center', marginTop: 40 }}>등록된 일정이 없습니다.</Text>
+                    ) : null
+                }
+                ListFooterComponent={
+                    isLoading ? (
+                        <Text style={{ color: colors.subtext, textAlign: 'center', marginVertical: 20 }}>불러오는 중...</Text>
+                    ) : null
+                }
             />
 
             <TouchableOpacity

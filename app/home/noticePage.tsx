@@ -1,9 +1,10 @@
 import FlexibleCarousel from '@/components/FlexibleCarousel';
 import { useDesign } from '@/context/DesignSystem';
 import { db } from '@/firebase/config';
+import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
+import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
+import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaFrame } from 'react-native-safe-area-context';
 
@@ -22,23 +23,17 @@ type Notice = {
 
 export default function HomeNotices() {
   const { colors, spacing, font, radius } = useDesign();
-  const [notices, setNotices] = useState<any[]>([]);
   const frame = useSafeAreaFrame();
-  useEffect(() => {
-    const noticeQ = query(collection(db, 'notice'), where('type', '==', 'notice'));
-
-    const unsubNotice = onSnapshot(noticeQ, (snapshot) => {
-      const noticeList = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...(doc.data() as Omit<Notice, 'id'>),
-      }));
-      setNotices(noticeList.slice(0, 5)); // 공지사항 2개
-    });
-
-    return () => {
-      unsubNotice();
-    };
-  }, []);
+  const { data: notices = [], isLoading } = useQuery<any[]>({
+    queryKey: ['homeNotices'],
+    queryFn: async () => {
+      const q = query(collection(db, 'notice'), where('type', '==', 'notice'), orderBy('date', 'desc'), limit(5));
+      const snap = await getDocs(q);
+      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
 
   const renderNoticeCard = (item: Notice) => {
     return (

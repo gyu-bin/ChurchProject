@@ -1,16 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Alert, Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { collection, query, where, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/firebase/config';
-import dayjs from 'dayjs';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useQuery } from '@tanstack/react-query';
+import dayjs from 'dayjs';
 import { useRouter } from 'expo-router';
+import { collection, deleteDoc, doc, getDocs, query, where } from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
+import { Alert, FlatList, Platform, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function AlarmListScreen() {
     const [userId, setUserId] = useState<string | null>(null);
-    const [alarms, setAlarms] = useState<any[]>([]);
     const insets = useSafeAreaInsets();
     const router = useRouter();
 
@@ -25,20 +25,18 @@ export default function AlarmListScreen() {
         loadUser();
     }, []);
 
-    useEffect(() => {
-        if (!userId) return;
-
-        const q = query(collection(db, 'alarms'), where('userId', '==', userId));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const data = snapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
-            }));
-            setAlarms(data);
-        });
-
-        return () => unsubscribe();
-    }, [userId]);
+    const { data: alarms = [], isLoading } = useQuery<any[]>({
+        queryKey: ['alarms', userId],
+        queryFn: async () => {
+            if (!userId) return [];
+            const q = query(collection(db, 'alarms'), where('userId', '==', userId));
+            const snap = await getDocs(q);
+            return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        },
+        enabled: !!userId,
+        staleTime: 1000 * 60 * 5,
+        refetchOnWindowFocus: false,
+    });
 
     const deleteAlarm = async (id: string) => {
         await deleteDoc(doc(db, 'alarms', id));

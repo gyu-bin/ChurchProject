@@ -1,33 +1,30 @@
+import FlexibleCarousel from '@/components/FlexibleCarousel';
 import { useDesign } from '@/context/DesignSystem';
 import { db } from '@/firebase/config';
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
-import { Dimensions, Platform, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import FlexibleCarousel from '@/components/FlexibleCarousel';
+import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
-// const SCREEN_WIDTH = Dimensions.get('window').width;
+import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import React from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaFrame } from 'react-native-safe-area-context';
+type News = { id: string; title: string; content: string; date: { seconds: number } };
+
 export default function ChurchNewsPage() {
   const { colors, spacing, font } = useDesign();
-  const [news, setNews] = useState<any[]>([]);
 
   const frame = useSafeAreaFrame();
 
-  useEffect(() => {
-    const newsQ = query(
-      collection(db, 'church_news'),
-      orderBy('date', 'desc') // 🔥 최신순 정렬
-    );
-    const unsubNews = onSnapshot(newsQ, (snapshot) => {
-      const newsList = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...(doc.data() as any),
-      }));
-      setNews(newsList);
-    });
-    return () => unsubNews();
-  }, []);
+  const { data: news = [], isLoading } = useQuery<News[]>({
+    queryKey: ['church_news'],
+    queryFn: async () => {
+      const q = query(collection(db, 'church_news'), orderBy('date', 'desc'));
+      const snap = await getDocs(q);
+      return snap.docs.map(doc => ({ id: doc.id, ...((() => { const { id, ...rest } = doc.data() as News; return rest; })()) }));
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
 
   const renderNewsCard = (item: any) => {
     const getBadgeStyle = (type: string) => {
